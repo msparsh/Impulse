@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Visual Schedule Planner Pro - v7</title>
+        <title>Visual Schedule Planner Pro - v7 (Enhanced)</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
@@ -39,6 +39,29 @@
             .circle-btn.filled {
                 border-color: rgba(0, 0, 0, 0.1);
             }
+
+            /* --- NEW: Active block & Pulse animations --- */
+            .active-block {
+                box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.4);
+                transform: scale(1.1);
+                z-index: 20;
+            }
+            .pulse-fill {
+                animation: pulseFill 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            @keyframes pulseFill {
+                0% {
+                    transform: scale(1);
+                }
+                50% {
+                    transform: scale(1.2);
+                    filter: brightness(1.2);
+                }
+                100% {
+                    transform: scale(1);
+                }
+            }
+
             .active-date {
                 background-color: #4f46e5;
                 color: white !important;
@@ -46,7 +69,7 @@
                 border-radius: 8px;
             }
             .choice-menu {
-                position: fixed;
+                position: absolute;
                 background: white;
                 border: 1px solid #e5e7eb;
                 border-radius: 12px;
@@ -65,6 +88,22 @@
             .custom-scroll::-webkit-scrollbar-thumb {
                 background: #cbd5e1;
                 border-radius: 4px;
+            }
+
+            /* --- NEW: Foldable Sidebar --- */
+            .sidebar-collapsed {
+                width: 0 !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                opacity: 0;
+                overflow: hidden;
+                border: none;
+            }
+            .sidebar-transition {
+                transition:
+                    width 0.3s ease,
+                    padding 0.3s ease,
+                    opacity 0.3s ease;
             }
 
             @keyframes fadeIn {
@@ -120,11 +159,13 @@
             .modal-content {
                 animation: slideUp 0.2s ease-out forwards;
             }
+
+            /* --- UPDATED: Faster closing animations --- */
             .modal-bg.closing {
-                animation: fadeOut 0.2s ease-out forwards;
+                animation: fadeOut 0.1s ease-in forwards;
             }
             .modal-content.closing {
-                animation: slideDown 0.2s ease-out forwards;
+                animation: slideDown 0.1s ease-in forwards;
             }
 
             /* Inline Edit Styles */
@@ -174,6 +215,14 @@
                 cursor: grabbing;
             }
 
+            /* --- NEW: Dragging visual state --- */
+            .dragging {
+                opacity: 0.6 !important;
+                transform: scale(0.97);
+                cursor: grabbing !important;
+                box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.15);
+            }
+
             /* Toast */
             .toast {
                 position: fixed;
@@ -209,14 +258,37 @@
                     </div>
                     <h1 class="text-xl font-bold">Visual Planner Pro</h1>
                 </div>
-                <div class="flex items-center gap-6">
+                <div class="flex items-center gap-4 md:gap-6">
+                    <button
+                        onclick="app.toggleSidebar()"
+                        class="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition text-gray-600 shadow-sm"
+                        title="Toggle Sidebar"
+                    >
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+
                     <button
                         onclick="app.goToToday()"
                         class="px-4 py-2 border border-gray-200 rounded-full text-xs font-bold hover:bg-gray-50 text-gray-600 transition shadow-sm"
                     >
                         Today
                     </button>
-                    <div class="text-right border-l border-gray-200 pl-6">
+                    <div
+                        class="text-right border-l border-gray-200 pl-4 md:pl-6 hidden sm:block"
+                    >
                         <h2
                             id="display-date"
                             class="text-xl font-bold text-indigo-900"
@@ -248,9 +320,10 @@
                 </div>
             </header>
 
-            <div class="flex flex-1 overflow-hidden">
+            <div class="flex flex-1 overflow-hidden relative">
                 <aside
-                    class="w-80 border-r border-gray-100 p-6 flex flex-col gap-8 overflow-y-auto custom-scroll bg-gray-50"
+                    id="app-sidebar"
+                    class="w-80 border-r border-gray-100 p-6 flex flex-col gap-8 overflow-y-auto custom-scroll bg-gray-50 sidebar-transition flex-shrink-0"
                 >
                     <div
                         class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"
@@ -330,9 +403,11 @@
                     </div>
                 </aside>
 
-                <main class="flex-1 flex flex-col overflow-hidden bg-white">
+                <main
+                    class="flex-1 flex flex-col overflow-hidden bg-white relative"
+                >
                     <div
-                        class="p-6 border-b border-gray-100 bg-white z-10 shadow-sm"
+                        class="p-6 border-b border-gray-100 bg-white z-10 shadow-sm shrink-0"
                     >
                         <h3
                             class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"
@@ -401,7 +476,9 @@
                         </svg>
                     </button>
                 </div>
-                <div class="p-6 border-b border-gray-100 bg-white flex gap-3">
+                <div
+                    class="p-6 border-b border-gray-100 bg-white flex gap-3 shrink-0"
+                >
                     <input
                         type="text"
                         id="new-type-name"
@@ -453,7 +530,6 @@
                 <div class="p-6 text-gray-700 text-sm">
                     <p class="mb-4">
                         This will permanently delete the category and the
-                        following
                         <span id="confirm-count" class="font-bold"></span>
                         project(s):
                     </p>
@@ -546,7 +622,6 @@
                         "11 PM",
                     ];
                     this.data = this.loadState();
-
                     const today = new Date();
                     this.viewMonth = today.getMonth();
                     this.viewYear = today.getFullYear();
@@ -558,7 +633,6 @@
                     const localISOTime = new Date(today - offset)
                         .toISOString()
                         .split("T")[0];
-
                     return {
                         version: 4,
                         currentDate: localISOTime,
@@ -687,16 +761,37 @@
                     const hierarchyList =
                         document.getElementById("hierarchy-list");
 
+                    // --- UPDATED GRID CLICKS ---
                     grid.addEventListener("click", (e) => {
                         const block = e.target.closest(".schedule-block");
                         if (block) {
                             e.stopPropagation();
                             this.closeAllMenus();
+
+                            // Feature: 1-Click Clear
+                            if (block.classList.contains("filled")) {
+                                globalBus.emit("block:update", {
+                                    row: block.dataset.row,
+                                    col: block.dataset.col,
+                                    projectId: null,
+                                });
+                                return;
+                            }
+
+                            // Active state context
+                            block.classList.add("active-block");
                             this.renderChoiceMenu(
                                 block,
                                 block.dataset.row,
                                 block.dataset.col,
                             );
+                        }
+                    });
+
+                    // --- UPDATED DOC CLICKS ---
+                    document.addEventListener("click", (e) => {
+                        if (!e.target.closest(".choice-menu")) {
+                            this.closeAllMenus();
                         }
                     });
 
@@ -712,19 +807,17 @@
                         }
                     });
 
-                    // Inline Edit Focus Capture
+                    // Inline Edit Events...
                     hierarchyList.addEventListener(
                         "focus",
                         (e) => {
-                            if (e.target.hasAttribute("contenteditable")) {
+                            if (e.target.hasAttribute("contenteditable"))
                                 e.target.dataset.original =
                                     e.target.innerText.trim();
-                            }
                         },
                         true,
                     );
 
-                    // Inline Edit Save
                     hierarchyList.addEventListener(
                         "blur",
                         (e) => {
@@ -742,7 +835,6 @@
                                 const entityType = e.target.dataset.entity;
                                 const id = e.target.dataset.id;
 
-                                // Prevent Duplicates visually
                                 let isDuplicate = false;
                                 if (entityType === "type")
                                     isDuplicate = this.state
@@ -808,7 +900,7 @@
                         }
                     });
 
-                    // Native Drag and Drop Listeners
+                    // --- UPDATED DND ---
                     hierarchyList.addEventListener("dragstart", (e) => {
                         const target = e.target.closest("[data-drag-id]");
                         if (!target) return;
@@ -816,44 +908,42 @@
                         this.dragState.sourceId = target.dataset.dragId;
                         e.dataTransfer.effectAllowed = "move";
                         target.style.opacity = "0.5";
+                        target.classList.add("dragging"); // NEW
                     });
 
                     hierarchyList.addEventListener("dragover", (e) => {
                         e.preventDefault(); // allow drop
                         const target = e.target.closest("[data-drop-zone]");
                         if (!target) return;
-
-                        // Only highlight valid drop zones
                         if (
                             this.dragState.type === "type" &&
                             target.dataset.dropEntity === "type"
-                        ) {
+                        )
                             target.classList.add("drag-over-top");
-                        } else if (
+                        else if (
                             this.dragState.type === "project" &&
                             target.dataset.dropEntity === "project"
-                        ) {
+                        )
                             target.classList.add("drag-over-top");
-                        } else if (
+                        else if (
                             this.dragState.type === "project" &&
                             target.dataset.dropEntity === "type-container"
-                        ) {
+                        )
                             target.classList.add("drag-over");
-                        }
                     });
 
                     hierarchyList.addEventListener("dragleave", (e) => {
                         const target = e.target.closest("[data-drop-zone]");
-                        if (target) {
+                        if (target)
                             target.classList.remove(
                                 "drag-over-top",
                                 "drag-over",
                             );
-                        }
                     });
 
                     hierarchyList.addEventListener("dragend", (e) => {
                         e.target.style.opacity = "1";
+                        e.target.classList.remove("dragging");
                         document
                             .querySelectorAll(".drag-over, .drag-over-top")
                             .forEach((el) =>
@@ -862,6 +952,9 @@
                                     "drag-over-top",
                                 ),
                             );
+                        document
+                            .querySelectorAll(".dragging")
+                            .forEach((el) => el.classList.remove("dragging"));
                         this.dragState = { type: null, sourceId: null };
                     });
 
@@ -875,6 +968,10 @@
                                     "drag-over-top",
                                 ),
                             );
+                        document
+                            .querySelectorAll(".dragging")
+                            .forEach((el) => el.classList.remove("dragging"));
+
                         const target = e.target.closest("[data-drop-zone]");
                         if (!target || !this.dragState.sourceId) return;
 
@@ -903,9 +1000,6 @@
                         }
                     });
 
-                    document.addEventListener("click", () =>
-                        this.closeAllMenus(),
-                    );
                     document.addEventListener("keydown", (e) => {
                         if (e.key === "Escape") {
                             this.closeAllMenus();
@@ -916,16 +1010,23 @@
                 }
 
                 listenToEvents() {
+                    // --- UPDATED BLOCK UPDATED (PULSE) ---
                     globalBus.on("block:updated", ({ row, col, project }) => {
                         const blockEl = this.blockNodes[`${row}-${col}`];
                         if (!blockEl) return;
+
                         if (project) {
                             blockEl.style.backgroundColor = project.color;
                             blockEl.classList.add("filled");
                             blockEl.title = project.name;
+
+                            // Trigger pulse animation
+                            blockEl.classList.remove("pulse-fill");
+                            void blockEl.offsetWidth; // Reflow hack
+                            blockEl.classList.add("pulse-fill");
                         } else {
                             blockEl.style.backgroundColor = "";
-                            blockEl.classList.remove("filled");
+                            blockEl.classList.remove("filled", "pulse-fill");
                             blockEl.title = "Empty (Click to set)";
                         }
                     });
@@ -950,14 +1051,18 @@
                             this.state.getProjects(),
                             this.state.getTypes(),
                         );
-                        this.closeAllMenus(); // Avoid stale state
+                        this.closeAllMenus();
                     });
                 }
 
+                // --- UPDATED CLOSE MENUS ---
                 closeAllMenus() {
                     document
                         .querySelectorAll(".choice-menu")
                         .forEach((m) => m.remove());
+                    document
+                        .querySelectorAll(".active-block")
+                        .forEach((b) => b.classList.remove("active-block"));
                 }
 
                 refreshAllViews() {
@@ -1001,10 +1106,8 @@
                         "calendar-month-label",
                     );
                     grid.innerHTML = "";
-
                     const year = this.state.viewYear;
                     const month = this.state.viewMonth;
-
                     monthLabel.innerText = new Date(
                         year,
                         month,
@@ -1022,11 +1125,7 @@
                         const loopDateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                         const isActive =
                             loopDateStr === this.state.getCurrentDate();
-                        grid.innerHTML += `
-                        <div onclick="app.selectDate('${loopDateStr}')"
-                             class="py-1 cursor-pointer hover:bg-indigo-50 rounded-md transition ${isActive ? "active-date shadow-md" : "text-gray-700"}">
-                            ${day}
-                        </div>`;
+                        grid.innerHTML += `<div onclick="app.selectDate('${loopDateStr}')" class="py-1 cursor-pointer hover:bg-indigo-50 rounded-md transition ${isActive ? "active-date shadow-md" : "text-gray-700"}">${day}</div>`;
                     }
                 }
 
@@ -1038,14 +1137,9 @@
                             (p) => p.typeId === t.id,
                         );
                         if (typeProjects.length === 0) return;
-
                         list.innerHTML += `<div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-2 pl-1">${t.name}</div>`;
                         typeProjects.forEach((p) => {
-                            list.innerHTML += `
-                            <div class="flex items-center gap-3 p-2 rounded-lg bg-white border border-gray-100 shadow-sm">
-                                <div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div>
-                                <span class="text-sm font-semibold text-gray-800 leading-tight">${p.name}</span>
-                            </div>`;
+                            list.innerHTML += `<div class="flex items-center gap-3 p-2 rounded-lg bg-white border border-gray-100 shadow-sm"><div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div><span class="text-sm font-semibold text-gray-800 leading-tight">${p.name}</span></div>`;
                         });
                     });
                 }
@@ -1062,10 +1156,7 @@
                                 minutes >= 60
                                     ? `${(minutes / 60).toFixed(1)}h`
                                     : `${minutes}m`;
-                            bar.innerHTML += `
-                            <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 shadow-sm">
-                                <span class="text-xs font-semibold text-gray-700">${t.name}: <span class="text-gray-500">${hoursStr}</span></span>
-                            </div>`;
+                            bar.innerHTML += `<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 shadow-sm"><span class="text-xs font-semibold text-gray-700">${t.name}: <span class="text-gray-500">${hoursStr}</span></span></div>`;
                             totalAssigned++;
                         }
                     });
@@ -1081,15 +1172,16 @@
 
                     hours.forEach((time, rowIndex) => {
                         const rowEl = document.createElement("div");
-                        rowEl.className = "flex items-center gap-8 group";
+                        rowEl.className =
+                            "flex items-center gap-4 md:gap-8 group";
                         const timeLabel = document.createElement("div");
                         timeLabel.className =
-                            "w-16 text-xs font-bold text-gray-400 uppercase tracking-wider text-right";
+                            "w-12 md:w-16 text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider text-right shrink-0";
                         timeLabel.textContent = time;
 
                         const blocksContainer = document.createElement("div");
                         blocksContainer.className =
-                            "flex gap-3 md:gap-4 flex-wrap bg-gray-50 p-2 rounded-2xl group-hover:bg-gray-100 transition";
+                            "flex gap-2 md:gap-3 flex-wrap bg-gray-50 p-2 rounded-2xl group-hover:bg-gray-100 transition";
 
                         for (let colIndex = 0; colIndex < 6; colIndex++) {
                             const block = document.createElement("button");
@@ -1168,29 +1260,16 @@
                         });
                     });
 
-                    const reset = document.createElement("button");
-                    reset.className =
-                        "mt-2 p-2 w-full text-left text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition border-t border-gray-100";
-                    reset.innerText = "Clear Block";
-                    reset.onclick = (event) => {
-                        event.stopPropagation();
-                        globalBus.emit("block:update", {
-                            row: rowIndex,
-                            col: colIndex,
-                            projectId: null,
-                        });
-                        this.closeAllMenus();
-                    };
+                    // We remove the explicit reset button from menu because it's now 1-click on the block directly
 
-                    menu.appendChild(reset);
-                    document.body.appendChild(menu); // Append to body to avoid clipping
+                    document.body.appendChild(menu);
 
                     // Dynamic Viewport Position
                     const rect = blockElement.getBoundingClientRect();
                     const menuHeight = menu.offsetHeight;
                     let top = rect.bottom + window.scrollY + 8;
                     let left =
-                        rect.left + window.scrollX + rect.width / 2 - 100; // center
+                        rect.left + window.scrollX + rect.width / 2 - 100;
 
                     if (
                         top + menuHeight >
@@ -1209,7 +1288,6 @@
                 renderSettings() {
                     const list = document.getElementById("hierarchy-list");
                     list.innerHTML = "";
-
                     const types = this.state.getTypes();
                     const projects = this.state.getProjects();
 
@@ -1217,7 +1295,6 @@
                         const typeProjs = projects.filter(
                             (p) => p.typeId === t.id,
                         );
-
                         const typeBlock = document.createElement("div");
                         typeBlock.className = "mb-8 pb-4";
                         typeBlock.draggable = true;
@@ -1272,6 +1349,7 @@
                     });
                 }
 
+                // --- UPDATED MODAL CLOSE SPEED ---
                 toggleModal(modalId, show) {
                     const modal = document.getElementById(modalId);
                     const bg = modal;
@@ -1288,7 +1366,7 @@
                             modal.classList.add("hidden");
                             bg.classList.remove("closing");
                             content.classList.remove("closing");
-                        }, 200); // match animation duration
+                        }, 100);
                     }
                 }
 
@@ -1408,7 +1486,6 @@
                         },
                     );
 
-                    // Drag and drop sorting
                     globalBus.on(
                         "hierarchy:reorderType",
                         ({ sourceId, targetId }) => {
@@ -1441,9 +1518,8 @@
                                     (p) => p.id === targetId,
                                 );
                                 const targetType = arr[toIdx].typeId;
-
                                 const [item] = arr.splice(fromIdx, 1);
-                                item.typeId = targetType; // inherit type of target
+                                item.typeId = targetType;
                                 arr.splice(toIdx, 0, item);
                             });
                             globalBus.emit("hierarchy:refreshed");
@@ -1464,7 +1540,13 @@
                     );
                 }
 
-                // Calendar Nav
+                // --- NEW FOLDABLE SIDEBAR ---
+                toggleSidebar() {
+                    document
+                        .getElementById("app-sidebar")
+                        .classList.toggle("sidebar-collapsed");
+                }
+
                 prevMonth() {
                     let m = this.state.viewMonth - 1;
                     let y = this.state.viewYear;
@@ -1533,7 +1615,6 @@
                         );
                         return;
                     }
-
                     this.state.updateState((data) => {
                         data.types.push({ id: "t_" + Date.now(), name });
                     });
@@ -1544,11 +1625,8 @@
 
                 requestRemoveType(id) {
                     const projectsLinked = this.state.getProjectsByType(id);
-                    if (projectsLinked.length > 0) {
-                        this.ui.showConfirm(id);
-                    } else {
-                        this.executeRemoveType(id);
-                    }
+                    if (projectsLinked.length > 0) this.ui.showConfirm(id);
+                    else this.executeRemoveType(id);
                 }
 
                 cancelConfirm() {
@@ -1576,8 +1654,8 @@
                     this.ui.renderSettings();
                 }
 
+                // --- UPDATED RANDOM COLOR GEN ---
                 addProjectToType(typeId) {
-                    // Generate unique default name
                     const baseName = "New Project";
                     let newName = baseName;
                     let counter = 1;
@@ -1588,11 +1666,18 @@
                         counter++;
                     }
 
+                    // Generate Random Hex
+                    const randomHex =
+                        "#" +
+                        Math.floor(Math.random() * 16777215)
+                            .toString(16)
+                            .padStart(6, "0");
+
                     this.state.updateState((data) => {
                         data.projects.push({
                             id: "p_" + Date.now(),
                             name: newName,
-                            color: "#94a3b8",
+                            color: randomHex,
                             typeId: typeId,
                         });
                     });
