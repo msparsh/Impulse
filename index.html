@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Visual Schedule Planner Pro</title>
+        <title>Visual Schedule Planner Pro - v5</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
@@ -245,7 +245,6 @@
                         </svg>
                     </button>
                 </div>
-
                 <div class="flex flex-1 overflow-hidden">
                     <div
                         class="flex-1 border-r border-gray-100 p-6 overflow-y-auto custom-scroll"
@@ -274,7 +273,6 @@
                             class="flex flex-col gap-2"
                         ></div>
                     </div>
-
                     <div
                         class="flex-1 p-6 overflow-y-auto custom-scroll bg-gray-50/50"
                     >
@@ -322,11 +320,30 @@
 
         <script>
             // -----------------------------------------------------------------------------
-            // 1. STATE MANAGEMENT (Model)
+            // 0. EVENT BUS
+            // -----------------------------------------------------------------------------
+            class EventEmitter {
+                constructor() {
+                    this.events = {};
+                }
+                on(event, listener) {
+                    if (!this.events[event]) this.events[event] = [];
+                    this.events[event].push(listener);
+                }
+                emit(event, data) {
+                    if (this.events[event])
+                        this.events[event].forEach((l) => l(data));
+                }
+            }
+
+            const globalBus = new EventEmitter();
+
+            // -----------------------------------------------------------------------------
+            // 1. STATE MANAGEMENT (Model & Derived State)
             // -----------------------------------------------------------------------------
             class StateManager {
                 constructor() {
-                    this.storageKey = "planner_state_v3";
+                    this.storageKey = "planner_state_v5";
                     this.hours = [
                         "7 AM",
                         "8 AM",
@@ -356,38 +373,8 @@
                         .toISOString()
                         .split("T")[0];
 
-                    // Generate a 17-row (hours) by 6-column (10min blocks) empty grid
-                    let defaultSchedule = Array(17)
-                        .fill(null)
-                        .map(() => Array(6).fill(null));
-
-                    // Add some sample default blocks
-                    defaultSchedule[1] = [
-                        "p_deep",
-                        "p_deep",
-                        "p_deep",
-                        null,
-                        null,
-                        null,
-                    ]; // 8 AM
-                    defaultSchedule[2] = [
-                        null,
-                        null,
-                        "p_study",
-                        "p_study",
-                        "p_study",
-                        null,
-                    ]; // 9 AM
-                    defaultSchedule[5] = [
-                        "p_health",
-                        "p_health",
-                        "p_health",
-                        null,
-                        null,
-                        null,
-                    ]; // 12 PM
-
                     return {
+                        version: 2,
                         currentDate: localISOTime,
                         types: [
                             { id: "t_work", name: "Work" },
@@ -414,7 +401,19 @@
                             },
                         ],
                         schedules: {
-                            [localISOTime]: defaultSchedule,
+                            [localISOTime]: {
+                                blocks: {
+                                    "1-0": "p_deep",
+                                    "1-1": "p_deep",
+                                    "1-2": "p_deep",
+                                    "2-2": "p_study",
+                                    "2-3": "p_study",
+                                    "2-4": "p_study",
+                                    "5-0": "p_health",
+                                    "5-1": "p_health",
+                                    "5-2": "p_health",
+                                },
+                            },
                         },
                     };
                 }
@@ -431,21 +430,54 @@
                     );
                 }
 
+                updateState(updaterFn) {
+                    updaterFn(this.data);
+                    this.saveState();
+                }
+
                 ensureDateExists(dateStr) {
                     if (!this.data.schedules[dateStr]) {
-                        this.data.schedules[dateStr] = Array(this.hours.length)
-                            .fill(null)
-                            .map(() => Array(6).fill(null));
-                        this.saveState();
+                        this.updateState((data) => {
+                            data.schedules[dateStr] = { blocks: {} };
+                        });
                     }
                 }
 
+                // --- Getters (Strict UI Access) ---
                 getProjectById(id) {
                     return this.data.projects.find((p) => p.id === id);
                 }
+                getProjects() {
+                    return this.data.projects;
+                }
+                getTypes() {
+                    return this.data.types;
+                }
+                getCurrentDate() {
+                    return this.data.currentDate;
+                }
+                getHours() {
+                    return this.hours;
+                }
+                getCurrentSchedule() {
+                    return this.data.schedules[this.data.currentDate];
+                }
 
-                getTypeById(id) {
-                    return this.data.types.find((t) => t.id === id);
+                // --- Derived State (Analytics Engine) ---
+                getDailyAnalytics() {
+                    let typeCounts = {};
+                    const blocks =
+                        this.data.schedules[this.data.currentDate]?.blocks ||
+                        {};
+
+                    Object.values(blocks).forEach((projectId) => {
+                        const project = this.getProjectById(projectId);
+                        if (project) {
+                            typeCounts[project.typeId] =
+                                (typeCounts[project.typeId] || 0) + 1;
+                        }
+                    });
+                    return typeCounts;
                 }
             }
 
@@ -453,14 +485,111 @@
             // 2. UI MANAGEMENT (View)
             // -----------------------------------------------------------------------------
             class UIManager {
-                constructor(controller) {
-                    this.ctrl = controller;
+                constructor(state) {
+                    this.state = state; // Uses strictly getters, never touches state.data directly
+                    this.blockNodes = {}; // Cache for O(1) DOM updates
+                    this.setupDelegation();
+                    this.listenToEvents();
+                }
+
+                setupDelegation() {
+                    const grid = document.getElementById("schedule-grid");
+
+                    grid.addEventListener("click", (e) => {
+                        const block = e.target.closest(".schedule-block");
+                        if (block) {
+                            e.stopPropagation();
+                            this.closeAllMenus();
+                            this.renderChoiceMenu(
+                                block,
+                                block.dataset.row,
+                                block.dataset.col,
+                            );
+                        }
+                    });
+
+                    grid.addEventListener("contextmenu", (e) => {
+                        const block = e.target.closest(".schedule-block");
+                        if (block) {
+                            e.preventDefault();
+                            globalBus.emit("block:update", {
+                                row: block.dataset.row,
+                                col: block.dataset.col,
+                                projectId: null,
+                            });
+                        }
+                    });
+
+                    document.addEventListener("click", () =>
+                        this.closeAllMenus(),
+                    );
+                    document.addEventListener("keydown", (e) => {
+                        if (e.key === "Escape") {
+                            this.closeAllMenus();
+                            this.toggleModal("settings-modal", false);
+                        }
+                    });
+                }
+
+                listenToEvents() {
+                    // O(1) Targeted DOM Update
+                    globalBus.on("block:updated", ({ row, col, project }) => {
+                        const blockEl = this.blockNodes[`${row}-${col}`];
+                        if (!blockEl) return;
+
+                        if (project) {
+                            blockEl.style.backgroundColor = project.color;
+                            blockEl.classList.add("filled");
+                            blockEl.title = project.name;
+                        } else {
+                            blockEl.style.backgroundColor = "";
+                            blockEl.classList.remove("filled");
+                            blockEl.title = "Empty (Click to set)";
+                        }
+                    });
+
+                    // Orchestrated UI Refreshes
+                    globalBus.on("view:refresh", () => this.refreshAllViews());
+
+                    globalBus.on("schedule:refreshed", () => {
+                        this.renderSchedule(
+                            this.state.getCurrentSchedule(),
+                            this.state.getHours(),
+                            this.state.getProjects(),
+                        );
+                    });
+
+                    globalBus.on("analytics:refreshed", () => {
+                        this.renderAnalytics(
+                            this.state.getDailyAnalytics(),
+                            this.state.getTypes(),
+                        );
+                    });
                 }
 
                 closeAllMenus() {
                     document
                         .querySelectorAll(".choice-menu")
                         .forEach((m) => m.remove());
+                }
+
+                refreshAllViews() {
+                    const date = this.state.getCurrentDate();
+                    this.renderHeader(date);
+                    this.renderCalendar(date);
+                    this.renderSidebarProjects(
+                        this.state.getProjects(),
+                        this.state.getTypes(),
+                    );
+                    this.renderSchedule(
+                        this.state.getCurrentSchedule(),
+                        this.state.getHours(),
+                        this.state.getProjects(),
+                    );
+                    this.renderAnalytics(
+                        this.state.getDailyAnalytics(),
+                        this.state.getTypes(),
+                    );
                 }
 
                 renderHeader(dateStr) {
@@ -491,7 +620,6 @@
                     const year = parseInt(yearStr, 10);
                     const month = parseInt(monthStr, 10) - 1;
 
-                    // Set dynamic month header
                     const localDateObj = new Date(year, month, 1);
                     monthLabel.innerText = localDateObj.toLocaleString(
                         "default",
@@ -501,16 +629,11 @@
                     const firstDay = new Date(year, month, 1).getDay();
                     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-                    // Blank spaces for the start of the month
-                    for (let i = 0; i < firstDay; i++) {
+                    for (let i = 0; i < firstDay; i++)
                         grid.innerHTML += `<div class="py-2 text-gray-300"></div>`;
-                    }
 
-                    // Render actual days
                     for (let day = 1; day <= daysInMonth; day++) {
-                        const mStr = String(month + 1).padStart(2, "0");
-                        const dStr = String(day).padStart(2, "0");
-                        const loopDateStr = `${year}-${mStr}-${dStr}`;
+                        const loopDateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                         const isActive = loopDateStr === currentDate;
 
                         grid.innerHTML += `
@@ -539,30 +662,22 @@
                     });
                 }
 
-                renderAnalytics(scheduleData, projects) {
+                renderAnalytics(typeCounts, types) {
                     const bar = document.getElementById("analytics-bar");
                     bar.innerHTML = "";
-                    let counts = {};
-
-                    scheduleData.forEach((row) => {
-                        row.forEach((block) => {
-                            if (block) counts[block] = (counts[block] || 0) + 1;
-                        });
-                    });
-
                     let totalAssigned = 0;
-                    projects.forEach((p) => {
-                        const blocks = counts[p.id] || 0;
-                        if (blocks > 0) {
-                            const minutes = blocks * 10;
+
+                    types.forEach((t) => {
+                        const bCount = typeCounts[t.id] || 0;
+                        if (bCount > 0) {
+                            const minutes = bCount * 10;
                             const hoursStr =
                                 minutes >= 60
                                     ? `${(minutes / 60).toFixed(1)}h`
                                     : `${minutes}m`;
                             bar.innerHTML += `
                             <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 shadow-sm">
-                                <span class="w-3 h-3 rounded-full" style="background-color: ${p.color}"></span>
-                                <span class="text-xs font-semibold text-gray-700">${p.name}: <span class="text-gray-500">${hoursStr}</span></span>
+                                <span class="text-xs font-semibold text-gray-700">${t.name}: <span class="text-gray-500">${hoursStr}</span></span>
                             </div>`;
                             totalAssigned++;
                         }
@@ -572,9 +687,12 @@
                         bar.innerHTML = `<span class="text-sm text-gray-400 italic">No blocks assigned.</span>`;
                 }
 
-                renderSchedule(scheduleData, hours, projects) {
+                renderSchedule(scheduleObj, hours, projects) {
                     const container = document.getElementById("schedule-grid");
                     container.innerHTML = "";
+                    this.blockNodes = {}; // Reset cache
+
+                    const blocks = scheduleObj.blocks;
 
                     hours.forEach((time, rowIndex) => {
                         const rowEl = document.createElement("div");
@@ -589,46 +707,30 @@
                         blocksContainer.className =
                             "flex gap-3 md:gap-4 flex-wrap bg-gray-50 p-2 rounded-2xl group-hover:bg-gray-100 transition";
 
-                        scheduleData[rowIndex].forEach(
-                            (blockProjectId, colIndex) => {
-                                const block = document.createElement("button");
-                                block.className = "circle-btn shadow-sm";
+                        for (let colIndex = 0; colIndex < 6; colIndex++) {
+                            const block = document.createElement("button");
+                            block.className =
+                                "schedule-block circle-btn shadow-sm";
+                            block.dataset.row = rowIndex;
+                            block.dataset.col = colIndex;
 
-                                const project = projects.find(
-                                    (p) => p.id === blockProjectId,
-                                );
+                            const blockProjectId =
+                                blocks[`${rowIndex}-${colIndex}`];
+                            const project = projects.find(
+                                (p) => p.id === blockProjectId,
+                            );
 
-                                if (project) {
-                                    block.style.backgroundColor = project.color;
-                                    block.classList.add("filled");
-                                    block.title = project.name;
-                                } else {
-                                    block.title = "Empty (Click to set)";
-                                }
+                            if (project) {
+                                block.style.backgroundColor = project.color;
+                                block.classList.add("filled");
+                                block.title = project.name;
+                            } else {
+                                block.title = "Empty (Click to set)";
+                            }
 
-                                block.oncontextmenu = (e) => {
-                                    e.preventDefault();
-                                    this.ctrl.updateBlock(
-                                        rowIndex,
-                                        colIndex,
-                                        null,
-                                    );
-                                };
-
-                                block.onclick = (e) => {
-                                    e.stopPropagation();
-                                    this.closeAllMenus();
-                                    this.renderChoiceMenu(
-                                        block,
-                                        rowIndex,
-                                        colIndex,
-                                        projects,
-                                    );
-                                };
-
-                                blocksContainer.appendChild(block);
-                            },
-                        );
+                            this.blockNodes[`${rowIndex}-${colIndex}`] = block; // Cache element!
+                            blocksContainer.appendChild(block);
+                        }
 
                         rowEl.appendChild(timeLabel);
                         rowEl.appendChild(blocksContainer);
@@ -636,11 +738,11 @@
                     });
                 }
 
-                renderChoiceMenu(blockElement, rowIndex, colIndex, projects) {
+                renderChoiceMenu(blockElement, rowIndex, colIndex) {
                     const menu = document.createElement("div");
                     menu.className = "choice-menu";
 
-                    projects.forEach((p) => {
+                    this.state.getProjects().forEach((p) => {
                         const btn = document.createElement("button");
                         btn.className =
                             "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
@@ -656,10 +758,18 @@
                             if (
                                 event.target.classList.contains("fill-hour-btn")
                             ) {
-                                this.ctrl.fillRow(rowIndex, p.id);
+                                globalBus.emit("schedule:fillRow", {
+                                    row: rowIndex,
+                                    projectId: p.id,
+                                });
                             } else {
-                                this.ctrl.updateBlock(rowIndex, colIndex, p.id);
+                                globalBus.emit("block:update", {
+                                    row: rowIndex,
+                                    col: colIndex,
+                                    projectId: p.id,
+                                });
                             }
+                            this.closeAllMenus();
                         };
                         menu.appendChild(btn);
                     });
@@ -670,24 +780,32 @@
                     reset.innerText = "Clear Block";
                     reset.onclick = (event) => {
                         event.stopPropagation();
-                        this.ctrl.updateBlock(rowIndex, colIndex, null);
+                        globalBus.emit("block:update", {
+                            row: rowIndex,
+                            col: colIndex,
+                            projectId: null,
+                        });
+                        this.closeAllMenus();
                     };
 
                     menu.appendChild(reset);
                     blockElement.appendChild(menu);
 
-                    // SMART POSITIONING: Prevent bottom clipping
+                    // SMART POSITIONING
                     const rect = blockElement.getBoundingClientRect();
                     const menuHeight = menu.offsetHeight;
                     if (rect.bottom + menuHeight > window.innerHeight) {
                         menu.style.top = "auto";
-                        menu.style.bottom = "50px"; // Open upwards
+                        menu.style.bottom = "50px";
                         menu.style.boxShadow =
                             "0 -10px 25px -5px rgba(0, 0, 0, 0.15)";
                     }
                 }
 
-                renderSettings(types, projects) {
+                renderSettings() {
+                    const types = this.state.getTypes();
+                    const projects = this.state.getProjects();
+
                     const typeSelect = document.getElementById("new-proj-type");
                     typeSelect.innerHTML =
                         types.length === 0
@@ -750,110 +868,66 @@
             class AppController {
                 constructor() {
                     this.state = new StateManager();
-                    this.ui = new UIManager(this);
-                    this.setupGlobalListeners();
-                    this.refreshAllViews();
+                    this.ui = new UIManager(this.state);
+                    this.setupLogicListeners();
+
+                    this.state.ensureDateExists(this.state.getCurrentDate());
+                    globalBus.emit("view:refresh");
                 }
 
-                setupGlobalListeners() {
-                    document.addEventListener("click", () =>
-                        this.ui.closeAllMenus(),
-                    );
-                    document.addEventListener("keydown", (e) => {
-                        if (e.key === "Escape") {
-                            this.ui.closeAllMenus();
-                            this.closeSettingsModal();
-                        }
-                    });
-                    document
-                        .getElementById("settings-modal")
-                        .addEventListener("click", (e) => {
-                            if (e.target.id === "settings-modal")
-                                this.closeSettingsModal();
+                setupLogicListeners() {
+                    globalBus.on("block:update", ({ row, col, projectId }) => {
+                        this.state.updateState((data) => {
+                            const blocks =
+                                data.schedules[data.currentDate].blocks;
+                            const key = `${row}-${col}`;
+                            if (projectId) blocks[key] = projectId;
+                            else delete blocks[key];
                         });
+
+                        const project = projectId
+                            ? this.state.getProjectById(projectId)
+                            : null;
+                        globalBus.emit("block:updated", { row, col, project });
+                        globalBus.emit("analytics:refreshed"); // UI updates itself
+                    });
+
+                    globalBus.on("schedule:fillRow", ({ row, projectId }) => {
+                        this.state.updateState((data) => {
+                            const blocks =
+                                data.schedules[data.currentDate].blocks;
+                            for (let c = 0; c < 6; c++) {
+                                if (projectId)
+                                    blocks[`${row}-${c}`] = projectId;
+                                else delete blocks[`${row}-${c}`];
+                            }
+                        });
+
+                        globalBus.emit("schedule:refreshed"); // UI handles rendering
+                        globalBus.emit("analytics:refreshed"); // UI handles rendering
+                    });
                 }
 
-                refreshAllViews() {
-                    const data = this.state.data;
-                    this.state.ensureDateExists(data.currentDate);
-
-                    this.ui.renderHeader(data.currentDate);
-                    this.ui.renderCalendar(data.currentDate);
-                    this.ui.renderSidebarProjects(data.projects, data.types);
-                    this.ui.renderSchedule(
-                        data.schedules[data.currentDate],
-                        this.state.hours,
-                        data.projects,
-                    );
-                    this.ui.renderAnalytics(
-                        data.schedules[data.currentDate],
-                        data.projects,
-                    );
-                }
-
-                // --- USER ACTIONS ---
+                // --- HTML Bound Actions ---
                 goToToday() {
                     const today = new Date();
                     const offset = today.getTimezoneOffset() * 60000;
                     const localISOTime = new Date(today - offset)
                         .toISOString()
                         .split("T")[0];
-
-                    this.state.data.currentDate = localISOTime;
-                    this.state.saveState();
-                    this.refreshAllViews();
+                    this.selectDate(localISOTime);
                 }
 
                 selectDate(dateStr) {
-                    this.state.data.currentDate = dateStr;
-                    this.state.saveState();
-                    this.refreshAllViews();
+                    this.state.updateState((data) => {
+                        data.currentDate = dateStr;
+                    });
+                    this.state.ensureDateExists(dateStr);
+                    globalBus.emit("view:refresh");
                 }
 
-                updateBlock(row, col, projectId) {
-                    this.state.data.schedules[this.state.data.currentDate][row][
-                        col
-                    ] = projectId;
-                    this.state.saveState();
-                    this.ui.closeAllMenus();
-
-                    // Partial refresh for performance
-                    this.ui.renderSchedule(
-                        this.state.data.schedules[this.state.data.currentDate],
-                        this.state.hours,
-                        this.state.data.projects,
-                    );
-                    this.ui.renderAnalytics(
-                        this.state.data.schedules[this.state.data.currentDate],
-                        this.state.data.projects,
-                    );
-                }
-
-                fillRow(row, projectId) {
-                    for (let i = 0; i < 6; i++) {
-                        this.state.data.schedules[this.state.data.currentDate][
-                            row
-                        ][i] = projectId;
-                    }
-                    this.state.saveState();
-                    this.ui.closeAllMenus();
-                    this.ui.renderSchedule(
-                        this.state.data.schedules[this.state.data.currentDate],
-                        this.state.hours,
-                        this.state.data.projects,
-                    );
-                    this.ui.renderAnalytics(
-                        this.state.data.schedules[this.state.data.currentDate],
-                        this.state.data.projects,
-                    );
-                }
-
-                // --- MODAL & DATA MANAGEMENT ---
                 openSettingsModal() {
-                    this.ui.renderSettings(
-                        this.state.data.types,
-                        this.state.data.projects,
-                    );
+                    this.ui.renderSettings();
                     this.ui.toggleModal("settings-modal", true);
                 }
 
@@ -866,29 +940,23 @@
                     const name = input.value.trim();
                     if (!name) return;
 
-                    this.state.data.types.push({ id: "t_" + Date.now(), name });
+                    this.state.updateState((data) => {
+                        data.types.push({ id: "t_" + Date.now(), name });
+                    });
                     input.value = "";
-                    this.state.saveState();
-                    this.ui.renderSettings(
-                        this.state.data.types,
-                        this.state.data.projects,
-                    );
+                    this.ui.renderSettings();
                 }
 
                 removeType(id) {
-                    this.state.data.types = this.state.data.types.filter(
-                        (t) => t.id !== id,
-                    );
-                    // Cascade deletion
-                    this.state.data.projects
+                    this.state.updateState((data) => {
+                        data.types = data.types.filter((t) => t.id !== id);
+                    });
+                    this.state
+                        .getProjects()
                         .filter((p) => p.typeId === id)
                         .forEach((p) => this.removeProject(p.id, false));
-                    this.state.saveState();
-                    this.ui.renderSettings(
-                        this.state.data.types,
-                        this.state.data.projects,
-                    );
-                    this.refreshAllViews();
+                    this.ui.renderSettings();
+                    globalBus.emit("view:refresh");
                 }
 
                 addProject() {
@@ -896,52 +964,45 @@
                     const colorInput =
                         document.getElementById("new-proj-color");
                     const typeInput = document.getElementById("new-proj-type");
-
                     const name = nameInput.value.trim();
+
                     if (!name || !typeInput.value)
                         return alert("Name and Type are required!");
 
-                    this.state.data.projects.push({
-                        id: "p_" + Date.now(),
-                        name: name,
-                        color: colorInput.value,
-                        typeId: typeInput.value,
+                    this.state.updateState((data) => {
+                        data.projects.push({
+                            id: "p_" + Date.now(),
+                            name: name,
+                            color: colorInput.value,
+                            typeId: typeInput.value,
+                        });
                     });
 
                     nameInput.value = "";
-                    this.state.saveState();
-                    this.ui.renderSettings(
-                        this.state.data.types,
-                        this.state.data.projects,
-                    );
-                    this.refreshAllViews();
+                    this.ui.renderSettings();
+                    globalBus.emit("view:refresh");
                 }
 
-                removeProject(id, updateStorage = true) {
-                    this.state.data.projects = this.state.data.projects.filter(
-                        (p) => p.id !== id,
-                    );
+                removeProject(id, renderAfter = true) {
+                    this.state.updateState((data) => {
+                        data.projects = data.projects.filter(
+                            (p) => p.id !== id,
+                        );
+                        for (let date in data.schedules) {
+                            const blocks = data.schedules[date].blocks;
+                            for (let key in blocks) {
+                                if (blocks[key] === id) delete blocks[key];
+                            }
+                        }
+                    });
 
-                    // Scrub project from all schedules globally
-                    for (let date in this.state.data.schedules) {
-                        this.state.data.schedules[date] =
-                            this.state.data.schedules[date].map((row) =>
-                                row.map((block) =>
-                                    block === id ? null : block,
-                                ),
-                            );
+                    if (renderAfter) {
+                        this.ui.renderSettings();
+                        globalBus.emit("view:refresh");
                     }
-
-                    if (updateStorage) this.state.saveState();
-                    this.ui.renderSettings(
-                        this.state.data.types,
-                        this.state.data.projects,
-                    );
-                    this.refreshAllViews();
                 }
             }
 
-            // Initialize App Globally
             window.app = new AppController();
         </script>
     </body>
