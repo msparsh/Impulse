@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Planner - v11 (Addressing Engine)</title>
+        <title>Planner - v12 (Live Interpreter Engine)</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap"
@@ -24,7 +24,7 @@
                 justify-content: center;
                 font-size: 20px;
                 transition:
-                    background-color 0.4s ease,
+                    background-color 0.3s ease,
                     transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                 position: relative;
                 background-color: #e5e7eb;
@@ -53,49 +53,33 @@
                 z-index: 20;
             }
 
-            .pulse-fill {
-                animation: pulseFill 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            /* Live Preview Styling */
+            .is-previewing {
+                box-shadow:
+                    inset 0 0 0 3px rgba(255, 255, 255, 0.9),
+                    0 0 0 2px #4f46e5 !important;
+                transform: scale(1.08) !important;
+                z-index: 40 !important;
+                opacity: 0.8;
             }
-            @keyframes pulseFill {
-                0% {
-                    transform: scale(1);
-                }
-                50% {
-                    transform: scale(1.2);
-                    filter: brightness(1.2);
-                }
-                100% {
-                    transform: scale(1);
-                }
+            .preview-clear {
+                background: transparent !important;
+                border: 2px dashed #ef4444 !important;
+                box-shadow: none !important;
             }
 
+            .current-row-highlight {
+                background: linear-gradient(
+                    90deg,
+                    #eff6ff 0%,
+                    transparent 100%
+                );
+                border-left: 3px solid #3b82f6;
+                border-radius: 8px 0 0 8px;
+            }
             .current-time-label {
-                color: #ef4444 !important;
+                color: #3b82f6 !important;
                 font-weight: 900 !important;
-                position: relative;
-            }
-            .current-time-label::after {
-                content: "";
-                position: absolute;
-                right: -12px;
-                top: 50%;
-                transform: translateY(-50%);
-                width: 8px;
-                height: 8px;
-                background-color: #ef4444;
-                border-radius: 50%;
-                animation: pulse-dot 1.5s infinite;
-            }
-            @keyframes pulse-dot {
-                0% {
-                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
-                }
-                70% {
-                    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
-                }
-                100% {
-                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-                }
             }
 
             .paint-active {
@@ -237,15 +221,8 @@
                 background-color: #f1f5f9;
             }
             .edit-success {
-                animation: flashGreen 0.6s;
-            }
-            @keyframes flashGreen {
-                0% {
-                    background-color: #dcfce7;
-                }
-                100% {
-                    background-color: transparent;
-                }
+                background-color: #dcfce7;
+                transition: background-color 0.6s;
             }
 
             .drag-over {
@@ -291,45 +268,47 @@
                 background: #ef4444;
             }
 
-            /* Command Palette - COMPACT */
+            /* Command Palette - Bottom Docked, Upward Flow */
             .cmd-palette-wrapper {
                 position: fixed;
                 inset: 0;
                 z-index: 99999;
                 display: flex;
-                align-items: flex-start;
-                justify-content: center;
-                padding-top: 12vh;
-                background: rgba(255, 255, 255, 0.4);
-                backdrop-filter: blur(8px);
+                flex-direction: column;
+                justify-content: flex-end;
+                align-items: center;
+                padding-bottom: 32px;
+                background: transparent;
+                pointer-events: none;
                 animation: fadeIn 0.1s ease-out forwards;
             }
             .cmd-palette-wrapper.closing {
                 animation: fadeOut 0.1s ease-in forwards;
-                pointer-events: none;
             }
             .cmd-palette {
                 width: 100%;
-                max-width: 600px;
+                max-width: 650px;
                 background: white;
                 border-radius: 12px;
                 box-shadow:
-                    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                    0 -15px 40px -10px rgba(0, 0, 0, 0.2),
                     0 0 0 1px rgba(0, 0, 0, 0.05);
                 display: flex;
-                flex-direction: column;
+                flex-direction: column-reverse;
                 overflow: hidden;
+                pointer-events: auto;
                 animation: slideUp 0.1s ease-out forwards;
             }
             .cmd-palette-input {
                 width: 100%;
-                padding: 12px 16px;
-                font-size: 1rem;
+                padding: 16px 20px;
+                font-size: 1.125rem;
                 border: none;
                 outline: none;
                 background: transparent;
                 color: #111827;
-                font-weight: 500;
+                font-weight: 600;
+                border-top: 1px solid #f3f4f6;
             }
             .cmd-palette-input::placeholder {
                 color: #9ca3af;
@@ -339,16 +318,16 @@
                 max-height: 350px;
                 overflow-y: auto;
                 padding: 6px;
-                border-top: 1px solid #f3f4f6;
+                display: flex;
+                flex-direction: column-reverse;
             }
             .cmd-item {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 8px 12px;
-                border-radius: 6px;
+                padding: 10px 14px;
+                border-radius: 8px;
                 cursor: pointer;
-                transition: background 0s;
                 color: #4b5563;
             }
             .cmd-item.active {
@@ -360,19 +339,18 @@
             }
             .cmd-item-title {
                 font-weight: 600;
-                font-size: 13px;
+                font-size: 14px;
                 display: flex;
                 align-items: center;
                 gap: 8px;
             }
             .cmd-subtext {
-                font-size: 10px;
+                font-size: 11px;
                 color: #9ca3af;
                 text-transform: uppercase;
                 font-weight: 800;
                 letter-spacing: 0.5px;
             }
-
             .cmd-highlight {
                 font-weight: 900;
                 color: #111827;
@@ -417,7 +395,7 @@
                         >
                             <svg
                                 id="icon-arrow"
-                                class="absolute transition-all duration-300"
+                                class="absolute opacity-0 -rotate-90 transition-all duration-300"
                                 width="18"
                                 height="18"
                                 viewBox="0 0 24 24"
@@ -432,7 +410,7 @@
                             </svg>
                             <svg
                                 id="icon-burger"
-                                class="absolute opacity-0 rotate-90 transition-all duration-300"
+                                class="absolute transition-all duration-300"
                                 width="18"
                                 height="18"
                                 viewBox="0 0 24 24"
@@ -461,14 +439,8 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-4 md:gap-6">
-                    <button
-                        onclick="app.goToToday()"
-                        class="px-4 py-2 border border-gray-200 rounded-full text-xs font-bold hover:bg-gray-50 text-gray-600 transition shadow-sm"
-                    >
-                        Today
-                    </button>
                     <div
-                        class="text-right border-l border-gray-200 pl-4 md:pl-6 hidden sm:block"
+                        class="text-right border-gray-200 pl-4 md:pl-6 hidden sm:block"
                     >
                         <h2
                             id="display-date"
@@ -504,7 +476,7 @@
             <div class="flex flex-1 overflow-hidden relative">
                 <aside
                     id="app-sidebar"
-                    class="w-80 border-r border-gray-100 p-6 flex flex-col gap-8 overflow-y-auto custom-scroll bg-gray-50 sidebar-transition flex-shrink-0"
+                    class="w-80 border-r border-gray-100 p-6 flex flex-col gap-6 overflow-y-auto custom-scroll bg-gray-50 sidebar-transition flex-shrink-0"
                 >
                     <div
                         class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"
@@ -567,15 +539,16 @@
                         </div>
                         <div
                             id="calendar-grid"
-                            class="grid grid-cols-7 gap-1 text-center text-sm"
+                            class="grid grid-cols-7 gap-1 text-center text-sm mb-3"
                         ></div>
+                        <button
+                            onclick="app.goToToday()"
+                            class="w-full py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition shadow-sm border border-indigo-100"
+                        >
+                            Go to Today
+                        </button>
                     </div>
                     <div>
-                        <h3
-                            class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"
-                        >
-                            Active Projects
-                        </h3>
                         <div
                             id="project-list"
                             class="flex flex-col gap-2 mb-4"
@@ -593,10 +566,13 @@
                             class="flex flex-wrap gap-4"
                         ></div>
                     </div>
-                    <div class="flex-1 overflow-y-auto p-6 custom-scroll">
+                    <div
+                        class="flex-1 overflow-y-auto p-6 custom-scroll"
+                        id="scroll-container"
+                    >
                         <div
                             id="schedule-grid"
-                            class="flex flex-col gap-6 max-w-4xl mx-auto pb-20"
+                            class="flex flex-col gap-6 max-w-4xl mx-auto pb-20 pt-4"
                         ></div>
                     </div>
                 </main>
@@ -731,8 +707,7 @@
 
             class StateManager {
                 constructor() {
-                    this.storageKey = "planner_state_v11";
-                    // EXTENDED TO 24 HOURS (7am to 6am next day)
+                    this.storageKey = "planner_state_v12";
                     this.hours = [
                         "7 AM",
                         "8 AM",
@@ -760,22 +735,26 @@
                         "6 AM",
                     ];
                     this.data = this.loadState();
-                    const today = new Date();
-                    this.viewMonth = today.getMonth();
-                    this.viewYear = today.getFullYear();
+                    const initDate = new Date(
+                        this.data.currentDate + "T00:00:00",
+                    );
+                    this.viewMonth = initDate.getMonth();
+                    this.viewYear = initDate.getFullYear();
                     this.paintProjectId = null;
                 }
 
+                getLogicalDate(dateObj = new Date()) {
+                    const offset = dateObj.getTimezoneOffset() * 60000;
+                    const local = new Date(dateObj.getTime() - offset);
+                    if (dateObj.getHours() < 7)
+                        local.setDate(local.getDate() - 1);
+                    return local.toISOString().split("T")[0];
+                }
+
                 getDefaultState() {
-                    const today = new Date();
-                    const localISOTime = new Date(
-                        today.getTime() - today.getTimezoneOffset() * 60000,
-                    )
-                        .toISOString()
-                        .split("T")[0];
                     return {
-                        version: 8,
-                        currentDate: localISOTime,
+                        version: 9,
+                        currentDate: this.getLogicalDate(),
                         types: [
                             { id: "t_1", name: "Work" },
                             { id: "t_2", name: "Personal" },
@@ -806,9 +785,7 @@
                                 typeId: "t_2",
                             },
                         ],
-                        schedules: {
-                            [localISOTime]: { blocks: {} },
-                        },
+                        schedules: {},
                     };
                 }
 
@@ -869,276 +846,163 @@
                 }
             }
 
-            // --- PART 2: COMMAND PARSER (New Syntax Engine) ---
+            // --- PART 2: COMMAND PARSER 3.0 (Live Interpreter) ---
             class CommandParser {
-                constructor(app, state) {
-                    this.app = app;
+                constructor(state) {
                     this.state = state;
-
-                    // Maps to parse strings like "7am" to row indices (0-23)
-                    this.rowMap = {};
-                    this.state.getHours().forEach((h, i) => {
-                        this.rowMap[h.replace(" ", "").toLowerCase()] = i;
-                    });
-
-                    // Global ranges mapping to [startRow, endRow] inclusive
                     this.globals = {
                         day: [0, 23],
-                        morning: [0, 4], // 7am - 11am
-                        afternoon: [5, 9], // 12pm - 4pm
-                        evening: [10, 13], // 5pm - 8pm
-                        night: [14, 17], // 9pm - 12am
+                        morning: [0, 4],
+                        afternoon: [5, 9],
+                        evening: [10, 13],
+                        night: [14, 17],
                     };
                 }
 
-                smartMatch(query, targetStr) {
-                    const q = query.toLowerCase().replace(/\s+/g, "");
-                    const t = targetStr.toLowerCase();
-                    if (t.includes(q)) return true;
-                    const acronym = t
-                        .split(/\s+/)
-                        .map((w) => w[0])
-                        .join("");
-                    if (acronym.includes(q)) return true;
-                    return false;
+                timeToRow(t) {
+                    let num = parseInt(t.replace(/\D/g, ""));
+                    let isPm = t.includes("pm");
+                    let isAm = t.includes("am");
+                    if (!isPm && !isAm) {
+                        if (num >= 7 && num <= 11) isAm = true;
+                        else if (num === 12 || (num >= 1 && num <= 6))
+                            isPm = true;
+                    }
+                    if (isPm && num !== 12) num += 12;
+                    if (isAm && num === 12) num = 0;
+                    let row = num >= 7 ? num - 7 : num + 17;
+                    return row >= 0 && row <= 23 ? row : -1;
+                }
+
+                fuzzyScore(query, target) {
+                    const q = query.replace(/\s+/g, "").toLowerCase();
+                    const t = target.replace(/\s+/g, "").toLowerCase();
+                    let score = 0;
+                    let qIdx = 0;
+                    for (let i = 0; i < t.length && qIdx < q.length; i++) {
+                        if (t[i] === q[qIdx]) {
+                            score++;
+                            qIdx++;
+                        }
+                    }
+                    // Word bonus
+                    query
+                        .toLowerCase()
+                        .split(" ")
+                        .forEach((w) => {
+                            if (target.toLowerCase().includes(w)) score += 3;
+                        });
+                    return score;
                 }
 
                 parse(input) {
-                    const tokens = input
-                        .toLowerCase()
-                        .trim()
-                        .split(/\s+/)
-                        .filter((t) => t);
-                    let cmds = [];
-                    const projects = this.state.getProjects();
+                    if (input.trim() === "help" || input.trim() === "?")
+                        return { isHelp: true };
+                    const chains = input
+                        .split("|")
+                        .map((s) => s.trim())
+                        .filter((s) => s);
+                    let finalChanges = {};
+                    let hasValidCommand = false;
 
-                    // Edge Case: Empty
-                    if (tokens.length === 0) {
-                        return [
-                            {
-                                title: "copy day",
-                                category: "Clipboard",
-                                action: () => this.app.copyDay(),
+                    chains.forEach((chain) => {
+                        let text = chain.toLowerCase();
+                        let action = text.includes("clear") ? "clear" : "set";
+                        text = text.replace(/\bclear\b/g, " ");
+
+                        const blocks = [];
+                        text = text.replace(
+                            /\b(\d{1,2}(?:am|pm)?)\s+([1-6])\b/g,
+                            (m, time, col) => {
+                                blocks.push({ time, col: parseInt(col) - 1 });
+                                return " ";
                             },
-                            {
-                                title: "paste day",
-                                category: "Clipboard",
-                                action: () => this.app.pasteDay(),
-                            },
-                            {
-                                title: "clear day",
-                                category: "Destructive",
-                                action: () =>
-                                    this.app.clearTarget("global", "day"),
-                            },
-                        ];
-                    }
-
-                    const t1 = tokens[0];
-
-                    // 1. CLEAR COMMANDS
-                    if (t1 === "clear") {
-                        if (tokens.length === 1) {
-                            cmds.push({
-                                title: "clear day",
-                                category: "Destructive",
-                                action: () =>
-                                    this.app.clearTarget("global", "day"),
-                            });
-                            Object.keys(this.globals)
-                                .filter((g) => g !== "day")
-                                .forEach((g) => {
-                                    cmds.push({
-                                        title: `clear ${g}`,
-                                        category: "Destructive",
-                                        action: () =>
-                                            this.app.clearTarget("global", g),
-                                    });
-                                });
-                            Object.keys(this.rowMap).forEach((r) => {
-                                cmds.push({
-                                    title: `clear ${r}`,
-                                    category: "Destructive",
-                                    action: () =>
-                                        this.app.clearTarget("row", r),
-                                });
-                            });
-                        } else {
-                            const t2 = tokens[1];
-                            const t3 = tokens[2];
-
-                            // clear morning, clear day
-                            if (this.globals[t2]) {
-                                cmds.push({
-                                    title: `clear ${t2}`,
-                                    category: "Destructive",
-                                    action: () =>
-                                        this.app.clearTarget("global", t2),
-                                });
-                            }
-                            // clear 7am...
-                            else {
-                                const matchedRows = Object.keys(
-                                    this.rowMap,
-                                ).filter((r) => r.startsWith(t2));
-                                matchedRows.forEach((r) => {
-                                    if (t3 && !isNaN(parseInt(t3))) {
-                                        const col = parseInt(t3);
-                                        if (col >= 1 && col <= 6) {
-                                            cmds.push({
-                                                title: `clear ${r} ${col}`,
-                                                category: "Destructive",
-                                                action: () =>
-                                                    this.app.clearTarget(
-                                                        "block",
-                                                        r,
-                                                        col - 1,
-                                                    ),
-                                            });
-                                        }
-                                    } else {
-                                        cmds.push({
-                                            title: `clear ${r}`,
-                                            category: "Destructive",
-                                            action: () =>
-                                                this.app.clearTarget("row", r),
-                                        });
-                                        for (let i = 1; i <= 6; i++) {
-                                            cmds.push({
-                                                title: `clear ${r} ${i}`,
-                                                category: "Destructive",
-                                                action: () =>
-                                                    this.app.clearTarget(
-                                                        "block",
-                                                        r,
-                                                        i - 1,
-                                                    ),
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-                        }
-                        return cmds;
-                    }
-
-                    // 2. SET / FILL COMMANDS
-                    // If first token is a global or time (ignoring optional 'set' keyword)
-                    let targetToken =
-                        t1 === "set" && tokens.length > 1 ? tokens[1] : t1;
-                    let projectTokenIdx = t1 === "set" ? 2 : 1;
-
-                    let matchedGlobals = Object.keys(this.globals).filter((g) =>
-                        g.startsWith(targetToken),
-                    );
-                    let matchedRows = Object.keys(this.rowMap).filter((r) =>
-                        r.startsWith(targetToken),
-                    );
-
-                    // Block logic: if target is a row, and next token is a number 1-6
-                    let colToken = null;
-                    if (
-                        matchedRows.length > 0 &&
-                        tokens[projectTokenIdx] &&
-                        !isNaN(parseInt(tokens[projectTokenIdx]))
-                    ) {
-                        const potentialCol = parseInt(tokens[projectTokenIdx]);
-                        if (potentialCol >= 1 && potentialCol <= 6) {
-                            colToken = potentialCol;
-                            projectTokenIdx++;
-                        }
-                    }
-
-                    const projQuery = tokens.slice(projectTokenIdx).join(" ");
-                    let matchedProjects = projects;
-                    if (projQuery) {
-                        matchedProjects = projects.filter((p) =>
-                            this.smartMatch(projQuery, p.name),
                         );
-                    }
 
-                    // Build Global Fill Suggestions
-                    matchedGlobals.forEach((g) => {
-                        if (!projQuery && !colToken) {
-                            cmds.push({
-                                title: `${g} <span class="text-gray-400 font-normal">... (type project)</span>`,
-                                isHint: true,
+                        const ranges = [];
+                        text = text.replace(
+                            /\b(\d{1,2}(?:am|pm)?)\s*-\s*(\d{1,2}(?:am|pm)?)\b/g,
+                            (m, t1, t2) => {
+                                ranges.push({ t1, t2 });
+                                return " ";
+                            },
+                        );
+
+                        const globalsFound = [];
+                        [
+                            "day",
+                            "morning",
+                            "afternoon",
+                            "evening",
+                            "night",
+                        ].forEach((g) => {
+                            const r = new RegExp(`\\b${g}\\b`, "g");
+                            if (r.test(text)) {
+                                globalsFound.push(g);
+                                text = text.replace(r, " ");
+                            }
+                        });
+
+                        const rows = [];
+                        text = text.replace(
+                            /\b(\d{1,2}(?:am|pm)?)\b/g,
+                            (m, time) => {
+                                rows.push(time);
+                                return " ";
+                            },
+                        );
+
+                        let projStr = text.replace(/[^a-z0-9\s]/g, "").trim();
+                        let projectId = null;
+
+                        if (action === "set" && projStr) {
+                            let bestScore = 0;
+                            this.state.getProjects().forEach((p) => {
+                                let score = this.fuzzyScore(projStr, p.name);
+                                if (
+                                    score >= Math.min(2, p.name.length) &&
+                                    score > bestScore
+                                ) {
+                                    bestScore = score;
+                                    projectId = p.id;
+                                }
                             });
                         }
-                        matchedProjects.forEach((p) => {
-                            cmds.push({
-                                title: `${g} <span class="cmd-highlight">${p.name}</span>`,
-                                color: p.color,
-                                category: `Fill ${g}`,
-                                action: () =>
-                                    this.app.fillTarget("global", g, p.id),
-                            });
+
+                        if (action === "set" && !projectId) return; // incomplete segment
+
+                        hasValidCommand = true;
+                        let val = action === "clear" ? null : projectId;
+                        let addRow = (r) => {
+                            if (r >= 0 && r <= 23) {
+                                for (let c = 0; c < 6; c++)
+                                    finalChanges[`${r}-${c}`] = val;
+                            }
+                        };
+
+                        rows.forEach((t) => addRow(this.timeToRow(t)));
+                        blocks.forEach((b) => {
+                            let r = this.timeToRow(b.time);
+                            if (r >= 0 && r <= 23)
+                                finalChanges[`${r}-${b.col}`] = val;
+                        });
+                        ranges.forEach((rng) => {
+                            let r1 = this.timeToRow(rng.t1);
+                            let r2 = this.timeToRow(rng.t2);
+                            if (r1 >= 0 && r2 >= 0) {
+                                let start = Math.min(r1, r2);
+                                let end = Math.max(r1, r2);
+                                for (let r = start; r <= end; r++) addRow(r);
+                            }
+                        });
+                        globalsFound.forEach((g) => {
+                            let range = this.globals[g];
+                            for (let r = range[0]; r <= range[1]; r++)
+                                addRow(r);
                         });
                     });
 
-                    // Build Row/Block Fill Suggestions
-                    matchedRows.forEach((r) => {
-                        if (!projQuery) {
-                            if (!colToken) {
-                                cmds.push({
-                                    title: `${r} <span class="text-gray-400 font-normal">... (type block 1-6 or project)</span>`,
-                                    isHint: true,
-                                });
-                            } else {
-                                cmds.push({
-                                    title: `${r} ${colToken} <span class="text-gray-400 font-normal">... (type project)</span>`,
-                                    isHint: true,
-                                });
-                            }
-                        }
-
-                        matchedProjects.forEach((p) => {
-                            if (colToken) {
-                                cmds.push({
-                                    title: `${r} ${colToken} <span class="cmd-highlight">${p.name}</span>`,
-                                    color: p.color,
-                                    category: `Set Block`,
-                                    action: () =>
-                                        this.app.fillTarget(
-                                            "block",
-                                            r,
-                                            p.id,
-                                            colToken - 1,
-                                        ),
-                                });
-                            } else {
-                                cmds.push({
-                                    title: `${r} <span class="cmd-highlight">${p.name}</span>`,
-                                    color: p.color,
-                                    category: `Fill Row`,
-                                    action: () =>
-                                        this.app.fillTarget("row", r, p.id),
-                                });
-                            }
-                        });
-                    });
-
-                    // 3. Other base commands
-                    if ("today".startsWith(t1))
-                        cmds.push({
-                            title: "today",
-                            category: "Navigation",
-                            action: () => this.app.goToToday(),
-                        });
-                    if ("copy day".startsWith(input.toLowerCase()))
-                        cmds.push({
-                            title: "copy day",
-                            category: "Clipboard",
-                            action: () => this.app.copyDay(),
-                        });
-                    if ("paste day".startsWith(input.toLowerCase()))
-                        cmds.push({
-                            title: "paste day",
-                            category: "Clipboard",
-                            action: () => this.app.pasteDay(),
-                        });
-
-                    return cmds;
+                    return hasValidCommand ? finalChanges : null;
                 }
             }
 
@@ -1147,7 +1011,7 @@
                 constructor(app, state) {
                     this.app = app;
                     this.state = state;
-                    this.parser = new CommandParser(app, state);
+                    this.parser = new CommandParser(state);
                     this.isOpen = false;
                     this.filteredCommands = [];
                     this.selectedIndex = 0;
@@ -1160,7 +1024,7 @@
                     this.wrapper.className = "cmd-palette-wrapper hidden";
                     this.wrapper.innerHTML = `
                         <div class="cmd-palette">
-                            <input type="text" class="cmd-palette-input" placeholder="e.g. '7am deep work', 'clear day', 'morning study'..." autocomplete="off" spellcheck="false" />
+                            <input type="text" class="cmd-palette-input" placeholder="e.g. '7am deep work', 'morning study | clear 1pm', 'help'..." autocomplete="off" spellcheck="false" />
                             <div class="cmd-palette-list custom-scroll"></div>
                         </div>
                     `;
@@ -1178,7 +1042,6 @@
                             activeEl.tagName === "TEXTAREA" ||
                             activeEl.isContentEditable;
 
-                        // Double slash handling or initial open
                         if (e.key === "/") {
                             if (this.isOpen) {
                                 e.preventDefault();
@@ -1193,13 +1056,18 @@
                         }
 
                         if (this.isOpen) {
-                            if (e.key === "Escape") this.close();
-                            else if (e.key === "ArrowDown") {
+                            if (e.key === "Escape") {
+                                e.preventDefault();
+                                this.close();
+                            } else if (e.key === "ArrowDown") {
                                 e.preventDefault();
                                 this.moveSelection(1);
                             } else if (e.key === "ArrowUp") {
                                 e.preventDefault();
                                 this.moveSelection(-1);
+                            } else if (e.key === "Tab") {
+                                e.preventDefault();
+                                this.moveSelection(e.shiftKey ? -1 : 1);
                             } else if (e.key === "Enter") {
                                 e.preventDefault();
                                 this.executeSelected();
@@ -1230,50 +1098,118 @@
                 close() {
                     this.isOpen = false;
                     this.wrapper.classList.add("closing");
+                    globalBus.emit("preview:blocks", null); // Clear preview
                     setTimeout(() => {
                         this.wrapper.classList.add("hidden");
                         this.wrapper.classList.remove("closing");
-                        const gridFocus = document.querySelector(
-                            ".schedule-block.js-focus",
-                        );
-                        if (gridFocus) gridFocus.focus();
                     }, 100);
                 }
 
                 filterCommands(query) {
-                    let cmds = this.parser.parse(query);
-                    // Filter out purely hint rows if real matches exist
-                    if (cmds.some((c) => !c.isHint && c.action)) {
-                        cmds = cmds.filter((c) => !c.isHint);
+                    if (!query.trim()) {
+                        globalBus.emit("preview:blocks", null);
+                        this.filteredCommands = [
+                            {
+                                title: "copy day",
+                                action: () => this.app.copyDay(),
+                            },
+                            {
+                                title: "paste day",
+                                action: () => this.app.pasteDay(),
+                            },
+                            {
+                                title: "clear day",
+                                action: () => this.app.clearDay(),
+                            },
+                            {
+                                title: "help",
+                                isHint: true,
+                                category: "Type to see syntax",
+                            },
+                        ];
+                    } else {
+                        const parsed = this.parser.parse(query);
+                        if (parsed && parsed.isHelp) {
+                            globalBus.emit("preview:blocks", null);
+                            this.filteredCommands = [
+                                {
+                                    title: "7am deep work",
+                                    category: "Assign row",
+                                    isHelp: true,
+                                },
+                                {
+                                    title: "7-11 study",
+                                    category: "Assign range",
+                                    isHelp: true,
+                                },
+                                {
+                                    title: "7am 1, 8am 2 meetings",
+                                    category: "Assign specific blocks",
+                                    isHelp: true,
+                                },
+                                {
+                                    title: "morning deep work | afternoon study",
+                                    category: "Chain commands",
+                                    isHelp: true,
+                                },
+                                {
+                                    title: "clear day",
+                                    category: "Clear schedule",
+                                    isHelp: true,
+                                },
+                            ];
+                        } else if (parsed && Object.keys(parsed).length > 0) {
+                            globalBus.emit("preview:blocks", parsed);
+                            const count = Object.keys(parsed).length;
+                            const isClear = Object.values(parsed).every(
+                                (v) => v === null,
+                            );
+                            const actionName = isClear ? "Clear" : "Update";
+                            this.filteredCommands = [
+                                {
+                                    title: `<span class="cmd-highlight">Press Enter</span> to ${actionName} ${count} blocks`,
+                                    action: () =>
+                                        this.app.commitChanges(parsed),
+                                },
+                            ];
+                        } else {
+                            globalBus.emit("preview:blocks", null);
+                            // Fallback checks for simple global commands
+                            if ("copy day".startsWith(query.toLowerCase()))
+                                this.filteredCommands = [
+                                    {
+                                        title: "copy day",
+                                        action: () => this.app.copyDay(),
+                                    },
+                                ];
+                            else if (
+                                "paste day".startsWith(query.toLowerCase())
+                            )
+                                this.filteredCommands = [
+                                    {
+                                        title: "paste day",
+                                        action: () => this.app.pasteDay(),
+                                    },
+                                ];
+                            else
+                                this.filteredCommands = [
+                                    {
+                                        title: "Keep typing to build command...",
+                                        isHint: true,
+                                    },
+                                ];
+                        }
                     }
-                    this.filteredCommands = cmds.slice(0, 15);
                     this.selectedIndex = 0;
                     this.renderList();
                 }
 
                 renderList() {
                     this.list.innerHTML = "";
-                    if (this.filteredCommands.length === 0) {
-                        this.list.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm">No commands found. Try: "7am", "day", "clear".</div>`;
-                        return;
-                    }
-
                     this.filteredCommands.forEach((cmd, idx) => {
                         const item = document.createElement("div");
                         item.className = `cmd-item ${idx === this.selectedIndex ? "active" : ""}`;
-
-                        let dot = cmd.color
-                            ? `<div class="w-3 h-3 rounded-full shadow-sm" style="background-color: ${cmd.color}"></div>`
-                            : "";
-
-                        item.innerHTML = `
-                            <div class="flex items-center gap-3">
-                                ${dot}
-                                <div class="cmd-item-title">${cmd.title}</div>
-                            </div>
-                            <div class="cmd-subtext">${cmd.category || ""}</div>
-                        `;
-
+                        item.innerHTML = `<div class="cmd-item-title">${cmd.title}</div><div class="cmd-subtext">${cmd.category || ""}</div>`;
                         item.onmouseenter = () => {
                             this.selectedIndex = idx;
                             this.updateSelectionVisuals();
@@ -1291,13 +1227,21 @@
                     if (this.selectedIndex >= this.filteredCommands.length)
                         this.selectedIndex = 0;
                     this.updateSelectionVisuals();
-                    const activeEl = this.list.children[this.selectedIndex];
+                    const activeEl =
+                        this.list.children[
+                            this.filteredCommands.length -
+                                1 -
+                                this.selectedIndex
+                        ]; // Flex column reverse
                     if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
                 }
 
                 updateSelectionVisuals() {
                     Array.from(this.list.children).forEach((el, idx) => {
-                        if (idx === this.selectedIndex)
+                        // Because flex-direction is column-reverse, DOM index is inverted vs logical index
+                        const logicalIdx =
+                            this.filteredCommands.length - 1 - idx;
+                        if (logicalIdx === this.selectedIndex)
                             el.classList.add("active");
                         else el.classList.remove("active");
                     });
@@ -1361,7 +1305,7 @@
                                 block.blur();
                                 return;
                             }
-                            block.classList.add("active-block");
+                            block.classList.add("active-block", "js-focus");
                             this.renderChoiceMenu(
                                 block,
                                 block.dataset.row,
@@ -1370,7 +1314,6 @@
                         }
                     });
 
-                    // Fix: Clicking outside removes all focus
                     document.addEventListener("click", (e) => {
                         if (
                             !e.target.closest(".choice-menu") &&
@@ -1569,7 +1512,6 @@
                         }
                     });
 
-                    // Esc removes focus entirely
                     document.addEventListener("keydown", (e) => {
                         if (e.key === "Escape") {
                             this.closeAllMenus();
@@ -1589,7 +1531,6 @@
 
                 setupKeyboardNav() {
                     const grid = document.getElementById("schedule-grid");
-
                     grid.addEventListener("focusin", (e) => {
                         if (e.target.classList.contains("schedule-block")) {
                             document
@@ -1600,7 +1541,6 @@
                             e.target.classList.add("js-focus");
                         }
                     });
-
                     grid.addEventListener("keydown", (e) => {
                         const block = e.target.closest(".schedule-block");
                         if (!block) return;
@@ -1627,7 +1567,6 @@
                             nextC = 5;
                             nextR--;
                         }
-                        // Updated bound to 23 for 24-hours
                         if (nextR < 0 || nextR > 23) return;
 
                         const nextBlock = this.blockNodes[`${nextR}-${nextC}`];
@@ -1661,14 +1600,12 @@
                             blockEl.style.backgroundColor = project.color;
                             blockEl.classList.add("filled");
                             blockEl.title = project.name;
-                            blockEl.classList.remove("pulse-fill");
-                            void blockEl.offsetWidth;
-                            blockEl.classList.add("pulse-fill");
                         } else {
                             blockEl.style.backgroundColor = "";
-                            blockEl.classList.remove("filled", "pulse-fill");
+                            blockEl.classList.remove("filled");
                             blockEl.title = "Empty (Click to set)";
                         }
+                        blockEl.dataset.origBg = blockEl.style.backgroundColor;
                     });
                     globalBus.on("view:refresh", () => this.refreshAllViews());
                     globalBus.on("schedule:refreshed", () =>
@@ -1691,6 +1628,37 @@
                             this.state.getTypes(),
                         );
                         this.closeAllMenus();
+                    });
+
+                    globalBus.on("preview:blocks", (changes) => {
+                        Object.values(this.blockNodes).forEach((block) => {
+                            if (block.classList.contains("is-previewing")) {
+                                block.classList.remove(
+                                    "is-previewing",
+                                    "preview-clear",
+                                );
+                                block.style.backgroundColor =
+                                    block.dataset.origBg || "";
+                            }
+                            if (!block.classList.contains("is-previewing"))
+                                block.dataset.origBg =
+                                    block.style.backgroundColor;
+                        });
+
+                        if (!changes) return;
+
+                        Object.entries(changes).forEach(([coord, pid]) => {
+                            const block = this.blockNodes[coord];
+                            if (!block) return;
+                            block.classList.add("is-previewing");
+                            if (pid === null) {
+                                block.classList.add("preview-clear");
+                                block.style.backgroundColor = "";
+                            } else {
+                                const p = this.state.getProjectById(pid);
+                                if (p) block.style.backgroundColor = p.color;
+                            }
+                        });
                     });
                 }
 
@@ -1776,7 +1744,7 @@
                         if (typeProjects.length === 0) return;
                         const header = document.createElement("div");
                         header.className =
-                            "text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-2 pl-1";
+                            "text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1";
                         header.textContent = t.name;
                         list.appendChild(header);
                         typeProjects.forEach((p) => {
@@ -1819,38 +1787,36 @@
                     container.innerHTML = "";
                     this.blockNodes = {};
                     const blocks = scheduleObj.blocks;
-                    const todayStr = new Date(
-                        new Date().getTime() -
-                            new Date().getTimezoneOffset() * 60000,
-                    )
-                        .toISOString()
-                        .split("T")[0];
-                    const isToday = this.state.getCurrentDate() === todayStr;
+
                     const now = new Date();
+                    const logicalToday = this.state.getLogicalDate(now);
+                    const isToday =
+                        this.state.getCurrentDate() === logicalToday;
+
                     let currentHour = now.getHours();
-                    let currentHourStr =
-                        currentHour === 0
-                            ? "12 AM"
-                            : currentHour > 12
-                              ? `${currentHour - 12} PM`
-                              : currentHour === 12
-                                ? "12 PM"
-                                : `${currentHour} AM`;
+                    let currentRowIndex =
+                        currentHour >= 7 ? currentHour - 7 : currentHour + 17;
 
                     hours.forEach((time, rowIndex) => {
+                        const isCurrentRow =
+                            isToday && rowIndex === currentRowIndex;
                         const rowEl = document.createElement("div");
                         rowEl.className =
-                            "flex items-center gap-4 md:gap-8 group";
+                            "flex items-center gap-4 md:gap-8 group p-2 -mx-2 transition";
+
                         const timeLabel = document.createElement("div");
                         timeLabel.className =
                             "w-12 md:w-16 text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider text-right shrink-0";
                         timeLabel.textContent = time;
-                        if (isToday && time === currentHourStr)
+
+                        if (isCurrentRow) {
+                            rowEl.classList.add("current-row-highlight");
                             timeLabel.classList.add("current-time-label");
+                        }
 
                         const blocksContainer = document.createElement("div");
                         blocksContainer.className =
-                            "flex gap-2 md:gap-3 flex-wrap bg-gray-50 p-2 rounded-2xl group-hover:bg-gray-100 transition";
+                            "flex gap-2 md:gap-3 flex-wrap";
 
                         for (let colIndex = 0; colIndex < 6; colIndex++) {
                             const block = document.createElement("button");
@@ -1873,6 +1839,7 @@
                             } else {
                                 block.title = "Empty (Click to set)";
                             }
+                            block.dataset.origBg = block.style.backgroundColor;
 
                             this.blockNodes[`${rowIndex}-${colIndex}`] = block;
                             blocksContainer.appendChild(block);
@@ -1909,14 +1876,11 @@
                             "text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1 mt-1 border-t border-gray-100 pt-2";
                         header.innerText = t.name;
                         menu.appendChild(header);
-
                         typeProjs.forEach((p) => {
                             const btn = document.createElement("button");
                             btn.className =
                                 "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
-                            btn.innerHTML = `
-                            <div class="flex items-center gap-3 overflow-hidden"><div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div><span class="text-xs font-bold text-gray-700 truncate">${p.name}</span></div>
-                            <div class="opacity-0 group-hover/btn:opacity-100 focus-visible:opacity-100 bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-[10px] fill-hour-btn shadow-sm transition" title="Fill entire hour">FILL HR</div>`;
+                            btn.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div><span class="text-xs font-bold text-gray-700 truncate">${p.name}</span></div><div class="opacity-0 group-hover/btn:opacity-100 focus-visible:opacity-100 bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-[10px] fill-hour-btn shadow-sm transition" title="Fill entire hour">FILL HR</div>`;
                             btn.onclick = (event) => {
                                 event.stopPropagation();
                                 if (
@@ -1976,10 +1940,7 @@
                         typeBlock.dataset.dropZone = "true";
                         typeBlock.dataset.dropEntity = "type";
                         typeBlock.innerHTML = `
-                            <div class="flex items-center justify-between mb-3 group/type border-b border-gray-200 pb-2">
-                                <div class="flex items-center gap-2"><svg class="grab-handle w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg><h4 class="text-sm font-black text-gray-900 uppercase tracking-widest" contenteditable="true" data-entity="type" data-id="${t.id}" title="Click to edit">${t.name}</h4><span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">${typeProjs.length}</span></div>
-                                <div class="flex gap-2 opacity-0 group-hover/type:opacity-100 transition"><button onclick="app.addProjectToType('${t.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded border border-indigo-100">Add Project</button><button onclick="app.requestRemoveType('${t.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded">Delete</button></div>
-                            </div>
+                            <div class="flex items-center justify-between mb-3 group/type border-b border-gray-200 pb-2"><div class="flex items-center gap-2"><svg class="grab-handle w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg><h4 class="text-sm font-black text-gray-900 uppercase tracking-widest" contenteditable="true" data-entity="type" data-id="${t.id}" title="Click to edit">${t.name}</h4><span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">${typeProjs.length}</span></div><div class="flex gap-2 opacity-0 group-hover/type:opacity-100 transition"><button onclick="app.addProjectToType('${t.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded border border-indigo-100">Add Project</button><button onclick="app.requestRemoveType('${t.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded">Delete</button></div></div>
                             <div class="flex flex-col gap-2 pl-6 pb-4" id="proj-container-${t.id}" data-drop-zone="true" data-drop-entity="type-container" data-drop-id="${t.id}"></div>
                         `;
                         list.appendChild(typeBlock);
@@ -1998,10 +1959,7 @@
                                 pCard.dataset.dragId = p.id;
                                 pCard.dataset.dropZone = "true";
                                 pCard.dataset.dropEntity = "project";
-                                pCard.innerHTML = `
-                                    <div class="flex items-center gap-3 flex-1 overflow-hidden"><svg class="grab-handle w-5 h-5 text-gray-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg><input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="w-6 h-6 rounded-md cursor-pointer border-0 p-0 shadow-inner shrink-0 bg-transparent"/><span class="text-sm font-semibold text-gray-800 truncate" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to edit">${p.name}</span></div>
-                                    <button onclick="app.removeProject('${p.id}')" class="opacity-0 group-hover/proj:opacity-100 text-red-400 hover:text-red-600 font-bold text-xs transition px-2 py-1">Remove</button>
-                                `;
+                                pCard.innerHTML = `<div class="flex items-center gap-3 flex-1 overflow-hidden"><svg class="grab-handle w-5 h-5 text-gray-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg><input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="w-6 h-6 rounded-md cursor-pointer border-0 p-0 shadow-inner shrink-0 bg-transparent"/><span class="text-sm font-semibold text-gray-800 truncate" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to edit">${p.name}</span></div><button onclick="app.removeProject('${p.id}')" class="opacity-0 group-hover/proj:opacity-100 text-red-400 hover:text-red-600 font-bold text-xs transition px-2 py-1">Remove</button>`;
                                 projContainer.appendChild(pCard);
                             });
                         }
@@ -2051,6 +2009,25 @@
                     this.setupLogicListeners();
                     this.state.ensureDateExists(this.state.getCurrentDate());
                     globalBus.emit("view:refresh");
+
+                    // Intelligent Scroll on Load
+                    setTimeout(() => {
+                        const timeLabel = document.querySelector(
+                            ".current-time-label",
+                        );
+                        if (timeLabel) {
+                            const row = timeLabel.closest(".flex");
+                            const rowIdx = Array.from(
+                                row.parentElement.children,
+                            ).indexOf(row);
+                            // Only scroll if we are not at the very end of the day, leaving some visual context
+                            if (rowIdx < 20) {
+                                document.getElementById(
+                                    "scroll-container",
+                                ).scrollTop = row.offsetTop - 100;
+                            }
+                        }
+                    }, 100);
                 }
 
                 setupLogicListeners() {
@@ -2070,7 +2047,6 @@
                         });
                         globalBus.emit("analytics:refreshed");
                     });
-
                     globalBus.on("schedule:fillRow", ({ row, projectId }) => {
                         this.state.updateState((data) => {
                             const blocks =
@@ -2084,7 +2060,6 @@
                         globalBus.emit("schedule:refreshed");
                         globalBus.emit("analytics:refreshed");
                     });
-
                     globalBus.on(
                         "hierarchy:updateType",
                         ({ id, name, element }) => {
@@ -2185,60 +2160,24 @@
                     );
                 }
 
-                // COMMAND EXECUTION LOGIC
-                fillTarget(type, id, projectId, colId = null) {
+                commitChanges(changes) {
                     this.state.updateState((data) => {
                         const blocks = data.schedules[data.currentDate].blocks;
-                        if (type === "global") {
-                            const range = this.cmd.parser.globals[id];
-                            for (let r = range[0]; r <= range[1]; r++) {
-                                for (let c = 0; c < 6; c++)
-                                    blocks[`${r}-${c}`] = projectId;
-                            }
-                        } else if (type === "row") {
-                            const r = this.cmd.parser.rowMap[id];
-                            for (let c = 0; c < 6; c++)
-                                blocks[`${r}-${c}`] = projectId;
-                        } else if (type === "block") {
-                            const r = this.cmd.parser.rowMap[id];
-                            blocks[`${r}-${colId}`] = projectId;
-                        }
+                        Object.entries(changes).forEach(([coord, pid]) => {
+                            if (pid === null) delete blocks[coord];
+                            else blocks[coord] = pid;
+                        });
                     });
                     globalBus.emit("schedule:refreshed");
                     globalBus.emit("analytics:refreshed");
-                    Toast.show(`Filled ${id}`);
-                }
-
-                clearTarget(type, id, colId = null) {
-                    this.state.updateState((data) => {
-                        const blocks = data.schedules[data.currentDate].blocks;
-                        if (type === "global") {
-                            const range = this.cmd.parser.globals[id];
-                            for (let r = range[0]; r <= range[1]; r++) {
-                                for (let c = 0; c < 6; c++)
-                                    delete blocks[`${r}-${c}`];
-                            }
-                        } else if (type === "row") {
-                            const r = this.cmd.parser.rowMap[id];
-                            for (let c = 0; c < 6; c++)
-                                delete blocks[`${r}-${c}`];
-                        } else if (type === "block") {
-                            const r = this.cmd.parser.rowMap[id];
-                            delete blocks[`${r}-${colId}`];
-                        }
-                    });
-                    globalBus.emit("schedule:refreshed");
-                    globalBus.emit("analytics:refreshed");
-                    Toast.show(`Cleared ${id}`);
                 }
 
                 copyDay() {
                     this.clipboardDay = JSON.parse(
                         JSON.stringify(this.state.getCurrentSchedule()),
                     );
-                    Toast.show("Day copied to clipboard");
+                    Toast.show("Day copied");
                 }
-
                 pasteDay() {
                     if (!this.clipboardDay) {
                         Toast.show("Clipboard empty", "error");
@@ -2253,13 +2192,20 @@
                     globalBus.emit("analytics:refreshed");
                     Toast.show("Schedule pasted");
                 }
+                clearDay() {
+                    this.state.updateState((data) => {
+                        data.schedules[data.currentDate] = { blocks: {} };
+                    });
+                    globalBus.emit("schedule:refreshed");
+                    globalBus.emit("analytics:refreshed");
+                    Toast.show("Day cleared");
+                }
 
                 toggleSidebar() {
                     const sidebar = document.getElementById("app-sidebar");
                     sidebar.classList.toggle("sidebar-collapsed");
                     const burger = document.getElementById("icon-burger");
                     const arrow = document.getElementById("icon-arrow");
-                    // Corrected Swap roles
                     if (sidebar.classList.contains("sidebar-collapsed")) {
                         arrow.style.opacity = "0";
                         arrow.style.transform = "rotate(-90deg)";
@@ -2306,7 +2252,6 @@
                     this.state.viewYear = y;
                     this.ui.renderCalendar();
                 }
-
                 shiftDate(days) {
                     const curr = new Date(
                         this.state.getCurrentDate() + "T00:00:00",
@@ -2321,17 +2266,13 @@
                     this.state.viewYear = curr.getFullYear();
                     this.selectDate(localISOTime);
                 }
-
                 goToToday() {
-                    const today = new Date();
-                    const offset = today.getTimezoneOffset() * 60000;
-                    this.state.viewMonth = today.getMonth();
-                    this.state.viewYear = today.getFullYear();
-                    this.selectDate(
-                        new Date(today - offset).toISOString().split("T")[0],
-                    );
+                    const todayStr = this.state.getLogicalDate();
+                    const d = new Date(todayStr + "T00:00:00");
+                    this.state.viewMonth = d.getMonth();
+                    this.state.viewYear = d.getFullYear();
+                    this.selectDate(todayStr);
                 }
-
                 selectDate(dateStr) {
                     this.state.updateState((data) => {
                         data.currentDate = dateStr;
@@ -2373,7 +2314,6 @@
                     Toast.show(`Added ${name}`);
                     globalBus.emit("hierarchy:refreshed");
                 }
-
                 requestRemoveType(id) {
                     const projectsLinked = this.state.getProjectsByType(id);
                     if (projectsLinked.length > 0) this.ui.showConfirm(id);
@@ -2382,7 +2322,6 @@
                 cancelConfirm() {
                     this.ui.toggleModal("confirm-modal", false);
                 }
-
                 executeRemoveType(id) {
                     this.state.updateState((data) => {
                         data.types = data.types.filter((t) => t.id !== id);
@@ -2430,7 +2369,6 @@
                     Toast.show("Added new project");
                     globalBus.emit("hierarchy:refreshed");
                 }
-
                 removeProject(id) {
                     this.state.updateState((data) => {
                         data.projects = data.projects.filter(
