@@ -1218,13 +1218,20 @@
                 renderSidebarProjects(projects, types) {
                     const list = document.getElementById("project-list");
                     list.innerHTML = "";
+
                     types.forEach((t) => {
                         const typeProjects = projects.filter(
                             (p) => p.typeId === t.id,
                         );
                         if (typeProjects.length === 0) return;
 
-                        list.innerHTML += `<div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-2 pl-1">${t.name}</div>`;
+                        // FIX: Create the header element as a DOM node instead of using innerHTML +=
+                        const header = document.createElement("div");
+                        header.className =
+                            "text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-2 pl-1";
+                        header.textContent = t.name;
+                        list.appendChild(header);
+
                         typeProjects.forEach((p) => {
                             // Check if this project is the active paint brush
                             const isActivePaint =
