@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Visual Schedule Planner Pro - v8 (Paint Mode)</title>
+        <title>Visual Schedule Planner Pro - v9 (Command Palette)</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap"
@@ -30,17 +30,26 @@
                 background-color: #e5e7eb;
                 border: 2px solid transparent;
                 cursor: pointer;
+                outline: none; /* Removed default outline for custom focus */
             }
             .circle-btn:hover {
                 transform: scale(1.1);
                 filter: brightness(95%);
                 z-index: 10;
             }
+
+            /* --- NEW: Keyboard Nav Focus --- */
+            .circle-btn:focus-visible {
+                box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.5);
+                transform: scale(1.1);
+                z-index: 30;
+                border-color: #4f46e5;
+            }
+
             .circle-btn.filled {
                 border-color: rgba(0, 0, 0, 0.1);
             }
 
-            /* Active block & Pulse animations */
             .active-block {
                 box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.4);
                 transform: scale(1.1);
@@ -62,9 +71,8 @@
                 }
             }
 
-            /* --- NEW: Current Time Cursor --- */
             .current-time-label {
-                color: #ef4444 !important; /* red-500 */
+                color: #ef4444 !important;
                 font-weight: 900 !important;
                 position: relative;
             }
@@ -92,7 +100,6 @@
                 }
             }
 
-            /* --- NEW: Drag to Paint --- */
             .paint-active {
                 border-color: #4f46e5 !important;
                 box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
@@ -130,6 +137,13 @@
                 width: 200px;
                 animation: fadeIn 0.15s ease-out;
             }
+            /* Make menu items keyboard focusable visually */
+            .choice-menu button:focus-visible {
+                background-color: #f3f4f6;
+                outline: 2px solid #4f46e5;
+                outline-offset: -2px;
+            }
+
             .custom-scroll::-webkit-scrollbar {
                 width: 6px;
             }
@@ -138,7 +152,6 @@
                 border-radius: 4px;
             }
 
-            /* Foldable Sidebar Animations */
             .sidebar-collapsed {
                 width: 0 !important;
                 padding-left: 0 !important;
@@ -283,6 +296,102 @@
             .toast.error {
                 background: #ef4444;
             }
+
+            /* --- NEW: Command Palette Styles --- */
+            .cmd-palette-wrapper {
+                position: fixed;
+                inset: 0;
+                z-index: 99999;
+                display: flex;
+                align-items: flex-start;
+                justify-content: center;
+                padding-top: 12vh;
+                background: rgba(255, 255, 255, 0.3);
+                backdrop-filter: blur(8px);
+                animation: fadeIn 0.15s ease-out forwards;
+            }
+            .cmd-palette-wrapper.closing {
+                animation: fadeOut 0.1s ease-in forwards;
+                pointer-events: none;
+            }
+            .cmd-palette {
+                width: 100%;
+                max-width: 600px;
+                background: white;
+                border-radius: 16px;
+                box-shadow:
+                    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                    0 0 0 1px rgba(0, 0, 0, 0.05);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                animation: slideUp 0.15s ease-out forwards;
+            }
+            .cmd-palette-input {
+                width: 100%;
+                padding: 20px 24px;
+                font-size: 1.25rem;
+                border: none;
+                outline: none;
+                background: transparent;
+                color: #111827;
+                font-weight: 500;
+            }
+            .cmd-palette-input::placeholder {
+                color: #9ca3af;
+            }
+            .cmd-palette-list {
+                max-height: 350px;
+                overflow-y: auto;
+                padding: 8px;
+                border-top: 1px solid #f3f4f6;
+            }
+            .cmd-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 16px;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: background 0s;
+                color: #4b5563;
+            }
+            .cmd-item.active {
+                background: #4f46e5;
+                color: white;
+            }
+            .cmd-item.active .cmd-subtext {
+                color: #a5b4fc;
+            }
+            .cmd-item-title {
+                font-weight: 600;
+                font-size: 14px;
+            }
+            .cmd-subtext {
+                font-size: 12px;
+                color: #9ca3af;
+                text-transform: uppercase;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+            }
+            .cmd-shortcut {
+                display: flex;
+                gap: 4px;
+            }
+            .cmd-key {
+                background: #f3f4f6;
+                color: #6b7280;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: 700;
+                border: 1px solid #e5e7eb;
+            }
+            .cmd-item.active .cmd-key {
+                background: rgba(255, 255, 255, 0.2);
+                color: white;
+                border-color: transparent;
+            }
         </style>
     </head>
     <body class="p-4 md:p-8 h-screen flex flex-col overflow-hidden relative">
@@ -335,6 +444,16 @@
                             </svg>
                         </div>
                     </button>
+                    <div
+                        class="hidden md:flex items-center gap-2 text-xs text-gray-400 font-medium bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100"
+                    >
+                        Press
+                        <span
+                            class="bg-white border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 font-bold shadow-sm"
+                            >/</span
+                        >
+                        to issue commands
+                    </div>
                 </div>
                 <div class="flex items-center gap-4 md:gap-6">
                     <button
@@ -652,7 +771,7 @@
 
             class StateManager {
                 constructor() {
-                    this.storageKey = "planner_state_v8";
+                    this.storageKey = "planner_state_v9";
                     this.hours = [
                         "7 AM",
                         "8 AM",
@@ -676,7 +795,7 @@
                     const today = new Date();
                     this.viewMonth = today.getMonth();
                     this.viewYear = today.getFullYear();
-                    this.paintProjectId = null; // NEW: Track active paint brush
+                    this.paintProjectId = null;
                 }
 
                 getDefaultState() {
@@ -686,7 +805,7 @@
                         .toISOString()
                         .split("T")[0];
                     return {
-                        version: 5,
+                        version: 6,
                         currentDate: localISOTime,
                         types: [
                             { id: "t_1", name: "Work" },
@@ -796,12 +915,285 @@
                 }
             }
 
+            // --- NEW: Universal Command Palette ---
+            class CommandPalette {
+                constructor(app, state) {
+                    this.app = app;
+                    this.state = state;
+                    this.isOpen = false;
+                    this.commands = [];
+                    this.filteredCommands = [];
+                    this.selectedIndex = 0;
+                    this.setupDOM();
+                    this.setupListeners();
+                }
+
+                setupDOM() {
+                    this.wrapper = document.createElement("div");
+                    this.wrapper.className = "cmd-palette-wrapper hidden";
+                    this.wrapper.innerHTML = `
+                        <div class="cmd-palette">
+                            <input type="text" class="cmd-palette-input" placeholder="Type a command or search..." autocomplete="off" spellcheck="false" />
+                            <div class="cmd-palette-list"></div>
+                        </div>
+                    `;
+                    document.body.appendChild(this.wrapper);
+                    this.input =
+                        this.wrapper.querySelector(".cmd-palette-input");
+                    this.list = this.wrapper.querySelector(".cmd-palette-list");
+                }
+
+                setupListeners() {
+                    document.addEventListener("keydown", (e) => {
+                        // Prevent triggering if inside an input field unless it's Ctrl+K
+                        const activeEl = document.activeElement;
+                        const inInput =
+                            activeEl.tagName === "INPUT" ||
+                            activeEl.tagName === "TEXTAREA" ||
+                            activeEl.isContentEditable;
+
+                        if (
+                            (e.key === "/" && !inInput) ||
+                            (e.key === "k" && (e.ctrlKey || e.metaKey))
+                        ) {
+                            e.preventDefault();
+                            this.toggle();
+                        }
+
+                        if (this.isOpen) {
+                            if (e.key === "Escape") {
+                                this.close();
+                            } else if (e.key === "ArrowDown") {
+                                e.preventDefault();
+                                this.moveSelection(1);
+                            } else if (e.key === "ArrowUp") {
+                                e.preventDefault();
+                                this.moveSelection(-1);
+                            } else if (e.key === "Enter") {
+                                e.preventDefault();
+                                this.executeSelected();
+                            }
+                        }
+                    });
+
+                    this.input.addEventListener("input", () => {
+                        this.filterCommands(this.input.value);
+                    });
+
+                    this.wrapper.addEventListener("click", (e) => {
+                        if (e.target === this.wrapper) this.close();
+                    });
+                }
+
+                toggle() {
+                    if (this.isOpen) this.close();
+                    else this.open();
+                }
+
+                open() {
+                    this.isOpen = true;
+                    this.wrapper.classList.remove("hidden", "closing");
+                    this.input.value = "";
+                    this.buildCommands();
+                    this.filterCommands("");
+                    setTimeout(() => this.input.focus(), 10); // Ensure focus applies
+                }
+
+                close() {
+                    this.isOpen = false;
+                    this.wrapper.classList.add("closing");
+                    setTimeout(() => {
+                        this.wrapper.classList.add("hidden");
+                        this.wrapper.classList.remove("closing");
+                    }, 150);
+                }
+
+                getAcronym(text) {
+                    return text
+                        .split(/\s+/)
+                        .map((w) => w[0])
+                        .join("")
+                        .toLowerCase();
+                }
+
+                buildCommands() {
+                    this.commands = [
+                        {
+                            name: "Go to Today",
+                            category: "Navigation",
+                            handler: () => this.app.goToToday(),
+                        },
+                        {
+                            name: "Next Month",
+                            category: "Navigation",
+                            handler: () => this.app.nextMonth(),
+                        },
+                        {
+                            name: "Previous Month",
+                            category: "Navigation",
+                            handler: () => this.app.prevMonth(),
+                        },
+                        {
+                            name: "Toggle Sidebar",
+                            category: "UI",
+                            handler: () => this.app.toggleSidebar(),
+                        },
+                        {
+                            name: "Open Settings",
+                            category: "Settings",
+                            handler: () => this.app.openSettingsModal(),
+                        },
+                        {
+                            name: "Reset Day",
+                            category: "Actions",
+                            handler: () => {
+                                this.state.updateState((data) => {
+                                    data.schedules[data.currentDate] = {
+                                        blocks: {},
+                                    };
+                                });
+                                globalBus.emit("schedule:refreshed");
+                                globalBus.emit("analytics:refreshed");
+                                Toast.show("Day cleared");
+                            },
+                        },
+                    ];
+
+                    // Generate Dynamic Scheduling Commands (Action Picker Style)
+                    const projects = this.state.getProjects();
+                    const hours = this.state.getHours();
+
+                    hours.forEach((hour, rowIndex) => {
+                        // Clear Hour
+                        this.commands.push({
+                            name: `Clear ${hour}`,
+                            category: "Scheduling",
+                            searchTerms: `clear empty delete ${hour.toLowerCase()}`,
+                            handler: () =>
+                                globalBus.emit("schedule:fillRow", {
+                                    row: rowIndex,
+                                    projectId: null,
+                                }),
+                        });
+
+                        // Assign Project to Hour
+                        projects.forEach((p) => {
+                            const acronym = this.getAcronym(p.name);
+                            this.commands.push({
+                                name: `Assign ${p.name} ➔ ${hour}`,
+                                category: "Scheduling",
+                                // Bake the acronym into the search terms to make "dw 9" work for "Deep Work 9 AM"
+                                searchTerms: `assign fill ${p.name.toLowerCase()} ${acronym} ${hour.toLowerCase()}`,
+                                color: p.color,
+                                handler: () =>
+                                    globalBus.emit("schedule:fillRow", {
+                                        row: rowIndex,
+                                        projectId: p.id,
+                                    }),
+                            });
+                        });
+                    });
+                }
+
+                filterCommands(query) {
+                    const terms = query
+                        .toLowerCase()
+                        .split(/\s+/)
+                        .filter((t) => t);
+
+                    if (terms.length === 0) {
+                        this.filteredCommands = this.commands.slice(0, 20); // Show default top 20
+                    } else {
+                        this.filteredCommands = this.commands
+                            .filter((cmd) => {
+                                const target = (
+                                    cmd.searchTerms || cmd.name
+                                ).toLowerCase();
+                                return terms.every((term) =>
+                                    target.includes(term),
+                                );
+                            })
+                            .slice(0, 50); // Cap for performance
+                    }
+
+                    this.selectedIndex = 0;
+                    this.renderList();
+                }
+
+                renderList() {
+                    this.list.innerHTML = "";
+                    if (this.filteredCommands.length === 0) {
+                        this.list.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm">No commands found.</div>`;
+                        return;
+                    }
+
+                    this.filteredCommands.forEach((cmd, idx) => {
+                        const item = document.createElement("div");
+                        item.className = `cmd-item ${idx === this.selectedIndex ? "active" : ""}`;
+
+                        let dot = cmd.color
+                            ? `<div class="w-3 h-3 rounded-full mr-3 shadow-sm" style="background-color: ${cmd.color}"></div>`
+                            : "";
+
+                        item.innerHTML = `
+                            <div class="flex items-center">
+                                ${dot}
+                                <div>
+                                    <div class="cmd-item-title">${cmd.name}</div>
+                                </div>
+                            </div>
+                            <div class="cmd-subtext">${cmd.category}</div>
+                        `;
+
+                        item.onmouseenter = () => {
+                            this.selectedIndex = idx;
+                            this.updateSelectionVisuals();
+                        };
+
+                        item.onclick = () => this.executeSelected();
+                        this.list.appendChild(item);
+                    });
+                }
+
+                moveSelection(dir) {
+                    this.selectedIndex += dir;
+                    if (this.selectedIndex < 0)
+                        this.selectedIndex = this.filteredCommands.length - 1;
+                    if (this.selectedIndex >= this.filteredCommands.length)
+                        this.selectedIndex = 0;
+                    this.updateSelectionVisuals();
+
+                    // Scroll into view
+                    const activeEl = this.list.children[this.selectedIndex];
+                    if (activeEl) {
+                        activeEl.scrollIntoView({ block: "nearest" });
+                    }
+                }
+
+                updateSelectionVisuals() {
+                    Array.from(this.list.children).forEach((el, idx) => {
+                        if (idx === this.selectedIndex)
+                            el.classList.add("active");
+                        else el.classList.remove("active");
+                    });
+                }
+
+                executeSelected() {
+                    const cmd = this.filteredCommands[this.selectedIndex];
+                    if (cmd) {
+                        cmd.handler();
+                        this.close();
+                    }
+                }
+            }
+
             class UIManager {
                 constructor(state) {
                     this.state = state;
                     this.blockNodes = {};
                     this.dragState = { type: null, sourceId: null };
                     this.setupDelegation();
+                    this.setupKeyboardNav();
                     this.listenToEvents();
                 }
 
@@ -811,13 +1203,12 @@
                         document.getElementById("hierarchy-list");
                     let isPainting = false;
 
-                    // --- NEW: Paint Mode Pointer Events ---
                     grid.addEventListener("mousedown", (e) => {
-                        if (!this.state.paintProjectId) return; // Allow normal click behavior
+                        if (!this.state.paintProjectId) return;
                         const block = e.target.closest(".schedule-block");
                         if (block) {
                             isPainting = true;
-                            document.body.classList.add("select-none"); // Prevent text highlighting while dragging
+                            document.body.classList.add("select-none");
                             this.paintBlock(block);
                         }
                     });
@@ -835,7 +1226,7 @@
                     });
 
                     grid.addEventListener("click", (e) => {
-                        if (this.state.paintProjectId) return; // Prevent menu/clear if painting
+                        if (this.state.paintProjectId) return;
 
                         const block = e.target.closest(".schedule-block");
                         if (block) {
@@ -1050,19 +1441,18 @@
                                 targetId: target.dataset.dragId,
                             });
                         } else if (this.dragState.type === "project") {
-                            if (target.dataset.dropEntity === "project") {
+                            if (target.dataset.dropEntity === "project")
                                 globalBus.emit("hierarchy:reorderProject", {
                                     sourceId: this.dragState.sourceId,
                                     targetId: target.dataset.dragId,
                                 });
-                            } else if (
+                            else if (
                                 target.dataset.dropEntity === "type-container"
-                            ) {
+                            )
                                 globalBus.emit("hierarchy:moveProjectToType", {
                                     projectId: this.dragState.sourceId,
                                     typeId: target.dataset.dropId,
                                 });
-                            }
                         }
                     });
 
@@ -1080,7 +1470,55 @@
                     });
                 }
 
-                // Helper for Paint Mode
+                // --- NEW: Spatial Keyboard Navigation ---
+                setupKeyboardNav() {
+                    const grid = document.getElementById("schedule-grid");
+
+                    grid.addEventListener("keydown", (e) => {
+                        const block = e.target.closest(".schedule-block");
+                        if (!block) return;
+
+                        const r = parseInt(block.dataset.row);
+                        const c = parseInt(block.dataset.col);
+                        let nextR = r;
+                        let nextC = c;
+
+                        if (e.key === "ArrowRight") {
+                            nextC++;
+                        } else if (e.key === "ArrowLeft") {
+                            nextC--;
+                        } else if (e.key === "ArrowDown") {
+                            nextR++;
+                        } else if (e.key === "ArrowUp") {
+                            nextR--;
+                        } else if (e.key === "Enter" || e.key === " ") {
+                            // Trigger click on enter/space
+                            e.preventDefault();
+                            block.click();
+                            return;
+                        } else {
+                            return; // Ignore other keys
+                        }
+
+                        // Wrap around logic
+                        if (nextC > 5) {
+                            nextC = 0;
+                            nextR++;
+                        }
+                        if (nextC < 0) {
+                            nextC = 5;
+                            nextR--;
+                        }
+                        if (nextR < 0 || nextR > 16) return; // Top/Bottom bounds
+
+                        const nextBlock = this.blockNodes[`${nextR}-${nextC}`];
+                        if (nextBlock) {
+                            e.preventDefault(); // Prevent scrolling with arrows
+                            nextBlock.focus();
+                        }
+                    });
+                }
+
                 paintBlock(block) {
                     const row = block.dataset.row;
                     const col = block.dataset.col;
@@ -1107,7 +1545,6 @@
                             blockEl.style.backgroundColor = project.color;
                             blockEl.classList.add("filled");
                             blockEl.title = project.name;
-
                             blockEl.classList.remove("pulse-fill");
                             void blockEl.offsetWidth;
                             blockEl.classList.add("pulse-fill");
@@ -1225,7 +1662,6 @@
                         );
                         if (typeProjects.length === 0) return;
 
-                        // FIX: Create the header element as a DOM node instead of using innerHTML +=
                         const header = document.createElement("div");
                         header.className =
                             "text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-2 pl-1";
@@ -1233,7 +1669,6 @@
                         list.appendChild(header);
 
                         typeProjects.forEach((p) => {
-                            // Check if this project is the active paint brush
                             const isActivePaint =
                                 this.state.paintProjectId === p.id;
                             const badgeHTML = isActivePaint
@@ -1242,13 +1677,7 @@
 
                             const pCard = document.createElement("div");
                             pCard.className = `flex items-center gap-3 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer hover:shadow-md transition`;
-                            pCard.innerHTML = `
-                                <div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${p.color};"></div>
-                                <span class="text-sm font-semibold text-gray-800 truncate">${p.name}</span>
-                                ${badgeHTML}
-                            `;
-
-                            // Enable click to paint
+                            pCard.innerHTML = `<div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${p.color};"></div><span class="text-sm font-semibold text-gray-800 truncate">${p.name}</span>${badgeHTML}`;
                             pCard.onclick = () => app.togglePaintMode(p.id);
                             list.appendChild(pCard);
                         });
@@ -1271,8 +1700,6 @@
                             totalAssigned++;
                         }
                     });
-
-                    // UPDATED: Better Empty Action State
                     if (totalAssigned === 0)
                         bar.innerHTML = `<span class="text-sm text-gray-400 font-medium italic">Click a block to start planning.</span>`;
                 }
@@ -1283,7 +1710,6 @@
                     this.blockNodes = {};
                     const blocks = scheduleObj.blocks;
 
-                    // UPDATED: Time Cursor logic
                     const todayStr = new Date(
                         new Date().getTime() -
                             new Date().getTimezoneOffset() * 60000,
@@ -1311,10 +1737,8 @@
                             "w-12 md:w-16 text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider text-right shrink-0";
                         timeLabel.textContent = time;
 
-                        // Apply time cursor if it's the current hour
-                        if (isToday && time === currentHourStr) {
+                        if (isToday && time === currentHourStr)
                             timeLabel.classList.add("current-time-label");
-                        }
 
                         const blocksContainer = document.createElement("div");
                         blocksContainer.className =
@@ -1326,6 +1750,7 @@
                                 "schedule-block circle-btn shadow-sm";
                             block.dataset.row = rowIndex;
                             block.dataset.col = colIndex;
+                            block.tabIndex = 0; // NEW: Make block focusable via keyboard tab/arrows
 
                             const blockProjectId =
                                 blocks[`${rowIndex}-${colIndex}`];
@@ -1352,13 +1777,30 @@
                 renderChoiceMenu(blockElement, rowIndex, colIndex) {
                     const menu = document.createElement("div");
                     menu.className = "choice-menu";
+
+                    // Small "Clear" option
+                    const clearBtn = document.createElement("button");
+                    clearBtn.className =
+                        "flex items-center gap-2 p-2 w-full hover:bg-gray-100 rounded-lg transition text-left text-xs font-bold text-gray-500 mb-1";
+                    clearBtn.innerHTML = `<span>✕</span> Clear Block`;
+                    clearBtn.onclick = (event) => {
+                        event.stopPropagation();
+                        globalBus.emit("block:update", {
+                            row: rowIndex,
+                            col: colIndex,
+                            projectId: null,
+                        });
+                        this.closeAllMenus();
+                    };
+                    menu.appendChild(clearBtn);
+
                     this.state.getTypes().forEach((t) => {
                         const typeProjs = this.state.getProjectsByType(t.id);
                         if (typeProjs.length === 0) return;
 
                         const header = document.createElement("div");
                         header.className =
-                            "text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1 mt-1";
+                            "text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1 mt-1 border-t border-gray-100 pt-2";
                         header.innerText = t.name;
                         menu.appendChild(header);
 
@@ -1371,7 +1813,7 @@
                                 <div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div>
                                 <span class="text-xs font-bold text-gray-700 truncate">${p.name}</span>
                             </div>
-                            <div class="opacity-0 group-hover/btn:opacity-100 bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-[10px] fill-hour-btn shadow-sm transition" title="Fill entire hour">FILL HR</div>
+                            <div class="opacity-0 group-hover/btn:opacity-100 focus-visible:opacity-100 bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-[10px] fill-hour-btn shadow-sm transition" title="Fill entire hour">FILL HR</div>
                             `;
                             btn.onclick = (event) => {
                                 event.stopPropagation();
@@ -1413,6 +1855,12 @@
 
                     menu.style.top = `${top}px`;
                     menu.style.left = `${left}px`;
+
+                    // Focus the first button in the menu for quick keyboard entry
+                    setTimeout(() => {
+                        const firstBtn = menu.querySelector("button");
+                        if (firstBtn) firstBtn.focus();
+                    }, 50);
                 }
 
                 renderSettings() {
@@ -1526,6 +1974,7 @@
                 constructor() {
                     this.state = new StateManager();
                     this.ui = new UIManager(this.state);
+                    this.cmd = new CommandPalette(this, this.state); // NEW
                     this.setupLogicListeners();
                     this.state.ensureDateExists(this.state.getCurrentDate());
                     globalBus.emit("view:refresh");
@@ -1665,11 +2114,9 @@
                     );
                 }
 
-                // --- NEW FOLDABLE SIDEBAR WITH MORPHING ---
                 toggleSidebar() {
                     const sidebar = document.getElementById("app-sidebar");
                     sidebar.classList.toggle("sidebar-collapsed");
-
                     const burger = document.getElementById("icon-burger");
                     const arrow = document.getElementById("icon-arrow");
 
@@ -1686,7 +2133,6 @@
                     }
                 }
 
-                // --- NEW PAINT MODE TOGGLE ---
                 togglePaintMode(projectId) {
                     if (this.state.paintProjectId === projectId) {
                         this.state.paintProjectId = null;
@@ -1815,13 +2261,11 @@
                         newName = `${baseName} ${counter}`;
                         counter++;
                     }
-
                     const randomHex =
                         "#" +
                         Math.floor(Math.random() * 16777215)
                             .toString(16)
                             .padStart(6, "0");
-
                     this.state.updateState((data) => {
                         data.projects.push({
                             id: "p_" + Date.now(),
