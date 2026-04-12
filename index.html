@@ -3,10 +3,10 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Visual Schedule Planner Pro - v7 (Enhanced)</title>
+        <title>Visual Schedule Planner Pro - v8 (Paint Mode)</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap"
             rel="stylesheet"
         />
         <style>
@@ -40,7 +40,7 @@
                 border-color: rgba(0, 0, 0, 0.1);
             }
 
-            /* --- NEW: Active block & Pulse animations --- */
+            /* Active block & Pulse animations */
             .active-block {
                 box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.4);
                 transform: scale(1.1);
@@ -60,6 +60,54 @@
                 100% {
                     transform: scale(1);
                 }
+            }
+
+            /* --- NEW: Current Time Cursor --- */
+            .current-time-label {
+                color: #ef4444 !important; /* red-500 */
+                font-weight: 900 !important;
+                position: relative;
+            }
+            .current-time-label::after {
+                content: "";
+                position: absolute;
+                right: -12px;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 8px;
+                height: 8px;
+                background-color: #ef4444;
+                border-radius: 50%;
+                animation: pulse-dot 1.5s infinite;
+            }
+            @keyframes pulse-dot {
+                0% {
+                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+                }
+                70% {
+                    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+                }
+                100% {
+                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+                }
+            }
+
+            /* --- NEW: Drag to Paint --- */
+            .paint-active {
+                border-color: #4f46e5 !important;
+                box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+                background-color: #eef2ff !important;
+            }
+            .paint-active-indicator {
+                display: inline-block;
+                background: #4f46e5;
+                color: white;
+                font-size: 9px;
+                padding: 2px 6px;
+                border-radius: 4px;
+                text-transform: uppercase;
+                font-weight: 900;
+                margin-left: auto;
             }
 
             .active-date {
@@ -90,7 +138,7 @@
                 border-radius: 4px;
             }
 
-            /* --- NEW: Foldable Sidebar --- */
+            /* Foldable Sidebar Animations */
             .sidebar-collapsed {
                 width: 0 !important;
                 padding-left: 0 !important;
@@ -159,8 +207,6 @@
             .modal-content {
                 animation: slideUp 0.2s ease-out forwards;
             }
-
-            /* --- UPDATED: Faster closing animations --- */
             .modal-bg.closing {
                 animation: fadeOut 0.1s ease-in forwards;
             }
@@ -168,7 +214,6 @@
                 animation: slideDown 0.1s ease-in forwards;
             }
 
-            /* Inline Edit Styles */
             [contenteditable="true"] {
                 outline: none;
                 border-bottom: 1px dashed transparent;
@@ -195,7 +240,6 @@
                 }
             }
 
-            /* Drag and Drop Visuals */
             .drag-over {
                 border: 2px dashed #4f46e5 !important;
                 background-color: #e0e7ff !important;
@@ -215,7 +259,6 @@
                 cursor: grabbing;
             }
 
-            /* --- NEW: Dragging visual state --- */
             .dragging {
                 opacity: 0.6 !important;
                 transform: scale(0.97);
@@ -223,7 +266,6 @@
                 box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.15);
             }
 
-            /* Toast */
             .toast {
                 position: fixed;
                 bottom: 24px;
@@ -248,38 +290,53 @@
             class="max-w-7xl mx-auto w-full h-full flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative"
         >
             <header
-                class="flex items-center justify-between p-6 border-b border-gray-100"
+                class="flex items-center justify-between p-6 border-b border-gray-100 shrink-0"
             >
                 <div class="flex items-center gap-4">
-                    <div
-                        class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xl"
-                    >
-                        V
-                    </div>
-                    <h1 class="text-xl font-bold">Visual Planner Pro</h1>
-                </div>
-                <div class="flex items-center gap-4 md:gap-6">
                     <button
+                        id="sidebar-toggle-btn"
                         onclick="app.toggleSidebar()"
                         class="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition text-gray-600 shadow-sm"
                         title="Toggle Sidebar"
                     >
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
+                        <div
+                            class="relative w-5 h-5 flex items-center justify-center"
                         >
-                            <line x1="3" y1="12" x2="21" y2="12"></line>
-                            <line x1="3" y1="6" x2="21" y2="6"></line>
-                            <line x1="3" y1="18" x2="21" y2="18"></line>
-                        </svg>
+                            <svg
+                                id="icon-burger"
+                                class="absolute transition-all duration-300"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                            <svg
+                                id="icon-arrow"
+                                class="absolute opacity-0 -rotate-90 transition-all duration-300"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                        </div>
                     </button>
-
+                </div>
+                <div class="flex items-center gap-4 md:gap-6">
                     <button
                         onclick="app.goToToday()"
                         class="px-4 py-2 border border-gray-200 rounded-full text-xs font-bold hover:bg-gray-50 text-gray-600 transition shadow-sm"
@@ -563,9 +620,6 @@
         </div>
 
         <script>
-            // -----------------------------------------------------------------------------
-            // 0. EVENT BUS & UTILS
-            // -----------------------------------------------------------------------------
             class EventEmitter {
                 constructor() {
                     this.events = {};
@@ -596,12 +650,9 @@
                 },
             };
 
-            // -----------------------------------------------------------------------------
-            // 1. STATE MANAGEMENT
-            // -----------------------------------------------------------------------------
             class StateManager {
                 constructor() {
-                    this.storageKey = "planner_state_v7";
+                    this.storageKey = "planner_state_v8";
                     this.hours = [
                         "7 AM",
                         "8 AM",
@@ -625,6 +676,7 @@
                     const today = new Date();
                     this.viewMonth = today.getMonth();
                     this.viewYear = today.getFullYear();
+                    this.paintProjectId = null; // NEW: Track active paint brush
                 }
 
                 getDefaultState() {
@@ -634,7 +686,7 @@
                         .toISOString()
                         .split("T")[0];
                     return {
-                        version: 4,
+                        version: 5,
                         currentDate: localISOTime,
                         types: [
                             { id: "t_1", name: "Work" },
@@ -744,9 +796,6 @@
                 }
             }
 
-            // -----------------------------------------------------------------------------
-            // 2. UI MANAGEMENT
-            // -----------------------------------------------------------------------------
             class UIManager {
                 constructor(state) {
                     this.state = state;
@@ -760,15 +809,39 @@
                     const grid = document.getElementById("schedule-grid");
                     const hierarchyList =
                         document.getElementById("hierarchy-list");
+                    let isPainting = false;
 
-                    // --- UPDATED GRID CLICKS ---
+                    // --- NEW: Paint Mode Pointer Events ---
+                    grid.addEventListener("mousedown", (e) => {
+                        if (!this.state.paintProjectId) return; // Allow normal click behavior
+                        const block = e.target.closest(".schedule-block");
+                        if (block) {
+                            isPainting = true;
+                            document.body.classList.add("select-none"); // Prevent text highlighting while dragging
+                            this.paintBlock(block);
+                        }
+                    });
+
+                    grid.addEventListener("mouseover", (e) => {
+                        if (isPainting && this.state.paintProjectId) {
+                            const block = e.target.closest(".schedule-block");
+                            if (block) this.paintBlock(block);
+                        }
+                    });
+
+                    document.addEventListener("mouseup", () => {
+                        isPainting = false;
+                        document.body.classList.remove("select-none");
+                    });
+
                     grid.addEventListener("click", (e) => {
+                        if (this.state.paintProjectId) return; // Prevent menu/clear if painting
+
                         const block = e.target.closest(".schedule-block");
                         if (block) {
                             e.stopPropagation();
                             this.closeAllMenus();
 
-                            // Feature: 1-Click Clear
                             if (block.classList.contains("filled")) {
                                 globalBus.emit("block:update", {
                                     row: block.dataset.row,
@@ -777,8 +850,6 @@
                                 });
                                 return;
                             }
-
-                            // Active state context
                             block.classList.add("active-block");
                             this.renderChoiceMenu(
                                 block,
@@ -788,11 +859,9 @@
                         }
                     });
 
-                    // --- UPDATED DOC CLICKS ---
                     document.addEventListener("click", (e) => {
-                        if (!e.target.closest(".choice-menu")) {
+                        if (!e.target.closest(".choice-menu"))
                             this.closeAllMenus();
-                        }
                     });
 
                     grid.addEventListener("contextmenu", (e) => {
@@ -807,7 +876,6 @@
                         }
                     });
 
-                    // Inline Edit Events...
                     hierarchyList.addEventListener(
                         "focus",
                         (e) => {
@@ -834,8 +902,8 @@
 
                                 const entityType = e.target.dataset.entity;
                                 const id = e.target.dataset.id;
-
                                 let isDuplicate = false;
+
                                 if (entityType === "type")
                                     isDuplicate = this.state
                                         .getTypes()
@@ -892,15 +960,13 @@
                     });
 
                     hierarchyList.addEventListener("change", (e) => {
-                        if (e.target.dataset.entity === "project-color") {
+                        if (e.target.dataset.entity === "project-color")
                             globalBus.emit("hierarchy:updateProjectColor", {
                                 id: e.target.dataset.id,
                                 color: e.target.value,
                             });
-                        }
                     });
 
-                    // --- UPDATED DND ---
                     hierarchyList.addEventListener("dragstart", (e) => {
                         const target = e.target.closest("[data-drag-id]");
                         if (!target) return;
@@ -908,11 +974,11 @@
                         this.dragState.sourceId = target.dataset.dragId;
                         e.dataTransfer.effectAllowed = "move";
                         target.style.opacity = "0.5";
-                        target.classList.add("dragging"); // NEW
+                        target.classList.add("dragging");
                     });
 
                     hierarchyList.addEventListener("dragover", (e) => {
-                        e.preventDefault(); // allow drop
+                        e.preventDefault();
                         const target = e.target.closest("[data-drop-zone]");
                         if (!target) return;
                         if (
@@ -1005,12 +1071,34 @@
                             this.closeAllMenus();
                             app.closeSettingsModal();
                             app.cancelConfirm();
+                            if (this.state.paintProjectId) {
+                                this.state.paintProjectId = null;
+                                globalBus.emit("hierarchy:refreshed");
+                                Toast.show("Exited Paint Mode");
+                            }
                         }
                     });
                 }
 
+                // Helper for Paint Mode
+                paintBlock(block) {
+                    const row = block.dataset.row;
+                    const col = block.dataset.col;
+                    const currentProjId =
+                        this.state.getCurrentSchedule()?.blocks[
+                            `${row}-${col}`
+                        ];
+
+                    if (currentProjId !== this.state.paintProjectId) {
+                        globalBus.emit("block:update", {
+                            row,
+                            col,
+                            projectId: this.state.paintProjectId,
+                        });
+                    }
+                }
+
                 listenToEvents() {
-                    // --- UPDATED BLOCK UPDATED (PULSE) ---
                     globalBus.on("block:updated", ({ row, col, project }) => {
                         const blockEl = this.blockNodes[`${row}-${col}`];
                         if (!blockEl) return;
@@ -1020,9 +1108,8 @@
                             blockEl.classList.add("filled");
                             blockEl.title = project.name;
 
-                            // Trigger pulse animation
                             blockEl.classList.remove("pulse-fill");
-                            void blockEl.offsetWidth; // Reflow hack
+                            void blockEl.offsetWidth;
                             blockEl.classList.add("pulse-fill");
                         } else {
                             blockEl.style.backgroundColor = "";
@@ -1055,7 +1142,6 @@
                     });
                 }
 
-                // --- UPDATED CLOSE MENUS ---
                 closeAllMenus() {
                     document
                         .querySelectorAll(".choice-menu")
@@ -1137,9 +1223,27 @@
                             (p) => p.typeId === t.id,
                         );
                         if (typeProjects.length === 0) return;
+
                         list.innerHTML += `<div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-2 pl-1">${t.name}</div>`;
                         typeProjects.forEach((p) => {
-                            list.innerHTML += `<div class="flex items-center gap-3 p-2 rounded-lg bg-white border border-gray-100 shadow-sm"><div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div><span class="text-sm font-semibold text-gray-800 leading-tight">${p.name}</span></div>`;
+                            // Check if this project is the active paint brush
+                            const isActivePaint =
+                                this.state.paintProjectId === p.id;
+                            const badgeHTML = isActivePaint
+                                ? `<span class="paint-active-indicator">Paint</span>`
+                                : "";
+
+                            const pCard = document.createElement("div");
+                            pCard.className = `flex items-center gap-3 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer hover:shadow-md transition`;
+                            pCard.innerHTML = `
+                                <div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${p.color};"></div>
+                                <span class="text-sm font-semibold text-gray-800 truncate">${p.name}</span>
+                                ${badgeHTML}
+                            `;
+
+                            // Enable click to paint
+                            pCard.onclick = () => app.togglePaintMode(p.id);
+                            list.appendChild(pCard);
                         });
                     });
                 }
@@ -1160,8 +1264,10 @@
                             totalAssigned++;
                         }
                     });
+
+                    // UPDATED: Better Empty Action State
                     if (totalAssigned === 0)
-                        bar.innerHTML = `<span class="text-sm text-gray-400 italic">No blocks assigned.</span>`;
+                        bar.innerHTML = `<span class="text-sm text-gray-400 font-medium italic">Click a block to start planning.</span>`;
                 }
 
                 renderSchedule(scheduleObj, hours, projects) {
@@ -1169,6 +1275,25 @@
                     container.innerHTML = "";
                     this.blockNodes = {};
                     const blocks = scheduleObj.blocks;
+
+                    // UPDATED: Time Cursor logic
+                    const todayStr = new Date(
+                        new Date().getTime() -
+                            new Date().getTimezoneOffset() * 60000,
+                    )
+                        .toISOString()
+                        .split("T")[0];
+                    const isToday = this.state.getCurrentDate() === todayStr;
+                    const now = new Date();
+                    let currentHour = now.getHours();
+                    let currentHourStr =
+                        currentHour === 0
+                            ? "12 AM"
+                            : currentHour > 12
+                              ? `${currentHour - 12} PM`
+                              : currentHour === 12
+                                ? "12 PM"
+                                : `${currentHour} AM`;
 
                     hours.forEach((time, rowIndex) => {
                         const rowEl = document.createElement("div");
@@ -1178,6 +1303,11 @@
                         timeLabel.className =
                             "w-12 md:w-16 text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider text-right shrink-0";
                         timeLabel.textContent = time;
+
+                        // Apply time cursor if it's the current hour
+                        if (isToday && time === currentHourStr) {
+                            timeLabel.classList.add("current-time-label");
+                        }
 
                         const blocksContainer = document.createElement("div");
                         blocksContainer.className =
@@ -1260,23 +1390,16 @@
                         });
                     });
 
-                    // We remove the explicit reset button from menu because it's now 1-click on the block directly
-
                     document.body.appendChild(menu);
 
-                    // Dynamic Viewport Position
                     const rect = blockElement.getBoundingClientRect();
                     const menuHeight = menu.offsetHeight;
                     let top = rect.bottom + window.scrollY + 8;
                     let left =
                         rect.left + window.scrollX + rect.width / 2 - 100;
 
-                    if (
-                        top + menuHeight >
-                        window.innerHeight + window.scrollY
-                    ) {
+                    if (top + menuHeight > window.innerHeight + window.scrollY)
                         top = rect.top + window.scrollY - menuHeight - 8;
-                    }
                     if (left < 10) left = 10;
                     if (left + 200 > window.innerWidth)
                         left = window.innerWidth - 210;
@@ -1336,10 +1459,10 @@
                                 pCard.dataset.dropEntity = "project";
 
                                 pCard.innerHTML = `
-                                    <div class="flex items-center gap-3 flex-1">
-                                        <svg class="grab-handle w-5 h-5 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+                                    <div class="flex items-center gap-3 flex-1 overflow-hidden">
+                                        <svg class="grab-handle w-5 h-5 text-gray-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
                                         <input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="w-6 h-6 rounded-md cursor-pointer border-0 p-0 shadow-inner shrink-0 bg-transparent"/>
-                                        <span class="text-sm font-semibold text-gray-800" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to edit">${p.name}</span>
+                                        <span class="text-sm font-semibold text-gray-800 truncate" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to edit">${p.name}</span>
                                     </div>
                                     <button onclick="app.removeProject('${p.id}')" class="opacity-0 group-hover/proj:opacity-100 text-red-400 hover:text-red-600 font-bold text-xs transition px-2 py-1">Remove</button>
                                 `;
@@ -1349,7 +1472,6 @@
                     });
                 }
 
-                // --- UPDATED MODAL CLOSE SPEED ---
                 toggleModal(modalId, show) {
                     const modal = document.getElementById(modalId);
                     const bg = modal;
@@ -1393,9 +1515,6 @@
                 }
             }
 
-            // -----------------------------------------------------------------------------
-            // 3. APP CONTROLLER
-            // -----------------------------------------------------------------------------
             class AppController {
                 constructor() {
                     this.state = new StateManager();
@@ -1434,7 +1553,6 @@
                         globalBus.emit("analytics:refreshed");
                     });
 
-                    // Hierarchy Updates
                     globalBus.on(
                         "hierarchy:updateType",
                         ({ id, name, element }) => {
@@ -1540,11 +1658,37 @@
                     );
                 }
 
-                // --- NEW FOLDABLE SIDEBAR ---
+                // --- NEW FOLDABLE SIDEBAR WITH MORPHING ---
                 toggleSidebar() {
-                    document
-                        .getElementById("app-sidebar")
-                        .classList.toggle("sidebar-collapsed");
+                    const sidebar = document.getElementById("app-sidebar");
+                    sidebar.classList.toggle("sidebar-collapsed");
+
+                    const burger = document.getElementById("icon-burger");
+                    const arrow = document.getElementById("icon-arrow");
+
+                    if (sidebar.classList.contains("sidebar-collapsed")) {
+                        burger.style.opacity = "0";
+                        burger.style.transform = "rotate(90deg)";
+                        arrow.style.opacity = "1";
+                        arrow.style.transform = "rotate(0deg)";
+                    } else {
+                        burger.style.opacity = "1";
+                        burger.style.transform = "rotate(0deg)";
+                        arrow.style.opacity = "0";
+                        arrow.style.transform = "rotate(-90deg)";
+                    }
+                }
+
+                // --- NEW PAINT MODE TOGGLE ---
+                togglePaintMode(projectId) {
+                    if (this.state.paintProjectId === projectId) {
+                        this.state.paintProjectId = null;
+                        Toast.show("Exited Paint Mode");
+                    } else {
+                        this.state.paintProjectId = projectId;
+                        Toast.show("Paint Mode Active. Drag to fill.");
+                    }
+                    globalBus.emit("hierarchy:refreshed");
                 }
 
                 prevMonth() {
@@ -1654,7 +1798,6 @@
                     this.ui.renderSettings();
                 }
 
-                // --- UPDATED RANDOM COLOR GEN ---
                 addProjectToType(typeId) {
                     const baseName = "New Project";
                     let newName = baseName;
@@ -1666,7 +1809,6 @@
                         counter++;
                     }
 
-                    // Generate Random Hex
                     const randomHex =
                         "#" +
                         Math.floor(Math.random() * 16777215)
