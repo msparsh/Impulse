@@ -322,10 +322,15 @@
             // -----------------------------------------------------------------------------
             // 1. STATE MANAGEMENT (Model)
             // -----------------------------------------------------------------------------
+            // -----------------------------------------------------------------------------
+            // 1. STATE MANAGEMENT (Model)
+            // -----------------------------------------------------------------------------
             class StateManager {
                 constructor() {
-                    this.storageKey = "planner_state_v2";
+                    // ⚠️ Bumped version to v3 so old 10-hour arrays don't break the new 17-hour grid
+                    this.storageKey = "planner_state_v3";
                     this.hours = [
+                        "7 AM",
                         "8 AM",
                         "9 AM",
                         "10 AM",
@@ -336,6 +341,12 @@
                         "3 PM",
                         "4 PM",
                         "5 PM",
+                        "6 PM",
+                        "7 PM",
+                        "8 PM",
+                        "9 PM",
+                        "10 PM",
+                        "11 PM",
                     ];
                     this.data = this.loadState();
                 }
@@ -369,6 +380,7 @@
                         ],
                         schedules: {
                             "2026-04-12": [
+                                [null, null, null, null, null, null], // 7 AM
                                 [
                                     "p_deep",
                                     "p_deep",
@@ -376,7 +388,7 @@
                                     null,
                                     null,
                                     null,
-                                ],
+                                ], // 8 AM
                                 [
                                     null,
                                     null,
@@ -384,9 +396,9 @@
                                     "p_study",
                                     "p_study",
                                     null,
-                                ],
-                                [null, null, null, null, null, null],
-                                [null, null, null, null, null, null],
+                                ], // 9 AM
+                                [null, null, null, null, null, null], // 10 AM
+                                [null, null, null, null, null, null], // 11 AM
                                 [
                                     "p_health",
                                     "p_health",
@@ -394,12 +406,18 @@
                                     null,
                                     null,
                                     null,
-                                ],
-                                [null, null, null, null, null, null],
-                                [null, null, null, null, null, null],
-                                [null, null, null, null, null, null],
-                                [null, null, null, null, null, null],
-                                [null, null, null, null, null, null],
+                                ], // 12 PM
+                                [null, null, null, null, null, null], // 1 PM
+                                [null, null, null, null, null, null], // 2 PM
+                                [null, null, null, null, null, null], // 3 PM
+                                [null, null, null, null, null, null], // 4 PM
+                                [null, null, null, null, null, null], // 5 PM
+                                [null, null, null, null, null, null], // 6 PM
+                                [null, null, null, null, null, null], // 7 PM
+                                [null, null, null, null, null, null], // 8 PM
+                                [null, null, null, null, null, null], // 9 PM
+                                [null, null, null, null, null, null], // 10 PM
+                                [null, null, null, null, null, null], // 11 PM
                             ],
                         },
                     };
@@ -434,7 +452,6 @@
                     return this.data.types.find((t) => t.id === id);
                 }
             }
-
             // -----------------------------------------------------------------------------
             // 2. UI MANAGEMENT (View)
             // -----------------------------------------------------------------------------
