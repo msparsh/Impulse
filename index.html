@@ -109,7 +109,7 @@
                 </div>
                 <div class="flex items-center gap-6">
                     <button
-                        onclick="goToToday()"
+                        onclick="app.goToToday()"
                         class="px-4 py-2 border border-gray-200 rounded-full text-xs font-bold hover:bg-gray-50 text-gray-600 transition shadow-sm"
                     >
                         Today
@@ -126,9 +126,8 @@
                         </p>
                     </div>
                     <button
-                        onclick="openSettingsModal()"
+                        onclick="app.openSettingsModal()"
                         class="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-gray-300 transition text-gray-600 shadow-sm"
-                        title="Settings & Data"
                     >
                         <svg
                             width="20"
@@ -226,7 +225,7 @@
                 >
                     <h3 class="font-bold text-gray-800">Manage Data</h3>
                     <button
-                        onclick="closeSettingsModal()"
+                        onclick="app.closeSettingsModal()"
                         class="text-gray-400 hover:text-gray-700 transition"
                     >
                         <svg
@@ -254,7 +253,6 @@
                         >
                             1. Types
                         </h4>
-
                         <div class="flex gap-2 mb-6">
                             <input
                                 type="text"
@@ -263,13 +261,12 @@
                                 class="text-sm p-2 border border-gray-200 rounded-lg flex-1 focus:outline-none focus:border-indigo-500"
                             />
                             <button
-                                onclick="addType()"
+                                onclick="app.addType()"
                                 class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-700 transition"
                             >
                                 Add
                             </button>
                         </div>
-
                         <div
                             id="settings-types-list"
                             class="flex flex-col gap-2"
@@ -284,7 +281,6 @@
                         >
                             2. Projects
                         </h4>
-
                         <div
                             class="flex flex-col gap-3 mb-6 bg-white p-4 rounded-xl border border-gray-100 shadow-sm"
                         >
@@ -307,13 +303,12 @@
                                 ></select>
                             </div>
                             <button
-                                onclick="addProject()"
+                                onclick="app.addProject()"
                                 class="w-full bg-indigo-600 text-white text-sm py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm"
                             >
                                 Save Project
                             </button>
                         </div>
-
                         <div
                             id="settings-projects-list"
                             class="flex flex-col gap-2"
@@ -324,439 +319,575 @@
         </div>
 
         <script>
-            // --- DATA PERSISTENCE & STATE ---
-            const defaultState = {
-                currentDate: "2026-04-12",
-                types: [
-                    { id: "t_work", name: "Work" },
-                    { id: "t_personal", name: "Personal" },
-                ],
-                projects: [
-                    {
-                        id: "p_deep",
-                        name: "Deep Work",
-                        color: "#6b92f2",
-                        typeId: "t_work",
-                    },
-                    {
-                        id: "p_study",
-                        name: "Study",
-                        color: "#f2a644",
-                        typeId: "t_personal",
-                    },
-                    {
-                        id: "p_health",
-                        name: "Health/Meals",
-                        color: "#568f32",
-                        typeId: "t_personal",
-                    },
-                ],
-                schedules: {
-                    "2026-04-12": [
-                        ["p_deep", "p_deep", "p_deep", null, null, null],
-                        [null, null, "p_study", "p_study", "p_study", null],
-                        [null, null, null, null, null, null],
-                        [null, null, null, null, null, null],
-                        ["p_health", "p_health", "p_health", null, null, null],
-                        [null, null, null, null, null, null],
-                        [null, null, null, null, null, null],
-                        [null, null, null, null, null, null],
-                        [null, null, null, null, null, null],
-                        [null, null, null, null, null, null],
-                    ],
-                },
-            };
-
-            // Load from LocalStorage or use default
-            const savedData = localStorage.getItem("planner_state");
-            let state = savedData ? JSON.parse(savedData) : defaultState;
-
-            const saveState = () => {
-                localStorage.setItem("planner_state", JSON.stringify(state));
-            };
-
-            const hours = [
-                "8 AM",
-                "9 AM",
-                "10 AM",
-                "11 AM",
-                "12 PM",
-                "1 PM",
-                "2 PM",
-                "3 PM",
-                "4 PM",
-                "5 PM",
-            ];
-
-            // --- UTILITIES ---
-            const closeAllMenus = () =>
-                document
-                    .querySelectorAll(".choice-menu")
-                    .forEach((m) => m.remove());
-            document.addEventListener("click", closeAllMenus);
-
-            // Escape key listener for QoL
-            document.addEventListener("keydown", (e) => {
-                if (e.key === "Escape") {
-                    closeAllMenus();
-                    closeSettingsModal();
-                }
-            });
-
-            // --- MODAL CONTROLS ---
-            function openSettingsModal() {
-                renderSettingsData();
-                const modal = document.getElementById("settings-modal");
-                modal.classList.remove("hidden");
-                modal.classList.add("modal-bg");
-            }
-
-            function closeSettingsModal() {
-                const modal = document.getElementById("settings-modal");
-                modal.classList.add("hidden");
-                modal.classList.remove("modal-bg");
-            }
-
-            document
-                .getElementById("settings-modal")
-                .addEventListener("click", function (e) {
-                    if (e.target === this) closeSettingsModal();
-                });
-
-            function goToToday() {
-                // Force April 12, 2026 to match calendar UI layout, or use actual today
-                state.currentDate = "2026-04-12";
-                saveState();
-                refreshAllViews();
-            }
-
-            // --- RENDER FUNCTIONS ---
-            function updateDateDisplay() {
-                const dateObj = new Date(state.currentDate);
-                const options = {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                };
-                const parts = dateObj
-                    .toLocaleDateString("en-US", options)
-                    .split(", ");
-                document.getElementById("display-day").innerText = parts[0];
-                document.getElementById("display-date").innerText =
-                    parts[1] + ", " + parts[2];
-            }
-
-            function renderCalendar() {
-                const grid = document.getElementById("calendar-grid");
-                grid.innerHTML = "";
-                for (let i = 0; i < 3; i++)
-                    grid.innerHTML += `<div class="py-2 text-gray-300"></div>`;
-
-                for (let day = 1; day <= 30; day++) {
-                    const dateStr = `2026-04-${day.toString().padStart(2, "0")}`;
-                    const isActive = dateStr === state.currentDate;
-                    grid.innerHTML += `
-                    <div onclick="selectDate('${dateStr}')"
-                         class="py-1 cursor-pointer hover:bg-indigo-50 rounded-md transition ${isActive ? "active-date shadow-md" : "text-gray-700"}">
-                        ${day}
-                    </div>`;
-                }
-            }
-
-            function renderProjectsSidebar() {
-                const list = document.getElementById("project-list");
-                list.innerHTML = "";
-                state.projects.forEach((p) => {
-                    const typeName =
-                        state.types.find((t) => t.id === p.typeId)?.name ||
-                        "Unknown";
-                    list.innerHTML += `
-                    <div class="flex items-center gap-3 p-2 rounded-lg bg-white border border-gray-100 shadow-sm">
-                        <div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div>
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-gray-800 leading-tight">${p.name}</span>
-                            <span class="text-[10px] text-gray-400 uppercase tracking-wide">${typeName}</span>
-                        </div>
-                    </div>`;
-                });
-            }
-
-            function renderAnalytics() {
-                const bar = document.getElementById("analytics-bar");
-                bar.innerHTML = "";
-                const todayData = state.schedules[state.currentDate] || [];
-                let counts = {};
-
-                todayData.forEach((row) => {
-                    row.forEach((block) => {
-                        if (block) counts[block] = (counts[block] || 0) + 1;
-                    });
-                });
-
-                let totalAssigned = 0;
-                state.projects.forEach((p) => {
-                    const blocks = counts[p.id] || 0;
-                    if (blocks > 0) {
-                        const minutes = blocks * 10;
-                        const hoursStr =
-                            minutes >= 60
-                                ? `${(minutes / 60).toFixed(1)}h`
-                                : `${minutes}m`;
-                        bar.innerHTML += `
-                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 shadow-sm">
-                            <span class="w-3 h-3 rounded-full" style="background-color: ${p.color}"></span>
-                            <span class="text-xs font-semibold text-gray-700">${p.name}: <span class="text-gray-500">${hoursStr}</span></span>
-                        </div>`;
-                        totalAssigned++;
-                    }
-                });
-
-                if (totalAssigned === 0)
-                    bar.innerHTML = `<span class="text-sm text-gray-400 italic">No blocks assigned.</span>`;
-            }
-
-            function renderSchedule() {
-                const container = document.getElementById("schedule-grid");
-                container.innerHTML = "";
-
-                // Ensure array exists for selected date
-                if (!state.schedules[state.currentDate]) {
-                    state.schedules[state.currentDate] = Array(10)
-                        .fill(null)
-                        .map(() => Array(6).fill(null));
-                    saveState();
+            // -----------------------------------------------------------------------------
+            // 1. STATE MANAGEMENT (Model)
+            // -----------------------------------------------------------------------------
+            class StateManager {
+                constructor() {
+                    this.storageKey = "planner_state_v2";
+                    this.hours = [
+                        "8 AM",
+                        "9 AM",
+                        "10 AM",
+                        "11 AM",
+                        "12 PM",
+                        "1 PM",
+                        "2 PM",
+                        "3 PM",
+                        "4 PM",
+                        "5 PM",
+                    ];
+                    this.data = this.loadState();
                 }
 
-                const dayData = state.schedules[state.currentDate];
+                getDefaultState() {
+                    return {
+                        currentDate: "2026-04-12",
+                        types: [
+                            { id: "t_work", name: "Work" },
+                            { id: "t_personal", name: "Personal" },
+                        ],
+                        projects: [
+                            {
+                                id: "p_deep",
+                                name: "Deep Work",
+                                color: "#6b92f2",
+                                typeId: "t_work",
+                            },
+                            {
+                                id: "p_study",
+                                name: "Study",
+                                color: "#f2a644",
+                                typeId: "t_personal",
+                            },
+                            {
+                                id: "p_health",
+                                name: "Health/Meals",
+                                color: "#568f32",
+                                typeId: "t_personal",
+                            },
+                        ],
+                        schedules: {
+                            "2026-04-12": [
+                                [
+                                    "p_deep",
+                                    "p_deep",
+                                    "p_deep",
+                                    null,
+                                    null,
+                                    null,
+                                ],
+                                [
+                                    null,
+                                    null,
+                                    "p_study",
+                                    "p_study",
+                                    "p_study",
+                                    null,
+                                ],
+                                [null, null, null, null, null, null],
+                                [null, null, null, null, null, null],
+                                [
+                                    "p_health",
+                                    "p_health",
+                                    "p_health",
+                                    null,
+                                    null,
+                                    null,
+                                ],
+                                [null, null, null, null, null, null],
+                                [null, null, null, null, null, null],
+                                [null, null, null, null, null, null],
+                                [null, null, null, null, null, null],
+                                [null, null, null, null, null, null],
+                            ],
+                        },
+                    };
+                }
 
-                hours.forEach((time, rowIndex) => {
-                    const rowEl = document.createElement("div");
-                    rowEl.className = "flex items-center gap-8 group";
+                loadState() {
+                    const saved = localStorage.getItem(this.storageKey);
+                    return saved ? JSON.parse(saved) : this.getDefaultState();
+                }
 
-                    const timeLabel = document.createElement("div");
-                    timeLabel.className =
-                        "w-16 text-xs font-bold text-gray-400 uppercase tracking-wider text-right";
-                    timeLabel.textContent = time;
-
-                    const blocksContainer = document.createElement("div");
-                    blocksContainer.className =
-                        "flex gap-3 md:gap-4 flex-wrap bg-gray-50 p-2 rounded-2xl group-hover:bg-gray-100 transition";
-
-                    dayData[rowIndex].forEach((blockProjectId, colIndex) => {
-                        const block = document.createElement("button");
-                        block.className = "circle-btn shadow-sm";
-
-                        const project = state.projects.find(
-                            (p) => p.id === blockProjectId,
-                        );
-
-                        if (project) {
-                            block.style.backgroundColor = project.color;
-                            block.classList.add("filled");
-                            block.title = project.name;
-                        } else {
-                            block.title = "Empty (Click to set)";
-                        }
-
-                        // QoL: Right-Click to instantly clear
-                        block.oncontextmenu = (e) => {
-                            e.preventDefault();
-                            updateBlock(rowIndex, colIndex, null);
-                        };
-
-                        block.onclick = (e) => {
-                            e.stopPropagation();
-                            closeAllMenus();
-
-                            const menu = document.createElement("div");
-                            menu.className = "choice-menu";
-
-                            state.projects.forEach((p) => {
-                                const btn = document.createElement("button");
-                                btn.className =
-                                    "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
-
-                                btn.innerHTML = `
-                                <div class="flex items-center gap-3 overflow-hidden">
-                                    <div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div>
-                                    <span class="text-xs font-bold text-gray-700 truncate">${p.name}</span>
-                                </div>
-                                <div class="opacity-0 group-hover/btn:opacity-100 text-[10px] text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-100 fill-hour-btn" title="Fill entire hour">Fill Hr</div>
-                            `;
-
-                                btn.onclick = (event) => {
-                                    event.stopPropagation();
-                                    // QoL: Click "Fill Hr" inside the button to fill row
-                                    if (
-                                        event.target.classList.contains(
-                                            "fill-hour-btn",
-                                        )
-                                    ) {
-                                        fillRow(rowIndex, p.id);
-                                    } else {
-                                        updateBlock(rowIndex, colIndex, p.id);
-                                    }
-                                };
-                                menu.appendChild(btn);
-                            });
-
-                            const reset = document.createElement("button");
-                            reset.className =
-                                "mt-1 p-2 w-full text-left text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition border-t border-gray-100";
-                            reset.innerText = "Clear Block";
-                            reset.onclick = (event) => {
-                                event.stopPropagation();
-                                updateBlock(rowIndex, colIndex, null);
-                            };
-                            menu.appendChild(reset);
-                            block.appendChild(menu);
-                        };
-
-                        blocksContainer.appendChild(block);
-                    });
-
-                    rowEl.appendChild(timeLabel);
-                    rowEl.appendChild(blocksContainer);
-                    container.appendChild(rowEl);
-                });
-            }
-
-            // --- SETTINGS MANAGEMENT ---
-            function renderSettingsData() {
-                const typeSelect = document.getElementById("new-proj-type");
-                typeSelect.innerHTML =
-                    state.types.length === 0
-                        ? "<option disabled>No types available</option>"
-                        : "";
-                state.types.forEach(
-                    (t) =>
-                        (typeSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`),
-                );
-
-                const typesList = document.getElementById(
-                    "settings-types-list",
-                );
-                typesList.innerHTML = "";
-                state.types.forEach((t) => {
-                    typesList.innerHTML += `
-                    <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
-                        <span class="text-sm font-medium text-gray-700">${t.name}</span>
-                        <button onclick="removeType('${t.id}')" class="text-red-400 hover:text-red-600 font-bold text-xs">Remove</button>
-                    </div>`;
-                });
-
-                const projList = document.getElementById(
-                    "settings-projects-list",
-                );
-                projList.innerHTML = "";
-                state.projects.forEach((p) => {
-                    const typeName =
-                        state.types.find((t) => t.id === p.typeId)?.name ||
-                        "Unknown";
-                    projList.innerHTML += `
-                    <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div>
-                            <div class="flex flex-col">
-                                <span class="text-sm font-bold text-gray-800">${p.name}</span>
-                                <span class="text-[10px] text-gray-400 uppercase">${typeName}</span>
-                            </div>
-                        </div>
-                        <button onclick="removeProject('${p.id}')" class="text-red-400 hover:text-red-600 font-bold text-xs">Remove</button>
-                    </div>`;
-                });
-            }
-
-            function addType() {
-                const input = document.getElementById("new-type-name");
-                const name = input.value.trim();
-                if (!name) return;
-                state.types.push({ id: "t_" + Date.now(), name });
-                input.value = "";
-                saveState();
-                renderSettingsData();
-            }
-
-            function removeType(id) {
-                state.types = state.types.filter((t) => t.id !== id);
-                state.projects
-                    .filter((p) => p.typeId === id)
-                    .forEach((p) => removeProject(p.id, false));
-                saveState();
-                renderSettingsData();
-                refreshAllViews();
-            }
-
-            function addProject() {
-                const nameInput = document.getElementById("new-proj-name");
-                const colorInput = document.getElementById("new-proj-color");
-                const typeInput = document.getElementById("new-proj-type");
-
-                const name = nameInput.value.trim();
-                if (!name || !typeInput.value)
-                    return alert("Name and Type are required!");
-
-                state.projects.push({
-                    id: "p_" + Date.now(),
-                    name: name,
-                    color: colorInput.value,
-                    typeId: typeInput.value,
-                });
-
-                nameInput.value = "";
-                saveState();
-                renderSettingsData();
-                refreshAllViews();
-            }
-
-            function removeProject(id, updateStorage = true) {
-                state.projects = state.projects.filter((p) => p.id !== id);
-                for (let date in state.schedules) {
-                    state.schedules[date] = state.schedules[date].map((row) =>
-                        row.map((block) => (block === id ? null : block)),
+                saveState() {
+                    localStorage.setItem(
+                        this.storageKey,
+                        JSON.stringify(this.data),
                     );
                 }
-                if (updateStorage) saveState();
-                renderSettingsData();
-                refreshAllViews();
-            }
 
-            // --- ACTIONS ---
-            function selectDate(dateStr) {
-                state.currentDate = dateStr;
-                saveState();
-                refreshAllViews();
-            }
-
-            function updateBlock(row, col, projectId) {
-                state.schedules[state.currentDate][row][col] = projectId;
-                saveState();
-                closeAllMenus();
-                renderSchedule();
-                renderAnalytics();
-            }
-
-            function fillRow(row, projectId) {
-                for (let i = 0; i < 6; i++) {
-                    state.schedules[state.currentDate][row][i] = projectId;
+                ensureDateExists(dateStr) {
+                    if (!this.data.schedules[dateStr]) {
+                        this.data.schedules[dateStr] = Array(this.hours.length)
+                            .fill(null)
+                            .map(() => Array(6).fill(null));
+                        this.saveState();
+                    }
                 }
-                saveState();
-                closeAllMenus();
-                renderSchedule();
-                renderAnalytics();
+
+                getProjectById(id) {
+                    return this.data.projects.find((p) => p.id === id);
+                }
+
+                getTypeById(id) {
+                    return this.data.types.find((t) => t.id === id);
+                }
             }
 
-            function refreshAllViews() {
-                updateDateDisplay();
-                renderCalendar();
-                renderProjectsSidebar();
-                renderSchedule();
-                renderAnalytics();
+            // -----------------------------------------------------------------------------
+            // 2. UI MANAGEMENT (View)
+            // -----------------------------------------------------------------------------
+            class UIManager {
+                constructor(controller) {
+                    this.ctrl = controller;
+                }
+
+                closeAllMenus() {
+                    document
+                        .querySelectorAll(".choice-menu")
+                        .forEach((m) => m.remove());
+                }
+
+                renderHeader(dateStr) {
+                    const dateObj = new Date(dateStr);
+                    const options = {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                    };
+                    const parts = dateObj
+                        .toLocaleDateString("en-US", options)
+                        .split(", ");
+                    document.getElementById("display-day").innerText = parts[0];
+                    document.getElementById("display-date").innerText =
+                        parts[1] + ", " + parts[2];
+                }
+
+                renderCalendar(currentDate) {
+                    const grid = document.getElementById("calendar-grid");
+                    grid.innerHTML = "";
+                    for (let i = 0; i < 3; i++)
+                        grid.innerHTML += `<div class="py-2 text-gray-300"></div>`;
+
+                    for (let day = 1; day <= 30; day++) {
+                        const dateStr = `2026-04-${day.toString().padStart(2, "0")}`;
+                        const isActive = dateStr === currentDate;
+                        grid.innerHTML += `
+                        <div onclick="app.selectDate('${dateStr}')"
+                             class="py-1 cursor-pointer hover:bg-indigo-50 rounded-md transition ${isActive ? "active-date shadow-md" : "text-gray-700"}">
+                            ${day}
+                        </div>`;
+                    }
+                }
+
+                renderSidebarProjects(projects, types) {
+                    const list = document.getElementById("project-list");
+                    list.innerHTML = "";
+                    projects.forEach((p) => {
+                        const typeName =
+                            types.find((t) => t.id === p.typeId)?.name ||
+                            "Unknown";
+                        list.innerHTML += `
+                        <div class="flex items-center gap-3 p-2 rounded-lg bg-white border border-gray-100 shadow-sm">
+                            <div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-800 leading-tight">${p.name}</span>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-wide">${typeName}</span>
+                            </div>
+                        </div>`;
+                    });
+                }
+
+                renderAnalytics(scheduleData, projects) {
+                    const bar = document.getElementById("analytics-bar");
+                    bar.innerHTML = "";
+                    let counts = {};
+
+                    scheduleData.forEach((row) => {
+                        row.forEach((block) => {
+                            if (block) counts[block] = (counts[block] || 0) + 1;
+                        });
+                    });
+
+                    let totalAssigned = 0;
+                    projects.forEach((p) => {
+                        const blocks = counts[p.id] || 0;
+                        if (blocks > 0) {
+                            const minutes = blocks * 10;
+                            const hoursStr =
+                                minutes >= 60
+                                    ? `${(minutes / 60).toFixed(1)}h`
+                                    : `${minutes}m`;
+                            bar.innerHTML += `
+                            <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 shadow-sm">
+                                <span class="w-3 h-3 rounded-full" style="background-color: ${p.color}"></span>
+                                <span class="text-xs font-semibold text-gray-700">${p.name}: <span class="text-gray-500">${hoursStr}</span></span>
+                            </div>`;
+                            totalAssigned++;
+                        }
+                    });
+
+                    if (totalAssigned === 0)
+                        bar.innerHTML = `<span class="text-sm text-gray-400 italic">No blocks assigned.</span>`;
+                }
+
+                renderSchedule(scheduleData, hours, projects) {
+                    const container = document.getElementById("schedule-grid");
+                    container.innerHTML = "";
+
+                    hours.forEach((time, rowIndex) => {
+                        const rowEl = document.createElement("div");
+                        rowEl.className = "flex items-center gap-8 group";
+
+                        const timeLabel = document.createElement("div");
+                        timeLabel.className =
+                            "w-16 text-xs font-bold text-gray-400 uppercase tracking-wider text-right";
+                        timeLabel.textContent = time;
+
+                        const blocksContainer = document.createElement("div");
+                        blocksContainer.className =
+                            "flex gap-3 md:gap-4 flex-wrap bg-gray-50 p-2 rounded-2xl group-hover:bg-gray-100 transition";
+
+                        scheduleData[rowIndex].forEach(
+                            (blockProjectId, colIndex) => {
+                                const block = document.createElement("button");
+                                block.className = "circle-btn shadow-sm";
+
+                                const project = projects.find(
+                                    (p) => p.id === blockProjectId,
+                                );
+
+                                if (project) {
+                                    block.style.backgroundColor = project.color;
+                                    block.classList.add("filled");
+                                    block.title = project.name;
+                                } else {
+                                    block.title = "Empty (Click to set)";
+                                }
+
+                                block.oncontextmenu = (e) => {
+                                    e.preventDefault();
+                                    this.ctrl.updateBlock(
+                                        rowIndex,
+                                        colIndex,
+                                        null,
+                                    );
+                                };
+
+                                block.onclick = (e) => {
+                                    e.stopPropagation();
+                                    this.closeAllMenus();
+                                    this.renderChoiceMenu(
+                                        block,
+                                        rowIndex,
+                                        colIndex,
+                                        projects,
+                                    );
+                                };
+
+                                blocksContainer.appendChild(block);
+                            },
+                        );
+
+                        rowEl.appendChild(timeLabel);
+                        rowEl.appendChild(blocksContainer);
+                        container.appendChild(rowEl);
+                    });
+                }
+
+                renderChoiceMenu(blockElement, rowIndex, colIndex, projects) {
+                    const menu = document.createElement("div");
+                    menu.className = "choice-menu";
+
+                    projects.forEach((p) => {
+                        const btn = document.createElement("button");
+                        btn.className =
+                            "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
+                        btn.innerHTML = `
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div>
+                            <span class="text-xs font-bold text-gray-700 truncate">${p.name}</span>
+                        </div>
+                        <div class="opacity-0 group-hover/btn:opacity-100 text-[10px] text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-100 fill-hour-btn" title="Fill entire hour">Fill Hr</div>
+                    `;
+                        btn.onclick = (event) => {
+                            event.stopPropagation();
+                            if (
+                                event.target.classList.contains("fill-hour-btn")
+                            ) {
+                                this.ctrl.fillRow(rowIndex, p.id);
+                            } else {
+                                this.ctrl.updateBlock(rowIndex, colIndex, p.id);
+                            }
+                        };
+                        menu.appendChild(btn);
+                    });
+
+                    const reset = document.createElement("button");
+                    reset.className =
+                        "mt-1 p-2 w-full text-left text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition border-t border-gray-100";
+                    reset.innerText = "Clear Block";
+                    reset.onclick = (event) => {
+                        event.stopPropagation();
+                        this.ctrl.updateBlock(rowIndex, colIndex, null);
+                    };
+
+                    menu.appendChild(reset);
+                    blockElement.appendChild(menu);
+                }
+
+                renderSettings(types, projects) {
+                    const typeSelect = document.getElementById("new-proj-type");
+                    typeSelect.innerHTML =
+                        types.length === 0
+                            ? "<option disabled>No types available</option>"
+                            : "";
+                    types.forEach(
+                        (t) =>
+                            (typeSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`),
+                    );
+
+                    const typesList = document.getElementById(
+                        "settings-types-list",
+                    );
+                    typesList.innerHTML = "";
+                    types.forEach((t) => {
+                        typesList.innerHTML += `
+                        <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
+                            <span class="text-sm font-medium text-gray-700">${t.name}</span>
+                            <button onclick="app.removeType('${t.id}')" class="text-red-400 hover:text-red-600 font-bold text-xs">Remove</button>
+                        </div>`;
+                    });
+
+                    const projList = document.getElementById(
+                        "settings-projects-list",
+                    );
+                    projList.innerHTML = "";
+                    projects.forEach((p) => {
+                        const typeName =
+                            types.find((t) => t.id === p.typeId)?.name ||
+                            "Unknown";
+                        projList.innerHTML += `
+                        <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
+                            <div class="flex items-center gap-3">
+                                <div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold text-gray-800">${p.name}</span>
+                                    <span class="text-[10px] text-gray-400 uppercase">${typeName}</span>
+                                </div>
+                            </div>
+                            <button onclick="app.removeProject('${p.id}')" class="text-red-400 hover:text-red-600 font-bold text-xs">Remove</button>
+                        </div>`;
+                    });
+                }
+
+                toggleModal(modalId, show) {
+                    const modal = document.getElementById(modalId);
+                    if (show) {
+                        modal.classList.remove("hidden");
+                        modal.classList.add("modal-bg");
+                    } else {
+                        modal.classList.add("hidden");
+                        modal.classList.remove("modal-bg");
+                    }
+                }
             }
 
-            // --- INITIALIZE ---
-            refreshAllViews();
+            // -----------------------------------------------------------------------------
+            // 3. APP CONTROLLER (Business Logic)
+            // -----------------------------------------------------------------------------
+            class AppController {
+                constructor() {
+                    this.state = new StateManager();
+                    this.ui = new UIManager(this);
+                    this.setupGlobalListeners();
+                    this.refreshAllViews();
+                }
+
+                setupGlobalListeners() {
+                    document.addEventListener("click", () =>
+                        this.ui.closeAllMenus(),
+                    );
+                    document.addEventListener("keydown", (e) => {
+                        if (e.key === "Escape") {
+                            this.ui.closeAllMenus();
+                            this.closeSettingsModal();
+                        }
+                    });
+                    document
+                        .getElementById("settings-modal")
+                        .addEventListener("click", (e) => {
+                            if (e.target.id === "settings-modal")
+                                this.closeSettingsModal();
+                        });
+                }
+
+                refreshAllViews() {
+                    const data = this.state.data;
+                    this.state.ensureDateExists(data.currentDate);
+
+                    this.ui.renderHeader(data.currentDate);
+                    this.ui.renderCalendar(data.currentDate);
+                    this.ui.renderSidebarProjects(data.projects, data.types);
+                    this.ui.renderSchedule(
+                        data.schedules[data.currentDate],
+                        this.state.hours,
+                        data.projects,
+                    );
+                    this.ui.renderAnalytics(
+                        data.schedules[data.currentDate],
+                        data.projects,
+                    );
+                }
+
+                // --- USER ACTIONS ---
+                goToToday() {
+                    this.state.data.currentDate = "2026-04-12"; // Standardized for prototype
+                    this.state.saveState();
+                    this.refreshAllViews();
+                }
+
+                selectDate(dateStr) {
+                    this.state.data.currentDate = dateStr;
+                    this.state.saveState();
+                    this.refreshAllViews();
+                }
+
+                updateBlock(row, col, projectId) {
+                    this.state.data.schedules[this.state.data.currentDate][row][
+                        col
+                    ] = projectId;
+                    this.state.saveState();
+                    this.ui.closeAllMenus();
+
+                    // Partial refresh for performance
+                    this.ui.renderSchedule(
+                        this.state.data.schedules[this.state.data.currentDate],
+                        this.state.hours,
+                        this.state.data.projects,
+                    );
+                    this.ui.renderAnalytics(
+                        this.state.data.schedules[this.state.data.currentDate],
+                        this.state.data.projects,
+                    );
+                }
+
+                fillRow(row, projectId) {
+                    for (let i = 0; i < 6; i++) {
+                        this.state.data.schedules[this.state.data.currentDate][
+                            row
+                        ][i] = projectId;
+                    }
+                    this.state.saveState();
+                    this.ui.closeAllMenus();
+                    this.ui.renderSchedule(
+                        this.state.data.schedules[this.state.data.currentDate],
+                        this.state.hours,
+                        this.state.data.projects,
+                    );
+                    this.ui.renderAnalytics(
+                        this.state.data.schedules[this.state.data.currentDate],
+                        this.state.data.projects,
+                    );
+                }
+
+                // --- MODAL & DATA MANAGEMENT ---
+                openSettingsModal() {
+                    this.ui.renderSettings(
+                        this.state.data.types,
+                        this.state.data.projects,
+                    );
+                    this.ui.toggleModal("settings-modal", true);
+                }
+
+                closeSettingsModal() {
+                    this.ui.toggleModal("settings-modal", false);
+                }
+
+                addType() {
+                    const input = document.getElementById("new-type-name");
+                    const name = input.value.trim();
+                    if (!name) return;
+
+                    this.state.data.types.push({ id: "t_" + Date.now(), name });
+                    input.value = "";
+                    this.state.saveState();
+                    this.ui.renderSettings(
+                        this.state.data.types,
+                        this.state.data.projects,
+                    );
+                }
+
+                removeType(id) {
+                    this.state.data.types = this.state.data.types.filter(
+                        (t) => t.id !== id,
+                    );
+                    // Cascade deletion
+                    this.state.data.projects
+                        .filter((p) => p.typeId === id)
+                        .forEach((p) => this.removeProject(p.id, false));
+                    this.state.saveState();
+                    this.ui.renderSettings(
+                        this.state.data.types,
+                        this.state.data.projects,
+                    );
+                    this.refreshAllViews();
+                }
+
+                addProject() {
+                    const nameInput = document.getElementById("new-proj-name");
+                    const colorInput =
+                        document.getElementById("new-proj-color");
+                    const typeInput = document.getElementById("new-proj-type");
+
+                    const name = nameInput.value.trim();
+                    if (!name || !typeInput.value)
+                        return alert("Name and Type are required!");
+
+                    this.state.data.projects.push({
+                        id: "p_" + Date.now(),
+                        name: name,
+                        color: colorInput.value,
+                        typeId: typeInput.value,
+                    });
+
+                    nameInput.value = "";
+                    this.state.saveState();
+                    this.ui.renderSettings(
+                        this.state.data.types,
+                        this.state.data.projects,
+                    );
+                    this.refreshAllViews();
+                }
+
+                removeProject(id, updateStorage = true) {
+                    this.state.data.projects = this.state.data.projects.filter(
+                        (p) => p.id !== id,
+                    );
+
+                    // Scrub project from all schedules globally
+                    for (let date in this.state.data.schedules) {
+                        this.state.data.schedules[date] =
+                            this.state.data.schedules[date].map((row) =>
+                                row.map((block) =>
+                                    block === id ? null : block,
+                                ),
+                            );
+                    }
+
+                    if (updateStorage) this.state.saveState();
+                    this.ui.renderSettings(
+                        this.state.data.types,
+                        this.state.data.projects,
+                    );
+                    this.refreshAllViews();
+                }
+            }
+
+            // Initialize App Globally
+            window.app = new AppController();
         </script>
     </body>
 </html>
