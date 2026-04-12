@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Planner - v13 (Week View & Polish)</title>
+        <title>Planner - v14 (Midnight Engine & Palette Polish)</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap"
@@ -291,7 +291,7 @@
                 background: #ef4444;
             }
 
-            /* Command Palette - Tighter */
+            /* Command Palette */
             .cmd-palette-wrapper {
                 position: fixed;
                 inset: 0;
@@ -745,8 +745,16 @@
 
             class StateManager {
                 constructor() {
-                    this.storageKey = "planner_state_v13";
+                    this.storageKey = "planner_state_v14";
+                    // 12AM to 12AM (24 hours) layout
                     this.hours = [
+                        "12 AM",
+                        "1 AM",
+                        "2 AM",
+                        "3 AM",
+                        "4 AM",
+                        "5 AM",
+                        "6 AM",
                         "7 AM",
                         "8 AM",
                         "9 AM",
@@ -764,13 +772,6 @@
                         "9 PM",
                         "10 PM",
                         "11 PM",
-                        "12 AM",
-                        "1 AM",
-                        "2 AM",
-                        "3 AM",
-                        "4 AM",
-                        "5 AM",
-                        "6 AM",
                     ];
                     this.data = this.loadState();
                     const initDate = new Date(
@@ -781,18 +782,17 @@
                     this.paintProjectId = null;
                 }
 
-                getLogicalDate(dateObj = new Date()) {
+                getLocalISODate(dateObj = new Date()) {
                     const offset = dateObj.getTimezoneOffset() * 60000;
-                    const local = new Date(dateObj.getTime() - offset);
-                    if (dateObj.getHours() < 7)
-                        local.setDate(local.getDate() - 1);
-                    return local.toISOString().split("T")[0];
+                    return new Date(dateObj.getTime() - offset)
+                        .toISOString()
+                        .split("T")[0];
                 }
 
                 getDefaultState() {
                     return {
-                        version: 10,
-                        currentDate: this.getLogicalDate(),
+                        version: 11,
+                        currentDate: this.getLocalISODate(),
                         viewMode: "day", // "day" or "week"
                         types: [
                             { id: "t_1", name: "Work" },
@@ -887,31 +887,29 @@
 
             // --- PART 2: COMMAND PARSER (Live Interpreter) ---
             class CommandParser {
-                constructor(state, appRegistry) {
+                constructor(state) {
                     this.state = state;
-                    this.appRegistry = appRegistry; // Needed for base commands fallback
                     this.globals = {
                         day: [0, 23],
-                        morning: [0, 4],
-                        afternoon: [5, 9],
-                        evening: [10, 13],
-                        night: [14, 17],
+                        morning: [6, 11],
+                        afternoon: [12, 16],
+                        evening: [17, 20],
+                        night: [21, 23],
                     };
                 }
 
                 timeToRow(t) {
                     let num = parseInt(t.replace(/\D/g, ""));
-                    let isPm = t.includes("pm");
-                    let isAm = t.includes("am");
+                    let isPm = t.includes("pm") || t.includes("p");
+                    let isAm = t.includes("am") || t.includes("a");
                     if (!isPm && !isAm) {
-                        if (num >= 7 && num <= 11) isAm = true;
-                        else if (num === 12 || (num >= 1 && num <= 6))
+                        if (num >= 8 && num <= 11) isAm = true;
+                        else if (num === 12 || (num >= 1 && num <= 7))
                             isPm = true;
                     }
                     if (isPm && num !== 12) num += 12;
                     if (isAm && num === 12) num = 0;
-                    let row = num >= 7 ? num - 7 : num + 17;
-                    return row >= 0 && row <= 23 ? row : -1;
+                    return num >= 0 && num <= 23 ? num : -1;
                 }
 
                 fuzzyScore(query, target) {
@@ -1012,7 +1010,6 @@
 
                         hasValidCommand = true;
                         let val = action === "clear" ? null : projectId;
-                        // Use currentDate as the key base for parsed changes
                         const d = this.state.getCurrentDate();
                         let addRow = (r) => {
                             if (r >= 0 && r <= 23) {
@@ -1052,7 +1049,7 @@
                 constructor(app, state) {
                     this.app = app;
                     this.state = state;
-                    this.parser = new CommandParser(state, this);
+                    this.parser = new CommandParser(state);
                     this.isOpen = false;
                     this.filteredCommands = [];
                     this.selectedIndex = 0;
@@ -1095,7 +1092,7 @@
                     this.wrapper.className = "cmd-palette-wrapper hidden";
                     this.wrapper.innerHTML = `
                         <div class="cmd-palette">
-                            <input type="text" class="cmd-palette-input" placeholder="e.g. '7am deep work', 'morning study | clear 1pm', 'help'..." autocomplete="off" spellcheck="false" />
+                            <input type="text" class="cmd-palette-input" placeholder="e.g. '7am deep work', '8', 'morning study | clear 1pm'..." autocomplete="off" spellcheck="false" />
                             <div class="cmd-palette-list custom-scroll"></div>
                         </div>
                     `;
@@ -1130,9 +1127,7 @@
                             if (e.key === "Escape") {
                                 e.preventDefault();
                                 this.close();
-                            }
-                            // Fix: ArrowUp decreases visual index, ArrowDown increases, because DOM is reversed
-                            else if (e.key === "ArrowDown") {
+                            } else if (e.key === "ArrowDown") {
                                 e.preventDefault();
                                 this.moveSelection(-1);
                             } else if (e.key === "ArrowUp") {
@@ -1179,7 +1174,51 @@
                 }
 
                 filterCommands(query) {
-                    globalBus.emit("preview:blocks", null); // default reset preview
+                    globalBus.emit("preview:blocks", null);
+
+                    let hints = [];
+                    const qTokens = query.toLowerCase().trim().split(/\s+/);
+                    const qFirst = qTokens[0];
+
+                    if (/^(\d{1,2})(a|p|am|pm)?$/.test(qFirst)) {
+                        let numStr = qFirst.match(/\d+/)[0];
+                        let num = parseInt(numStr);
+                        let suffix = qFirst.replace(/\d+/g, "");
+                        if (num >= 1 && num <= 12) {
+                            if (
+                                suffix === "" ||
+                                suffix === "a" ||
+                                suffix === "am"
+                            )
+                                hints.push({
+                                    title: `${num}am <span class="text-gray-400 font-normal">... (type project)</span>`,
+                                    isHint: true,
+                                });
+                            if (
+                                suffix === "" ||
+                                suffix === "p" ||
+                                suffix === "pm"
+                            )
+                                hints.push({
+                                    title: `${num}pm <span class="text-gray-400 font-normal">... (type project)</span>`,
+                                    isHint: true,
+                                });
+                        }
+                    } else if (qFirst.length > 0) {
+                        [
+                            "morning",
+                            "afternoon",
+                            "evening",
+                            "night",
+                            "day",
+                        ].forEach((g) => {
+                            if (g.startsWith(qFirst))
+                                hints.push({
+                                    title: `${g} <span class="text-gray-400 font-normal">... (type project)</span>`,
+                                    isHint: true,
+                                });
+                        });
+                    }
 
                     if (!query.trim()) {
                         this.filteredCommands = [
@@ -1235,21 +1274,25 @@
                                 },
                             ];
                         } else {
-                            // Fallback Base Commands matching
-                            const baseCmds = this.getRegistryCommands();
-                            const matched = baseCmds.filter(
-                                (c) =>
-                                    this.parser.fuzzyScore(query, c.title) > 0,
-                            );
-                            this.filteredCommands =
-                                matched.length > 0
-                                    ? matched
-                                    : [
-                                          {
-                                              title: "No command matched.",
-                                              isHelp: true,
-                                          },
-                                      ];
+                            if (hints.length > 0) {
+                                this.filteredCommands = hints;
+                            } else {
+                                const baseCmds = this.getRegistryCommands();
+                                const matched = baseCmds.filter(
+                                    (c) =>
+                                        this.parser.fuzzyScore(query, c.title) >
+                                        0,
+                                );
+                                this.filteredCommands =
+                                    matched.length > 0
+                                        ? matched
+                                        : [
+                                              {
+                                                  title: "No command matched.",
+                                                  isHint: true,
+                                              },
+                                          ];
+                            }
                         }
                     }
                     this.selectedIndex = 0;
@@ -1279,18 +1322,14 @@
                     if (this.selectedIndex >= this.filteredCommands.length)
                         this.selectedIndex = 0;
                     this.updateSelectionVisuals();
-                    // Fix scrolling for column-reverse flex layout
-                    const domIndex =
-                        this.filteredCommands.length - 1 - this.selectedIndex;
+                    const domIndex = this.selectedIndex;
                     const activeEl = this.list.children[domIndex];
                     if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
                 }
 
                 updateSelectionVisuals() {
                     Array.from(this.list.children).forEach((el, idx) => {
-                        const logicalIdx =
-                            this.filteredCommands.length - 1 - idx;
-                        if (logicalIdx === this.selectedIndex)
+                        if (idx === this.selectedIndex)
                             el.classList.add("active");
                         else el.classList.remove("active");
                     });
@@ -1510,7 +1549,6 @@
                         const block = e.target.closest(".schedule-block");
                         if (!block) return;
 
-                        // Basic linear navigation for simplicity in both views
                         const blocks = Array.from(
                             document.querySelectorAll(".schedule-block"),
                         );
@@ -1519,7 +1557,6 @@
 
                         if (e.key === "ArrowRight") nextIndex++;
                         else if (e.key === "ArrowLeft") nextIndex--;
-                        // simplified up/down logic for generic linear layout to avoid complex matrix math across week view
                         else if (e.key === "ArrowDown") nextIndex += 6;
                         else if (e.key === "ArrowUp") nextIndex -= 6;
                         else if (e.key === "Enter" || e.key === " ") {
@@ -1644,7 +1681,6 @@
                         this.state.getTypes(),
                     );
 
-                    // Update View Buttons
                     document.getElementById("btn-view-day").className =
                         `flex-1 py-1 text-xs font-bold rounded-md transition ${this.state.data.viewMode === "day" ? "shadow-sm bg-white text-gray-800" : "text-gray-500 hover:text-gray-700"}`;
                     document.getElementById("btn-view-week").className =
@@ -1743,6 +1779,7 @@
                                 : "";
                             const pCard = document.createElement("div");
                             pCard.className = `project-card flex items-center gap-3 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition`;
+                            pCard.title = p.name; // Tooltip on hover
                             pCard.innerHTML = `<div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${p.color};"></div><span class="text-sm font-semibold text-gray-800 truncate hide-on-collapse">${p.name}</span>${badgeHTML}`;
                             pCard.onclick = () => app.togglePaintMode(p.id);
                             list.appendChild(pCard);
@@ -1779,12 +1816,11 @@
                     const blocks = scheduleObj.blocks;
 
                     const now = new Date();
-                    const logicalToday = this.state.getLogicalDate(now);
+                    const logicalToday = this.state.getLocalISODate(now);
                     const isToday = targetDateStr === logicalToday;
 
                     let currentHour = now.getHours();
-                    let currentRowIndex =
-                        currentHour >= 7 ? currentHour - 7 : currentHour + 17;
+                    let currentRowIndex = currentHour;
 
                     hours.forEach((time, rowIndex) => {
                         const isCurrentRow =
@@ -1880,7 +1916,6 @@
                         });
                     }
 
-                    // Render Header Row
                     const headerRow = document.createElement("div");
                     headerRow.className =
                         "grid grid-cols-[60px_repeat(7,1fr)] gap-2 md:gap-4 mb-2 pb-2 border-b border-gray-100 sticky top-0 bg-white z-10 pt-2";
@@ -1897,12 +1932,10 @@
                             .join("");
                     container.appendChild(headerRow);
 
-                    // Render Time Rows
                     const now = new Date();
-                    const logicalToday = this.state.getLogicalDate(now);
+                    const logicalToday = this.state.getLocalISODate(now);
                     let currentHour = now.getHours();
-                    let currentRowIndex =
-                        currentHour >= 7 ? currentHour - 7 : currentHour + 17;
+                    let currentRowIndex = currentHour;
 
                     hours.forEach((time, rowIndex) => {
                         const rowEl = document.createElement("div");
@@ -2276,7 +2309,6 @@
                 commitChanges(changes) {
                     this.state.updateState((data) => {
                         Object.entries(changes).forEach(([key, pid]) => {
-                            // Extract Date, Row, Col from key (YYYY-MM-DD-Row-Col)
                             const parts = key.split("-");
                             const dStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
                             const r = parts[3];
@@ -2392,7 +2424,7 @@
                     this.selectDate(localISOTime);
                 }
                 goToToday() {
-                    const todayStr = this.state.getLogicalDate();
+                    const todayStr = this.state.getLocalISODate();
                     const d = new Date(todayStr + "T00:00:00");
                     this.state.viewMonth = d.getMonth();
                     this.state.viewYear = d.getFullYear();
