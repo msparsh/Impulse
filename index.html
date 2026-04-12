@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Planner - v12 (Live Interpreter Engine)</title>
+        <title>Planner - v13 (Week View & Polish)</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap"
@@ -15,6 +15,8 @@
                 background-color: #f9fafb;
                 color: #1a1a1a;
             }
+
+            /* Block Defaults (Day View) */
             .circle-btn {
                 width: 44px;
                 height: 44px;
@@ -22,15 +24,14 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 20px;
                 transition:
                     background-color 0.3s ease,
                     transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                position: relative;
                 background-color: #e5e7eb;
                 border: 2px solid transparent;
                 cursor: pointer;
                 outline: none;
+                flex-shrink: 0;
             }
             .circle-btn:hover {
                 transform: scale(1.1);
@@ -47,8 +48,53 @@
             .circle-btn.filled {
                 border-color: rgba(0, 0, 0, 0.1);
             }
+
+            /* Tiny Blocks (Week View) */
+            .tiny-dot {
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background-color: #e5e7eb;
+                cursor: pointer;
+                transition:
+                    background-color 0.2s,
+                    transform 0.1s;
+                border: 1px solid rgba(0, 0, 0, 0.05);
+            }
+            .tiny-dot:hover {
+                transform: scale(1.2);
+                z-index: 10;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .tiny-dot.filled {
+                border-color: transparent;
+            }
+            .tiny-dot:focus-visible,
+            .tiny-dot.js-focus {
+                outline: 2px solid #4f46e5;
+                outline-offset: 1px;
+            }
+
+            /* Week Cell Container */
+            .week-cell {
+                display: grid;
+                grid-template-columns: repeat(3, 14px);
+                grid-template-rows: repeat(2, 14px);
+                gap: 4px;
+                justify-content: center;
+                align-content: center;
+                padding: 6px;
+                border: 1px solid #f3f4f6;
+                border-radius: 8px;
+                background: white;
+                transition: background 0.2s;
+            }
+            .week-cell:hover {
+                background: #f8fafc;
+            }
+
             .active-block {
-                box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.4);
+                box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.4) !important;
                 transform: scale(1.1);
                 z-index: 20;
             }
@@ -117,7 +163,7 @@
                 box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
                 z-index: 9999;
                 width: 200px;
-                animation: fadeIn 0.15s ease-out;
+                animation: fadeIn 0.1s ease-out;
             }
             .choice-menu button:focus-visible {
                 background-color: #f3f4f6;
@@ -132,19 +178,35 @@
                 background: #cbd5e1;
                 border-radius: 4px;
             }
-            .sidebar-collapsed {
-                width: 0 !important;
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-                opacity: 0;
-                overflow: hidden;
-                border: none;
-            }
+
+            /* Sidebar Collapse Styles */
             .sidebar-transition {
                 transition:
                     width 0.3s ease,
-                    padding 0.3s ease,
-                    opacity 0.3s ease;
+                    padding 0.3s ease;
+            }
+            .sidebar-collapsed {
+                width: 72px !important;
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+                overflow-x: hidden;
+            }
+            .sidebar-collapsed .hide-on-collapse {
+                display: none !important;
+            }
+            .sidebar-collapsed .project-card {
+                justify-content: center;
+                padding: 8px 0;
+                border: none;
+                box-shadow: none;
+                background: transparent;
+            }
+            .sidebar-collapsed .project-card:hover {
+                transform: scale(1.1);
+            }
+            .sidebar-collapsed .project-card span,
+            .sidebar-collapsed .paint-active-indicator {
+                display: none;
             }
 
             @keyframes fadeIn {
@@ -183,16 +245,6 @@
                     opacity: 0;
                 }
             }
-            @keyframes slideInRight {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
 
             .modal-bg {
                 animation: fadeIn 0.2s ease-out forwards;
@@ -220,35 +272,6 @@
                 border-bottom-color: #cbd5e1;
                 background-color: #f1f5f9;
             }
-            .edit-success {
-                background-color: #dcfce7;
-                transition: background-color 0.6s;
-            }
-
-            .drag-over {
-                border: 2px dashed #4f46e5 !important;
-                background-color: #e0e7ff !important;
-            }
-            .drag-over-top {
-                border-top: 3px solid #4f46e5 !important;
-            }
-            .grab-handle {
-                cursor: grab;
-                opacity: 0.4;
-                transition: opacity 0.2s;
-            }
-            .grab-handle:hover {
-                opacity: 0.8;
-            }
-            .grab-handle:active {
-                cursor: grabbing;
-            }
-            .dragging {
-                opacity: 0.6 !important;
-                transform: scale(0.97);
-                cursor: grabbing !important;
-                box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.15);
-            }
 
             .toast {
                 position: fixed;
@@ -262,13 +285,13 @@
                 font-weight: 600;
                 box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
                 z-index: 10000;
-                animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                animation: fadeIn 0.3s ease-out;
             }
             .toast.error {
                 background: #ef4444;
             }
 
-            /* Command Palette - Bottom Docked, Upward Flow */
+            /* Command Palette - Tighter */
             .cmd-palette-wrapper {
                 position: fixed;
                 inset: 0;
@@ -287,7 +310,7 @@
             }
             .cmd-palette {
                 width: 100%;
-                max-width: 650px;
+                max-width: 520px;
                 background: white;
                 border-radius: 12px;
                 box-shadow:
@@ -301,8 +324,8 @@
             }
             .cmd-palette-input {
                 width: 100%;
-                padding: 16px 20px;
-                font-size: 1.125rem;
+                padding: 14px 18px;
+                font-size: 1.05rem;
                 border: none;
                 outline: none;
                 background: transparent;
@@ -315,7 +338,7 @@
                 font-weight: 400;
             }
             .cmd-palette-list {
-                max-height: 350px;
+                max-height: 300px;
                 overflow-y: auto;
                 padding: 6px;
                 display: flex;
@@ -325,8 +348,8 @@
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 10px 14px;
-                border-radius: 8px;
+                padding: 8px 12px;
+                border-radius: 6px;
                 cursor: pointer;
                 color: #4b5563;
             }
@@ -339,13 +362,13 @@
             }
             .cmd-item-title {
                 font-weight: 600;
-                font-size: 14px;
+                font-size: 13px;
                 display: flex;
                 align-items: center;
                 gap: 8px;
             }
             .cmd-subtext {
-                font-size: 11px;
+                font-size: 10px;
                 color: #9ca3af;
                 text-transform: uppercase;
                 font-weight: 800;
@@ -479,7 +502,7 @@
                     class="w-80 border-r border-gray-100 p-6 flex flex-col gap-6 overflow-y-auto custom-scroll bg-gray-50 sidebar-transition flex-shrink-0"
                 >
                     <div
-                        class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"
+                        class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hide-on-collapse"
                     >
                         <div class="flex items-center justify-between mb-4">
                             <button
@@ -547,6 +570,23 @@
                         >
                             Go to Today
                         </button>
+
+                        <div class="flex bg-gray-100 rounded-lg p-1 mt-4">
+                            <button
+                                id="btn-view-day"
+                                onclick="app.setViewMode('day')"
+                                class="flex-1 py-1 text-xs font-bold rounded-md shadow-sm bg-white text-gray-800 transition"
+                            >
+                                Day
+                            </button>
+                            <button
+                                id="btn-view-week"
+                                onclick="app.setViewMode('week')"
+                                class="flex-1 py-1 text-xs font-bold rounded-md text-gray-500 hover:text-gray-700 transition"
+                            >
+                                Week
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <div
@@ -572,7 +612,7 @@
                     >
                         <div
                             id="schedule-grid"
-                            class="flex flex-col gap-6 max-w-4xl mx-auto pb-20 pt-4"
+                            class="flex flex-col gap-6 max-w-5xl mx-auto pb-20 pt-4"
                         ></div>
                     </div>
                 </main>
@@ -617,8 +657,7 @@
                         id="new-type-name"
                         placeholder="New Category Type..."
                         class="text-sm p-2 border border-gray-200 rounded-lg flex-1 focus:outline-none focus:border-indigo-500 bg-gray-50"
-                    />
-                    <button
+                    /><button
                         onclick="app.addType()"
                         class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-700 transition shadow-sm"
                     >
@@ -662,9 +701,8 @@
                         onclick="app.cancelConfirm()"
                         class="px-4 py-2 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-200 transition"
                     >
-                        Cancel
-                    </button>
-                    <button
+                        Cancel</button
+                    ><button
                         id="confirm-action-btn"
                         class="px-4 py-2 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition shadow-sm"
                     >
@@ -707,7 +745,7 @@
 
             class StateManager {
                 constructor() {
-                    this.storageKey = "planner_state_v12";
+                    this.storageKey = "planner_state_v13";
                     this.hours = [
                         "7 AM",
                         "8 AM",
@@ -753,8 +791,9 @@
 
                 getDefaultState() {
                     return {
-                        version: 9,
+                        version: 10,
                         currentDate: this.getLogicalDate(),
+                        viewMode: "day", // "day" or "week"
                         types: [
                             { id: "t_1", name: "Work" },
                             { id: "t_2", name: "Personal" },
@@ -830,14 +869,14 @@
                 getHours() {
                     return this.hours;
                 }
-                getCurrentSchedule() {
-                    return this.data.schedules[this.data.currentDate];
+                getSchedule(dateStr) {
+                    this.ensureDateExists(dateStr);
+                    return this.data.schedules[dateStr];
                 }
                 getDailyAnalytics() {
                     let counts = {};
                     const blocks =
-                        this.data.schedules[this.data.currentDate]?.blocks ||
-                        {};
+                        this.getSchedule(this.data.currentDate)?.blocks || {};
                     Object.values(blocks).forEach((pid) => {
                         const p = this.getProjectById(pid);
                         if (p) counts[p.typeId] = (counts[p.typeId] || 0) + 1;
@@ -846,10 +885,11 @@
                 }
             }
 
-            // --- PART 2: COMMAND PARSER 3.0 (Live Interpreter) ---
+            // --- PART 2: COMMAND PARSER (Live Interpreter) ---
             class CommandParser {
-                constructor(state) {
+                constructor(state, appRegistry) {
                     this.state = state;
+                    this.appRegistry = appRegistry; // Needed for base commands fallback
                     this.globals = {
                         day: [0, 23],
                         morning: [0, 4],
@@ -885,7 +925,6 @@
                             qIdx++;
                         }
                     }
-                    // Word bonus
                     query
                         .toLowerCase()
                         .split(" ")
@@ -969,14 +1008,16 @@
                             });
                         }
 
-                        if (action === "set" && !projectId) return; // incomplete segment
+                        if (action === "set" && !projectId) return;
 
                         hasValidCommand = true;
                         let val = action === "clear" ? null : projectId;
+                        // Use currentDate as the key base for parsed changes
+                        const d = this.state.getCurrentDate();
                         let addRow = (r) => {
                             if (r >= 0 && r <= 23) {
                                 for (let c = 0; c < 6; c++)
-                                    finalChanges[`${r}-${c}`] = val;
+                                    finalChanges[`${d}-${r}-${c}`] = val;
                             }
                         };
 
@@ -984,7 +1025,7 @@
                         blocks.forEach((b) => {
                             let r = this.timeToRow(b.time);
                             if (r >= 0 && r <= 23)
-                                finalChanges[`${r}-${b.col}`] = val;
+                                finalChanges[`${d}-${r}-${b.col}`] = val;
                         });
                         ranges.forEach((rng) => {
                             let r1 = this.timeToRow(rng.t1);
@@ -1011,12 +1052,42 @@
                 constructor(app, state) {
                     this.app = app;
                     this.state = state;
-                    this.parser = new CommandParser(state);
+                    this.parser = new CommandParser(state, this);
                     this.isOpen = false;
                     this.filteredCommands = [];
                     this.selectedIndex = 0;
                     this.setupDOM();
                     this.setupListeners();
+                }
+
+                getRegistryCommands() {
+                    return [
+                        {
+                            title: "copy day",
+                            category: "Clipboard",
+                            action: () => this.app.copyDay(),
+                        },
+                        {
+                            title: "paste day",
+                            category: "Clipboard",
+                            action: () => this.app.pasteDay(),
+                        },
+                        {
+                            title: "clear day",
+                            category: "Scheduling",
+                            action: () => this.app.clearDay(),
+                        },
+                        {
+                            title: "today",
+                            category: "Navigation",
+                            action: () => this.app.goToToday(),
+                        },
+                        {
+                            title: "toggle sidebar",
+                            category: "UI",
+                            action: () => this.app.toggleSidebar(),
+                        },
+                    ];
                 }
 
                 setupDOM() {
@@ -1059,15 +1130,17 @@
                             if (e.key === "Escape") {
                                 e.preventDefault();
                                 this.close();
-                            } else if (e.key === "ArrowDown") {
-                                e.preventDefault();
-                                this.moveSelection(1);
-                            } else if (e.key === "ArrowUp") {
+                            }
+                            // Fix: ArrowUp decreases visual index, ArrowDown increases, because DOM is reversed
+                            else if (e.key === "ArrowDown") {
                                 e.preventDefault();
                                 this.moveSelection(-1);
+                            } else if (e.key === "ArrowUp") {
+                                e.preventDefault();
+                                this.moveSelection(1);
                             } else if (e.key === "Tab") {
                                 e.preventDefault();
-                                this.moveSelection(e.shiftKey ? -1 : 1);
+                                this.moveSelection(e.shiftKey ? 1 : -1);
                             } else if (e.key === "Enter") {
                                 e.preventDefault();
                                 this.executeSelected();
@@ -1098,7 +1171,7 @@
                 close() {
                     this.isOpen = false;
                     this.wrapper.classList.add("closing");
-                    globalBus.emit("preview:blocks", null); // Clear preview
+                    globalBus.emit("preview:blocks", null);
                     setTimeout(() => {
                         this.wrapper.classList.add("hidden");
                         this.wrapper.classList.remove("closing");
@@ -1106,31 +1179,20 @@
                 }
 
                 filterCommands(query) {
+                    globalBus.emit("preview:blocks", null); // default reset preview
+
                     if (!query.trim()) {
-                        globalBus.emit("preview:blocks", null);
                         this.filteredCommands = [
-                            {
-                                title: "copy day",
-                                action: () => this.app.copyDay(),
-                            },
-                            {
-                                title: "paste day",
-                                action: () => this.app.pasteDay(),
-                            },
-                            {
-                                title: "clear day",
-                                action: () => this.app.clearDay(),
-                            },
+                            ...this.getRegistryCommands(),
                             {
                                 title: "help",
-                                isHint: true,
+                                isHelp: true,
                                 category: "Type to see syntax",
                             },
                         ];
                     } else {
                         const parsed = this.parser.parse(query);
                         if (parsed && parsed.isHelp) {
-                            globalBus.emit("preview:blocks", null);
                             this.filteredCommands = [
                                 {
                                     title: "7am deep work",
@@ -1173,31 +1235,21 @@
                                 },
                             ];
                         } else {
-                            globalBus.emit("preview:blocks", null);
-                            // Fallback checks for simple global commands
-                            if ("copy day".startsWith(query.toLowerCase()))
-                                this.filteredCommands = [
-                                    {
-                                        title: "copy day",
-                                        action: () => this.app.copyDay(),
-                                    },
-                                ];
-                            else if (
-                                "paste day".startsWith(query.toLowerCase())
-                            )
-                                this.filteredCommands = [
-                                    {
-                                        title: "paste day",
-                                        action: () => this.app.pasteDay(),
-                                    },
-                                ];
-                            else
-                                this.filteredCommands = [
-                                    {
-                                        title: "Keep typing to build command...",
-                                        isHint: true,
-                                    },
-                                ];
+                            // Fallback Base Commands matching
+                            const baseCmds = this.getRegistryCommands();
+                            const matched = baseCmds.filter(
+                                (c) =>
+                                    this.parser.fuzzyScore(query, c.title) > 0,
+                            );
+                            this.filteredCommands =
+                                matched.length > 0
+                                    ? matched
+                                    : [
+                                          {
+                                              title: "No command matched.",
+                                              isHelp: true,
+                                          },
+                                      ];
                         }
                     }
                     this.selectedIndex = 0;
@@ -1227,18 +1279,15 @@
                     if (this.selectedIndex >= this.filteredCommands.length)
                         this.selectedIndex = 0;
                     this.updateSelectionVisuals();
-                    const activeEl =
-                        this.list.children[
-                            this.filteredCommands.length -
-                                1 -
-                                this.selectedIndex
-                        ]; // Flex column reverse
+                    // Fix scrolling for column-reverse flex layout
+                    const domIndex =
+                        this.filteredCommands.length - 1 - this.selectedIndex;
+                    const activeEl = this.list.children[domIndex];
                     if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
                 }
 
                 updateSelectionVisuals() {
                     Array.from(this.list.children).forEach((el, idx) => {
-                        // Because flex-direction is column-reverse, DOM index is inverted vs logical index
                         const logicalIdx =
                             this.filteredCommands.length - 1 - idx;
                         if (logicalIdx === this.selectedIndex)
@@ -1308,6 +1357,7 @@
                             block.classList.add("active-block", "js-focus");
                             this.renderChoiceMenu(
                                 block,
+                                block.dataset.date,
                                 block.dataset.row,
                                 block.dataset.col,
                             );
@@ -1334,6 +1384,7 @@
                         if (block) {
                             e.preventDefault();
                             globalBus.emit("block:update", {
+                                date: block.dataset.date,
                                 row: block.dataset.row,
                                 col: block.dataset.col,
                                 projectId: null,
@@ -1423,102 +1474,16 @@
                                 color: e.target.value,
                             });
                     });
-                    hierarchyList.addEventListener("dragstart", (e) => {
-                        const target = e.target.closest("[data-drag-id]");
-                        if (!target) return;
-                        this.dragState.type = target.dataset.dragEntity;
-                        this.dragState.sourceId = target.dataset.dragId;
-                        e.dataTransfer.effectAllowed = "move";
-                        target.style.opacity = "0.5";
-                        target.classList.add("dragging");
-                    });
-                    hierarchyList.addEventListener("dragover", (e) => {
-                        e.preventDefault();
-                        const target = e.target.closest("[data-drop-zone]");
-                        if (!target) return;
-                        if (
-                            this.dragState.type === "type" &&
-                            target.dataset.dropEntity === "type"
-                        )
-                            target.classList.add("drag-over-top");
-                        else if (
-                            this.dragState.type === "project" &&
-                            target.dataset.dropEntity === "project"
-                        )
-                            target.classList.add("drag-over-top");
-                        else if (
-                            this.dragState.type === "project" &&
-                            target.dataset.dropEntity === "type-container"
-                        )
-                            target.classList.add("drag-over");
-                    });
-                    hierarchyList.addEventListener("dragleave", (e) => {
-                        const target = e.target.closest("[data-drop-zone]");
-                        if (target)
-                            target.classList.remove(
-                                "drag-over-top",
-                                "drag-over",
-                            );
-                    });
-                    hierarchyList.addEventListener("dragend", (e) => {
-                        e.target.style.opacity = "1";
-                        e.target.classList.remove("dragging");
-                        document
-                            .querySelectorAll(".drag-over, .drag-over-top")
-                            .forEach((el) =>
-                                el.classList.remove(
-                                    "drag-over",
-                                    "drag-over-top",
-                                ),
-                            );
-                        this.dragState = { type: null, sourceId: null };
-                    });
-                    hierarchyList.addEventListener("drop", (e) => {
-                        e.preventDefault();
-                        document
-                            .querySelectorAll(".drag-over, .drag-over-top")
-                            .forEach((el) =>
-                                el.classList.remove(
-                                    "drag-over",
-                                    "drag-over-top",
-                                ),
-                            );
-                        document
-                            .querySelectorAll(".dragging")
-                            .forEach((el) => el.classList.remove("dragging"));
-                        const target = e.target.closest("[data-drop-zone]");
-                        if (!target || !this.dragState.sourceId) return;
-                        if (
-                            this.dragState.type === "type" &&
-                            target.dataset.dropEntity === "type"
-                        ) {
-                            globalBus.emit("hierarchy:reorderType", {
-                                sourceId: this.dragState.sourceId,
-                                targetId: target.dataset.dragId,
-                            });
-                        } else if (this.dragState.type === "project") {
-                            if (target.dataset.dropEntity === "project")
-                                globalBus.emit("hierarchy:reorderProject", {
-                                    sourceId: this.dragState.sourceId,
-                                    targetId: target.dataset.dragId,
-                                });
-                            else if (
-                                target.dataset.dropEntity === "type-container"
-                            )
-                                globalBus.emit("hierarchy:moveProjectToType", {
-                                    projectId: this.dragState.sourceId,
-                                    typeId: target.dataset.dropId,
-                                });
-                        }
-                    });
 
                     document.addEventListener("keydown", (e) => {
                         if (e.key === "Escape") {
                             this.closeAllMenus();
                             app.closeSettingsModal();
                             app.cancelConfirm();
-                            if (this.state.paintProjectId)
-                                app.togglePaintMode(this.state.paintProjectId);
+                            if (this.state.paintProjectId) {
+                                this.state.paintProjectId = null;
+                                globalBus.emit("hierarchy:refreshed");
+                            }
                             document
                                 .querySelectorAll(".js-focus")
                                 .forEach((el) => {
@@ -1544,48 +1509,41 @@
                     grid.addEventListener("keydown", (e) => {
                         const block = e.target.closest(".schedule-block");
                         if (!block) return;
-                        const r = parseInt(block.dataset.row);
-                        const c = parseInt(block.dataset.col);
-                        let nextR = r;
-                        let nextC = c;
 
-                        if (e.key === "ArrowRight") nextC++;
-                        else if (e.key === "ArrowLeft") nextC--;
-                        else if (e.key === "ArrowDown") nextR++;
-                        else if (e.key === "ArrowUp") nextR--;
+                        // Basic linear navigation for simplicity in both views
+                        const blocks = Array.from(
+                            document.querySelectorAll(".schedule-block"),
+                        );
+                        const index = blocks.indexOf(block);
+                        let nextIndex = index;
+
+                        if (e.key === "ArrowRight") nextIndex++;
+                        else if (e.key === "ArrowLeft") nextIndex--;
+                        // simplified up/down logic for generic linear layout to avoid complex matrix math across week view
+                        else if (e.key === "ArrowDown") nextIndex += 6;
+                        else if (e.key === "ArrowUp") nextIndex -= 6;
                         else if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
                             block.click();
                             return;
                         } else return;
 
-                        if (nextC > 5) {
-                            nextC = 0;
-                            nextR++;
-                        }
-                        if (nextC < 0) {
-                            nextC = 5;
-                            nextR--;
-                        }
-                        if (nextR < 0 || nextR > 23) return;
-
-                        const nextBlock = this.blockNodes[`${nextR}-${nextC}`];
-                        if (nextBlock) {
+                        if (nextIndex >= 0 && nextIndex < blocks.length) {
                             e.preventDefault();
-                            nextBlock.focus();
+                            blocks[nextIndex].focus();
                         }
                     });
                 }
 
                 paintBlock(block) {
+                    const date = block.dataset.date;
                     const row = block.dataset.row;
                     const col = block.dataset.col;
                     const currentProjId =
-                        this.state.getCurrentSchedule()?.blocks[
-                            `${row}-${col}`
-                        ];
+                        this.state.getSchedule(date)?.blocks[`${row}-${col}`];
                     if (currentProjId !== this.state.paintProjectId)
                         globalBus.emit("block:update", {
+                            date,
                             row,
                             col,
                             projectId: this.state.paintProjectId,
@@ -1593,27 +1551,28 @@
                 }
 
                 listenToEvents() {
-                    globalBus.on("block:updated", ({ row, col, project }) => {
-                        const blockEl = this.blockNodes[`${row}-${col}`];
-                        if (!blockEl) return;
-                        if (project) {
-                            blockEl.style.backgroundColor = project.color;
-                            blockEl.classList.add("filled");
-                            blockEl.title = project.name;
-                        } else {
-                            blockEl.style.backgroundColor = "";
-                            blockEl.classList.remove("filled");
-                            blockEl.title = "Empty (Click to set)";
-                        }
-                        blockEl.dataset.origBg = blockEl.style.backgroundColor;
-                    });
+                    globalBus.on(
+                        "block:updated",
+                        ({ date, row, col, project }) => {
+                            const blockEl =
+                                this.blockNodes[`${date}-${row}-${col}`];
+                            if (!blockEl) return;
+                            if (project) {
+                                blockEl.style.backgroundColor = project.color;
+                                blockEl.classList.add("filled");
+                                blockEl.title = project.name;
+                            } else {
+                                blockEl.style.backgroundColor = "";
+                                blockEl.classList.remove("filled");
+                                blockEl.title = "Empty (Click to set)";
+                            }
+                            blockEl.dataset.origBg =
+                                blockEl.style.backgroundColor;
+                        },
+                    );
                     globalBus.on("view:refresh", () => this.refreshAllViews());
                     globalBus.on("schedule:refreshed", () =>
-                        this.renderSchedule(
-                            this.state.getCurrentSchedule(),
-                            this.state.getHours(),
-                            this.state.getProjects(),
-                        ),
+                        this.refreshScheduleView(),
                     );
                     globalBus.on("analytics:refreshed", () =>
                         this.renderAnalytics(
@@ -1647,8 +1606,8 @@
 
                         if (!changes) return;
 
-                        Object.entries(changes).forEach(([coord, pid]) => {
-                            const block = this.blockNodes[coord];
+                        Object.entries(changes).forEach(([key, pid]) => {
+                            const block = this.blockNodes[key];
                             if (!block) return;
                             block.classList.add("is-previewing");
                             if (pid === null) {
@@ -1679,31 +1638,60 @@
                         this.state.getProjects(),
                         this.state.getTypes(),
                     );
-                    this.renderSchedule(
-                        this.state.getCurrentSchedule(),
-                        this.state.getHours(),
-                        this.state.getProjects(),
-                    );
+                    this.refreshScheduleView();
                     this.renderAnalytics(
                         this.state.getDailyAnalytics(),
                         this.state.getTypes(),
                     );
+
+                    // Update View Buttons
+                    document.getElementById("btn-view-day").className =
+                        `flex-1 py-1 text-xs font-bold rounded-md transition ${this.state.data.viewMode === "day" ? "shadow-sm bg-white text-gray-800" : "text-gray-500 hover:text-gray-700"}`;
+                    document.getElementById("btn-view-week").className =
+                        `flex-1 py-1 text-xs font-bold rounded-md transition ${this.state.data.viewMode === "week" ? "shadow-sm bg-white text-gray-800" : "text-gray-500 hover:text-gray-700"}`;
+                }
+
+                refreshScheduleView() {
+                    if (this.state.data.viewMode === "week") {
+                        this.renderWeekSchedule(
+                            this.state.getCurrentDate(),
+                            this.state.getHours(),
+                            this.state.getProjects(),
+                        );
+                    } else {
+                        this.renderDaySchedule(
+                            this.state.getCurrentDate(),
+                            this.state.getHours(),
+                            this.state.getProjects(),
+                        );
+                    }
                 }
 
                 renderHeader(dateStr) {
                     const [year, month, day] = dateStr.split("-");
                     const dateObj = new Date(year, month - 1, day);
-                    const parts = dateObj
-                        .toLocaleDateString("en-US", {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                        })
-                        .split(", ");
-                    document.getElementById("display-day").innerText = parts[0];
-                    document.getElementById("display-date").innerText =
-                        parts[1] + ", " + parts[2];
+                    if (this.state.data.viewMode === "week") {
+                        const start = this.getStartOfWeek(dateObj);
+                        const end = new Date(start);
+                        end.setDate(start.getDate() + 6);
+                        document.getElementById("display-day").innerText =
+                            "Week View";
+                        document.getElementById("display-date").innerText =
+                            `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+                    } else {
+                        const parts = dateObj
+                            .toLocaleDateString("en-US", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                            })
+                            .split(", ");
+                        document.getElementById("display-day").innerText =
+                            parts[0];
+                        document.getElementById("display-date").innerText =
+                            parts[1] + ", " + parts[2];
+                    }
                 }
 
                 renderCalendar() {
@@ -1744,7 +1732,7 @@
                         if (typeProjects.length === 0) return;
                         const header = document.createElement("div");
                         header.className =
-                            "text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1";
+                            "text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1 hide-on-collapse";
                         header.textContent = t.name;
                         list.appendChild(header);
                         typeProjects.forEach((p) => {
@@ -1754,8 +1742,8 @@
                                 ? `<span class="paint-active-indicator">Paint</span>`
                                 : "";
                             const pCard = document.createElement("div");
-                            pCard.className = `flex items-center gap-3 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer hover:shadow-md transition`;
-                            pCard.innerHTML = `<div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${p.color};"></div><span class="text-sm font-semibold text-gray-800 truncate">${p.name}</span>${badgeHTML}`;
+                            pCard.className = `project-card flex items-center gap-3 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition`;
+                            pCard.innerHTML = `<div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${p.color};"></div><span class="text-sm font-semibold text-gray-800 truncate hide-on-collapse">${p.name}</span>${badgeHTML}`;
                             pCard.onclick = () => app.togglePaintMode(p.id);
                             list.appendChild(pCard);
                         });
@@ -1782,16 +1770,17 @@
                         bar.innerHTML = `<span class="text-sm text-gray-400 font-medium italic">Press '/' to explore commands or click to schedule.</span>`;
                 }
 
-                renderSchedule(scheduleObj, hours, projects) {
+                // DAY VIEW
+                renderDaySchedule(targetDateStr, hours, projects) {
                     const container = document.getElementById("schedule-grid");
                     container.innerHTML = "";
                     this.blockNodes = {};
+                    const scheduleObj = this.state.getSchedule(targetDateStr);
                     const blocks = scheduleObj.blocks;
 
                     const now = new Date();
                     const logicalToday = this.state.getLogicalDate(now);
-                    const isToday =
-                        this.state.getCurrentDate() === logicalToday;
+                    const isToday = targetDateStr === logicalToday;
 
                     let currentHour = now.getHours();
                     let currentRowIndex =
@@ -1822,6 +1811,7 @@
                             const block = document.createElement("button");
                             block.className =
                                 "schedule-block circle-btn shadow-sm";
+                            block.dataset.date = targetDateStr;
                             block.dataset.row = rowIndex;
                             block.dataset.col = colIndex;
                             block.tabIndex = 0;
@@ -1841,7 +1831,9 @@
                             }
                             block.dataset.origBg = block.style.backgroundColor;
 
-                            this.blockNodes[`${rowIndex}-${colIndex}`] = block;
+                            this.blockNodes[
+                                `${targetDateStr}-${rowIndex}-${colIndex}`
+                            ] = block;
                             blocksContainer.appendChild(block);
                         }
                         rowEl.appendChild(timeLabel);
@@ -1850,7 +1842,124 @@
                     });
                 }
 
-                renderChoiceMenu(blockElement, rowIndex, colIndex) {
+                getStartOfWeek(dateObj) {
+                    const d = new Date(dateObj);
+                    const day = d.getDay();
+                    const diff = d.getDate() - day;
+                    return new Date(d.setDate(diff));
+                }
+
+                // WEEK VIEW
+                renderWeekSchedule(currentDateStr, hours, projects) {
+                    const container = document.getElementById("schedule-grid");
+                    container.innerHTML = "";
+                    this.blockNodes = {};
+
+                    const dObj = new Date(currentDateStr + "T00:00:00");
+                    const startOfWeek = this.getStartOfWeek(dObj);
+                    const weekDates = [];
+                    const weekLabels = [];
+                    const days = [
+                        "SUN",
+                        "MON",
+                        "TUE",
+                        "WED",
+                        "THU",
+                        "FRI",
+                        "SAT",
+                    ];
+
+                    for (let i = 0; i < 7; i++) {
+                        let d = new Date(startOfWeek);
+                        d.setDate(startOfWeek.getDate() + i);
+                        weekDates.push(d.toISOString().split("T")[0]);
+                        weekLabels.push({
+                            day: days[i],
+                            date: d.getDate(),
+                            isCurrent: weekDates[i] === currentDateStr,
+                        });
+                    }
+
+                    // Render Header Row
+                    const headerRow = document.createElement("div");
+                    headerRow.className =
+                        "grid grid-cols-[60px_repeat(7,1fr)] gap-2 md:gap-4 mb-2 pb-2 border-b border-gray-100 sticky top-0 bg-white z-10 pt-2";
+                    headerRow.innerHTML =
+                        `<div></div>` +
+                        weekLabels
+                            .map(
+                                (l) =>
+                                    `<div class="flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded py-1 transition ${l.isCurrent ? "bg-indigo-50 text-indigo-700" : "text-gray-500"}" onclick="app.selectDate('${weekDates[weekLabels.indexOf(l)]}')">
+                            <span class="text-[9px] font-bold tracking-widest">${l.day}</span>
+                            <span class="text-sm font-black ${l.isCurrent ? "text-indigo-700" : "text-gray-800"}">${l.date}</span>
+                        </div>`,
+                            )
+                            .join("");
+                    container.appendChild(headerRow);
+
+                    // Render Time Rows
+                    const now = new Date();
+                    const logicalToday = this.state.getLogicalDate(now);
+                    let currentHour = now.getHours();
+                    let currentRowIndex =
+                        currentHour >= 7 ? currentHour - 7 : currentHour + 17;
+
+                    hours.forEach((time, rowIndex) => {
+                        const rowEl = document.createElement("div");
+                        rowEl.className =
+                            "grid grid-cols-[60px_repeat(7,1fr)] gap-2 md:gap-4 items-center group py-1";
+                        const timeLabel = document.createElement("div");
+                        timeLabel.className =
+                            "text-right text-[10px] font-bold text-gray-400 uppercase tracking-wider pr-2";
+                        timeLabel.textContent = time;
+                        rowEl.appendChild(timeLabel);
+
+                        weekDates.forEach((dateStr) => {
+                            const isTodayCol = dateStr === logicalToday;
+                            const isCurrentCell =
+                                isTodayCol && rowIndex === currentRowIndex;
+
+                            const cellObj = this.state.getSchedule(dateStr);
+                            const blocks = cellObj.blocks;
+                            const cellContainer = document.createElement("div");
+                            cellContainer.className = `week-cell ${isCurrentCell ? "border-indigo-300 bg-indigo-50/30" : ""}`;
+
+                            for (let colIndex = 0; colIndex < 6; colIndex++) {
+                                const block = document.createElement("div");
+                                block.className = "schedule-block tiny-dot";
+                                block.dataset.date = dateStr;
+                                block.dataset.row = rowIndex;
+                                block.dataset.col = colIndex;
+                                block.tabIndex = 0;
+
+                                const blockProjectId =
+                                    blocks[`${rowIndex}-${colIndex}`];
+                                const project = projects.find(
+                                    (p) => p.id === blockProjectId,
+                                );
+
+                                if (project) {
+                                    block.style.backgroundColor = project.color;
+                                    block.classList.add("filled");
+                                    block.title = project.name;
+                                } else {
+                                    block.title = "Empty (Click to set)";
+                                }
+                                block.dataset.origBg =
+                                    block.style.backgroundColor;
+
+                                this.blockNodes[
+                                    `${dateStr}-${rowIndex}-${colIndex}`
+                                ] = block;
+                                cellContainer.appendChild(block);
+                            }
+                            rowEl.appendChild(cellContainer);
+                        });
+                        container.appendChild(rowEl);
+                    });
+                }
+
+                renderChoiceMenu(blockElement, dateStr, rowIndex, colIndex) {
                     const menu = document.createElement("div");
                     menu.className = "choice-menu";
                     const clearBtn = document.createElement("button");
@@ -1860,6 +1969,7 @@
                     clearBtn.onclick = (event) => {
                         event.stopPropagation();
                         globalBus.emit("block:update", {
+                            date: dateStr,
                             row: rowIndex,
                             col: colIndex,
                             projectId: null,
@@ -1880,24 +1990,15 @@
                             const btn = document.createElement("button");
                             btn.className =
                                 "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
-                            btn.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div><span class="text-xs font-bold text-gray-700 truncate">${p.name}</span></div><div class="opacity-0 group-hover/btn:opacity-100 focus-visible:opacity-100 bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-[10px] fill-hour-btn shadow-sm transition" title="Fill entire hour">FILL HR</div>`;
+                            btn.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div><span class="text-xs font-bold text-gray-700 truncate">${p.name}</span></div><div class="opacity-0 group-hover/btn:opacity-100 focus-visible:opacity-100 bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-[10px] shadow-sm transition" title="Fill entire hour" onclick="event.stopPropagation(); globalBus.emit('schedule:fillRow', { date: '${dateStr}', row: ${rowIndex}, projectId: '${p.id}' }); app.ui.closeAllMenus();">FILL HR</div>`;
                             btn.onclick = (event) => {
                                 event.stopPropagation();
-                                if (
-                                    event.target.classList.contains(
-                                        "fill-hour-btn",
-                                    )
-                                )
-                                    globalBus.emit("schedule:fillRow", {
-                                        row: rowIndex,
-                                        projectId: p.id,
-                                    });
-                                else
-                                    globalBus.emit("block:update", {
-                                        row: rowIndex,
-                                        col: colIndex,
-                                        projectId: p.id,
-                                    });
+                                globalBus.emit("block:update", {
+                                    date: dateStr,
+                                    row: rowIndex,
+                                    col: colIndex,
+                                    projectId: p.id,
+                                });
                                 this.closeAllMenus();
                             };
                             menu.appendChild(btn);
@@ -2010,17 +2111,15 @@
                     this.state.ensureDateExists(this.state.getCurrentDate());
                     globalBus.emit("view:refresh");
 
-                    // Intelligent Scroll on Load
                     setTimeout(() => {
                         const timeLabel = document.querySelector(
                             ".current-time-label",
                         );
                         if (timeLabel) {
-                            const row = timeLabel.closest(".flex");
+                            const row = timeLabel.closest(".grid, .flex");
                             const rowIdx = Array.from(
                                 row.parentElement.children,
                             ).indexOf(row);
-                            // Only scroll if we are not at the very end of the day, leaving some visual context
                             if (rowIdx < 20) {
                                 document.getElementById(
                                     "scroll-container",
@@ -2031,35 +2130,49 @@
                 }
 
                 setupLogicListeners() {
-                    globalBus.on("block:update", ({ row, col, projectId }) => {
-                        this.state.updateState((data) => {
-                            const blocks =
-                                data.schedules[data.currentDate].blocks;
-                            if (projectId) blocks[`${row}-${col}`] = projectId;
-                            else delete blocks[`${row}-${col}`];
-                        });
-                        globalBus.emit("block:updated", {
-                            row,
-                            col,
-                            project: projectId
-                                ? this.state.getProjectById(projectId)
-                                : null,
-                        });
-                        globalBus.emit("analytics:refreshed");
-                    });
-                    globalBus.on("schedule:fillRow", ({ row, projectId }) => {
-                        this.state.updateState((data) => {
-                            const blocks =
-                                data.schedules[data.currentDate].blocks;
-                            for (let c = 0; c < 6; c++) {
+                    globalBus.on(
+                        "block:update",
+                        ({ date, row, col, projectId }) => {
+                            const targetDate =
+                                date || this.state.getCurrentDate();
+                            this.state.ensureDateExists(targetDate);
+                            this.state.updateState((data) => {
+                                const blocks =
+                                    data.schedules[targetDate].blocks;
                                 if (projectId)
-                                    blocks[`${row}-${c}`] = projectId;
-                                else delete blocks[`${row}-${c}`];
-                            }
-                        });
-                        globalBus.emit("schedule:refreshed");
-                        globalBus.emit("analytics:refreshed");
-                    });
+                                    blocks[`${row}-${col}`] = projectId;
+                                else delete blocks[`${row}-${col}`];
+                            });
+                            globalBus.emit("block:updated", {
+                                date: targetDate,
+                                row,
+                                col,
+                                project: projectId
+                                    ? this.state.getProjectById(projectId)
+                                    : null,
+                            });
+                            globalBus.emit("analytics:refreshed");
+                        },
+                    );
+                    globalBus.on(
+                        "schedule:fillRow",
+                        ({ date, row, projectId }) => {
+                            const targetDate =
+                                date || this.state.getCurrentDate();
+                            this.state.ensureDateExists(targetDate);
+                            this.state.updateState((data) => {
+                                const blocks =
+                                    data.schedules[targetDate].blocks;
+                                for (let c = 0; c < 6; c++) {
+                                    if (projectId)
+                                        blocks[`${row}-${c}`] = projectId;
+                                    else delete blocks[`${row}-${c}`];
+                                }
+                            });
+                            globalBus.emit("schedule:refreshed");
+                            globalBus.emit("analytics:refreshed");
+                        },
+                    );
                     globalBus.on(
                         "hierarchy:updateType",
                         ({ id, name, element }) => {
@@ -2162,19 +2275,32 @@
 
                 commitChanges(changes) {
                     this.state.updateState((data) => {
-                        const blocks = data.schedules[data.currentDate].blocks;
-                        Object.entries(changes).forEach(([coord, pid]) => {
-                            if (pid === null) delete blocks[coord];
-                            else blocks[coord] = pid;
+                        Object.entries(changes).forEach(([key, pid]) => {
+                            // Extract Date, Row, Col from key (YYYY-MM-DD-Row-Col)
+                            const parts = key.split("-");
+                            const dStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
+                            const r = parts[3];
+                            const c = parts[4];
+                            if (!data.schedules[dStr])
+                                data.schedules[dStr] = { blocks: {} };
+                            const blocks = data.schedules[dStr].blocks;
+                            if (pid === null) delete blocks[`${r}-${c}`];
+                            else blocks[`${r}-${c}`] = pid;
                         });
                     });
                     globalBus.emit("schedule:refreshed");
                     globalBus.emit("analytics:refreshed");
                 }
 
+                setViewMode(mode) {
+                    this.state.updateState((data) => (data.viewMode = mode));
+                    globalBus.emit("view:refresh");
+                }
                 copyDay() {
                     this.clipboardDay = JSON.parse(
-                        JSON.stringify(this.state.getCurrentSchedule()),
+                        JSON.stringify(
+                            this.state.getSchedule(this.state.getCurrentDate()),
+                        ),
                     );
                     Toast.show("Day copied");
                 }
@@ -2225,7 +2351,6 @@
                         document
                             .getElementById("paint-banner")
                             .classList.add("hidden");
-                        Toast.show("Exited Paint Mode");
                     } else {
                         this.state.paintProjectId = projectId;
                         const project = this.state.getProjectById(projectId);
