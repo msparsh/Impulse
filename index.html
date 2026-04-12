@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Visual Schedule Planner Pro - v5</title>
+        <title>Visual Schedule Planner Pro - v6</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
@@ -89,6 +89,32 @@
             }
             .modal-content {
                 animation: slideUp 0.2s ease-out forwards;
+            }
+
+            /* Inline Edit Styles */
+            [contenteditable="true"] {
+                outline: none;
+                border-bottom: 1px dashed transparent;
+                transition: border-color 0.2s;
+            }
+            [contenteditable="true"]:hover,
+            [contenteditable="true"]:focus {
+                border-bottom-color: #cbd5e1;
+                background-color: rgba(255, 255, 255, 0.5);
+                border-radius: 2px;
+            }
+
+            /* Drag and Drop Visuals */
+            .drag-over {
+                border: 2px dashed #4f46e5 !important;
+                background-color: #e0e7ff !important;
+            }
+            .grab-handle {
+                cursor: grab;
+                opacity: 0.4;
+            }
+            .grab-handle:active {
+                cursor: grabbing;
             }
         </style>
     </head>
@@ -220,12 +246,29 @@
             class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center backdrop-blur-sm p-4"
         >
             <div
-                class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden modal-content flex flex-col max-h-[90vh]"
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden modal-content flex flex-col max-h-[90vh]"
             >
                 <div
                     class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"
                 >
-                    <h3 class="font-bold text-gray-800">Manage Data</h3>
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="M12 20h9"></path>
+                            <path
+                                d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+                            ></path>
+                        </svg>
+                        Manage Hierarchy
+                    </h3>
                     <button
                         onclick="app.closeSettingsModal()"
                         class="text-gray-400 hover:text-gray-700 transition"
@@ -245,76 +288,26 @@
                         </svg>
                     </button>
                 </div>
-                <div class="flex flex-1 overflow-hidden">
-                    <div
-                        class="flex-1 border-r border-gray-100 p-6 overflow-y-auto custom-scroll"
+
+                <div class="p-6 border-b border-gray-100 bg-white flex gap-3">
+                    <input
+                        type="text"
+                        id="new-type-name"
+                        placeholder="New Category Type..."
+                        class="text-sm p-2 border border-gray-200 rounded-lg flex-1 focus:outline-none focus:border-indigo-500 bg-gray-50"
+                    />
+                    <button
+                        onclick="app.addType()"
+                        class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-700 transition shadow-sm"
                     >
-                        <h4
-                            class="text-sm font-bold text-gray-800 mb-4 border-b pb-2"
-                        >
-                            1. Types
-                        </h4>
-                        <div class="flex gap-2 mb-6">
-                            <input
-                                type="text"
-                                id="new-type-name"
-                                placeholder="New Type Name"
-                                class="text-sm p-2 border border-gray-200 rounded-lg flex-1 focus:outline-none focus:border-indigo-500"
-                            />
-                            <button
-                                onclick="app.addType()"
-                                class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-700 transition"
-                            >
-                                Add
-                            </button>
-                        </div>
-                        <div
-                            id="settings-types-list"
-                            class="flex flex-col gap-2"
-                        ></div>
-                    </div>
-                    <div
-                        class="flex-1 p-6 overflow-y-auto custom-scroll bg-gray-50/50"
-                    >
-                        <h4
-                            class="text-sm font-bold text-gray-800 mb-4 border-b pb-2"
-                        >
-                            2. Projects
-                        </h4>
-                        <div
-                            class="flex flex-col gap-3 mb-6 bg-white p-4 rounded-xl border border-gray-100 shadow-sm"
-                        >
-                            <input
-                                type="text"
-                                id="new-proj-name"
-                                placeholder="Project Name"
-                                class="text-sm p-2 border border-gray-200 rounded-lg w-full focus:outline-none focus:border-indigo-500"
-                            />
-                            <div class="flex gap-2">
-                                <input
-                                    type="color"
-                                    id="new-proj-color"
-                                    value="#8b5cf6"
-                                    class="h-10 w-12 rounded-lg cursor-pointer border border-gray-200 p-1"
-                                />
-                                <select
-                                    id="new-proj-type"
-                                    class="text-sm p-2 border border-gray-200 rounded-lg flex-1 bg-white focus:outline-none focus:border-indigo-500"
-                                ></select>
-                            </div>
-                            <button
-                                onclick="app.addProject()"
-                                class="w-full bg-indigo-600 text-white text-sm py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm"
-                            >
-                                Save Project
-                            </button>
-                        </div>
-                        <div
-                            id="settings-projects-list"
-                            class="flex flex-col gap-2"
-                        ></div>
-                    </div>
+                        Add Type
+                    </button>
                 </div>
+
+                <div
+                    class="flex-1 p-6 overflow-y-auto custom-scroll bg-gray-50/50"
+                    id="hierarchy-list"
+                ></div>
             </div>
         </div>
 
@@ -335,15 +328,14 @@
                         this.events[event].forEach((l) => l(data));
                 }
             }
-
             const globalBus = new EventEmitter();
 
             // -----------------------------------------------------------------------------
-            // 1. STATE MANAGEMENT (Model & Derived State)
+            // 1. STATE MANAGEMENT (Model)
             // -----------------------------------------------------------------------------
             class StateManager {
                 constructor() {
-                    this.storageKey = "planner_state_v5";
+                    this.storageKey = "planner_state_v6";
                     this.hours = [
                         "7 AM",
                         "8 AM",
@@ -374,7 +366,7 @@
                         .split("T")[0];
 
                     return {
-                        version: 2,
+                        version: 3,
                         currentDate: localISOTime,
                         types: [
                             { id: "t_work", name: "Work" },
@@ -385,6 +377,12 @@
                                 id: "p_deep",
                                 name: "Deep Work",
                                 color: "#6b92f2",
+                                typeId: "t_work",
+                            },
+                            {
+                                id: "p_meetings",
+                                name: "Meetings",
+                                color: "#9333ea",
                                 typeId: "t_work",
                             },
                             {
@@ -406,6 +404,7 @@
                                     "1-0": "p_deep",
                                     "1-1": "p_deep",
                                     "1-2": "p_deep",
+                                    "1-3": "p_meetings",
                                     "2-2": "p_study",
                                     "2-3": "p_study",
                                     "2-4": "p_study",
@@ -443,12 +442,17 @@
                     }
                 }
 
-                // --- Getters (Strict UI Access) ---
+                // Getters
                 getProjectById(id) {
                     return this.data.projects.find((p) => p.id === id);
                 }
                 getProjects() {
                     return this.data.projects;
+                }
+                getProjectsByType(typeId) {
+                    return this.data.projects.filter(
+                        (p) => p.typeId === typeId,
+                    );
                 }
                 getTypes() {
                     return this.data.types;
@@ -463,19 +467,16 @@
                     return this.data.schedules[this.data.currentDate];
                 }
 
-                // --- Derived State (Analytics Engine) ---
                 getDailyAnalytics() {
                     let typeCounts = {};
                     const blocks =
                         this.data.schedules[this.data.currentDate]?.blocks ||
                         {};
-
                     Object.values(blocks).forEach((projectId) => {
                         const project = this.getProjectById(projectId);
-                        if (project) {
+                        if (project)
                             typeCounts[project.typeId] =
                                 (typeCounts[project.typeId] || 0) + 1;
-                        }
                     });
                     return typeCounts;
                 }
@@ -486,15 +487,18 @@
             // -----------------------------------------------------------------------------
             class UIManager {
                 constructor(state) {
-                    this.state = state; // Uses strictly getters, never touches state.data directly
-                    this.blockNodes = {}; // Cache for O(1) DOM updates
+                    this.state = state;
+                    this.blockNodes = {};
                     this.setupDelegation();
                     this.listenToEvents();
                 }
 
                 setupDelegation() {
                     const grid = document.getElementById("schedule-grid");
+                    const hierarchyList =
+                        document.getElementById("hierarchy-list");
 
+                    // Schedule Grid Interaction
                     grid.addEventListener("click", (e) => {
                         const block = e.target.closest(".schedule-block");
                         if (block) {
@@ -520,6 +524,50 @@
                         }
                     });
 
+                    // Hierarchy Inline Editing Delegation
+                    hierarchyList.addEventListener(
+                        "blur",
+                        (e) => {
+                            if (e.target.hasAttribute("contenteditable")) {
+                                const newText = e.target.innerText.trim();
+                                if (e.target.dataset.entity === "type") {
+                                    globalBus.emit("hierarchy:updateType", {
+                                        id: e.target.dataset.id,
+                                        name: newText,
+                                    });
+                                } else if (
+                                    e.target.dataset.entity === "project"
+                                ) {
+                                    globalBus.emit("hierarchy:updateProject", {
+                                        id: e.target.dataset.id,
+                                        name: newText,
+                                    });
+                                }
+                            }
+                        },
+                        true,
+                    ); // Capture phase for blur
+
+                    hierarchyList.addEventListener("keydown", (e) => {
+                        if (
+                            e.key === "Enter" &&
+                            e.target.hasAttribute("contenteditable")
+                        ) {
+                            e.preventDefault();
+                            e.target.blur(); // Triggers the save above
+                        }
+                    });
+
+                    // Project Color Picker Delegation
+                    hierarchyList.addEventListener("change", (e) => {
+                        if (e.target.dataset.entity === "project-color") {
+                            globalBus.emit("hierarchy:updateProjectColor", {
+                                id: e.target.dataset.id,
+                                color: e.target.value,
+                            });
+                        }
+                    });
+
                     document.addEventListener("click", () =>
                         this.closeAllMenus(),
                     );
@@ -532,11 +580,9 @@
                 }
 
                 listenToEvents() {
-                    // O(1) Targeted DOM Update
                     globalBus.on("block:updated", ({ row, col, project }) => {
                         const blockEl = this.blockNodes[`${row}-${col}`];
                         if (!blockEl) return;
-
                         if (project) {
                             blockEl.style.backgroundColor = project.color;
                             blockEl.classList.add("filled");
@@ -548,20 +594,24 @@
                         }
                     });
 
-                    // Orchestrated UI Refreshes
                     globalBus.on("view:refresh", () => this.refreshAllViews());
-
-                    globalBus.on("schedule:refreshed", () => {
+                    globalBus.on("schedule:refreshed", () =>
                         this.renderSchedule(
                             this.state.getCurrentSchedule(),
                             this.state.getHours(),
                             this.state.getProjects(),
-                        );
-                    });
-
-                    globalBus.on("analytics:refreshed", () => {
+                        ),
+                    );
+                    globalBus.on("analytics:refreshed", () =>
                         this.renderAnalytics(
                             this.state.getDailyAnalytics(),
+                            this.state.getTypes(),
+                        ),
+                    );
+                    globalBus.on("hierarchy:refreshed", () => {
+                        this.renderSettings();
+                        this.renderSidebarProjects(
+                            this.state.getProjects(),
                             this.state.getTypes(),
                         );
                     });
@@ -595,14 +645,13 @@
                 renderHeader(dateStr) {
                     const [year, month, day] = dateStr.split("-");
                     const dateObj = new Date(year, month - 1, day);
-                    const options = {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                    };
                     const parts = dateObj
-                        .toLocaleDateString("en-US", options)
+                        .toLocaleDateString("en-US", {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                        })
                         .split(", ");
                     document.getElementById("display-day").innerText = parts[0];
                     document.getElementById("display-date").innerText =
@@ -620,22 +669,22 @@
                     const year = parseInt(yearStr, 10);
                     const month = parseInt(monthStr, 10) - 1;
 
-                    const localDateObj = new Date(year, month, 1);
-                    monthLabel.innerText = localDateObj.toLocaleString(
-                        "default",
-                        { month: "long", year: "numeric" },
-                    );
-
+                    monthLabel.innerText = new Date(
+                        year,
+                        month,
+                        1,
+                    ).toLocaleString("default", {
+                        month: "long",
+                        year: "numeric",
+                    });
                     const firstDay = new Date(year, month, 1).getDay();
                     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
                     for (let i = 0; i < firstDay; i++)
-                        grid.innerHTML += `<div class="py-2 text-gray-300"></div>`;
-
+                        grid.innerHTML += `<div class="py-2"></div>`;
                     for (let day = 1; day <= daysInMonth; day++) {
                         const loopDateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                         const isActive = loopDateStr === currentDate;
-
                         grid.innerHTML += `
                         <div onclick="app.selectDate('${loopDateStr}')"
                              class="py-1 cursor-pointer hover:bg-indigo-50 rounded-md transition ${isActive ? "active-date shadow-md" : "text-gray-700"}">
@@ -647,18 +696,20 @@
                 renderSidebarProjects(projects, types) {
                     const list = document.getElementById("project-list");
                     list.innerHTML = "";
-                    projects.forEach((p) => {
-                        const typeName =
-                            types.find((t) => t.id === p.typeId)?.name ||
-                            "Unknown";
-                        list.innerHTML += `
-                        <div class="flex items-center gap-3 p-2 rounded-lg bg-white border border-gray-100 shadow-sm">
-                            <div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div>
-                            <div class="flex flex-col">
-                                <span class="text-sm font-bold text-gray-800 leading-tight">${p.name}</span>
-                                <span class="text-[10px] text-gray-400 uppercase tracking-wide">${typeName}</span>
-                            </div>
-                        </div>`;
+                    types.forEach((t) => {
+                        const typeProjects = projects.filter(
+                            (p) => p.typeId === t.id,
+                        );
+                        if (typeProjects.length === 0) return;
+
+                        list.innerHTML += `<div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-2 pl-1">${t.name}</div>`;
+                        typeProjects.forEach((p) => {
+                            list.innerHTML += `
+                            <div class="flex items-center gap-3 p-2 rounded-lg bg-white border border-gray-100 shadow-sm">
+                                <div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div>
+                                <span class="text-sm font-semibold text-gray-800 leading-tight">${p.name}</span>
+                            </div>`;
+                        });
                     });
                 }
 
@@ -666,7 +717,6 @@
                     const bar = document.getElementById("analytics-bar");
                     bar.innerHTML = "";
                     let totalAssigned = 0;
-
                     types.forEach((t) => {
                         const bCount = typeCounts[t.id] || 0;
                         if (bCount > 0) {
@@ -682,7 +732,6 @@
                             totalAssigned++;
                         }
                     });
-
                     if (totalAssigned === 0)
                         bar.innerHTML = `<span class="text-sm text-gray-400 italic">No blocks assigned.</span>`;
                 }
@@ -690,14 +739,12 @@
                 renderSchedule(scheduleObj, hours, projects) {
                     const container = document.getElementById("schedule-grid");
                     container.innerHTML = "";
-                    this.blockNodes = {}; // Reset cache
-
+                    this.blockNodes = {};
                     const blocks = scheduleObj.blocks;
 
                     hours.forEach((time, rowIndex) => {
                         const rowEl = document.createElement("div");
                         rowEl.className = "flex items-center gap-8 group";
-
                         const timeLabel = document.createElement("div");
                         timeLabel.className =
                             "w-16 text-xs font-bold text-gray-400 uppercase tracking-wider text-right";
@@ -727,11 +774,9 @@
                             } else {
                                 block.title = "Empty (Click to set)";
                             }
-
-                            this.blockNodes[`${rowIndex}-${colIndex}`] = block; // Cache element!
+                            this.blockNodes[`${rowIndex}-${colIndex}`] = block;
                             blocksContainer.appendChild(block);
                         }
-
                         rowEl.appendChild(timeLabel);
                         rowEl.appendChild(blocksContainer);
                         container.appendChild(rowEl);
@@ -741,42 +786,54 @@
                 renderChoiceMenu(blockElement, rowIndex, colIndex) {
                     const menu = document.createElement("div");
                     menu.className = "choice-menu";
+                    this.state.getTypes().forEach((t) => {
+                        const typeProjs = this.state.getProjectsByType(t.id);
+                        if (typeProjs.length === 0) return;
 
-                    this.state.getProjects().forEach((p) => {
-                        const btn = document.createElement("button");
-                        btn.className =
-                            "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
-                        btn.innerHTML = `
-                        <div class="flex items-center gap-3 overflow-hidden">
-                            <div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div>
-                            <span class="text-xs font-bold text-gray-700 truncate">${p.name}</span>
-                        </div>
-                        <div class="opacity-0 group-hover/btn:opacity-100 text-[10px] text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-100 fill-hour-btn" title="Fill entire hour">Fill Hr</div>
-                        `;
-                        btn.onclick = (event) => {
-                            event.stopPropagation();
-                            if (
-                                event.target.classList.contains("fill-hour-btn")
-                            ) {
-                                globalBus.emit("schedule:fillRow", {
-                                    row: rowIndex,
-                                    projectId: p.id,
-                                });
-                            } else {
-                                globalBus.emit("block:update", {
-                                    row: rowIndex,
-                                    col: colIndex,
-                                    projectId: p.id,
-                                });
-                            }
-                            this.closeAllMenus();
-                        };
-                        menu.appendChild(btn);
+                        const header = document.createElement("div");
+                        header.className =
+                            "text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1 mt-1";
+                        header.innerText = t.name;
+                        menu.appendChild(header);
+
+                        typeProjs.forEach((p) => {
+                            const btn = document.createElement("button");
+                            btn.className =
+                                "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
+                            btn.innerHTML = `
+                            <div class="flex items-center gap-3 overflow-hidden">
+                                <div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div>
+                                <span class="text-xs font-bold text-gray-700 truncate">${p.name}</span>
+                            </div>
+                            <div class="opacity-0 group-hover/btn:opacity-100 text-[10px] text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-100 fill-hour-btn" title="Fill entire hour">Fill Hr</div>
+                            `;
+                            btn.onclick = (event) => {
+                                event.stopPropagation();
+                                if (
+                                    event.target.classList.contains(
+                                        "fill-hour-btn",
+                                    )
+                                ) {
+                                    globalBus.emit("schedule:fillRow", {
+                                        row: rowIndex,
+                                        projectId: p.id,
+                                    });
+                                } else {
+                                    globalBus.emit("block:update", {
+                                        row: rowIndex,
+                                        col: colIndex,
+                                        projectId: p.id,
+                                    });
+                                }
+                                this.closeAllMenus();
+                            };
+                            menu.appendChild(btn);
+                        });
                     });
 
                     const reset = document.createElement("button");
                     reset.className =
-                        "mt-1 p-2 w-full text-left text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition border-t border-gray-100";
+                        "mt-2 p-2 w-full text-left text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition border-t border-gray-100";
                     reset.innerText = "Clear Block";
                     reset.onclick = (event) => {
                         event.stopPropagation();
@@ -791,10 +848,8 @@
                     menu.appendChild(reset);
                     blockElement.appendChild(menu);
 
-                    // SMART POSITIONING
                     const rect = blockElement.getBoundingClientRect();
-                    const menuHeight = menu.offsetHeight;
-                    if (rect.bottom + menuHeight > window.innerHeight) {
+                    if (rect.bottom + menu.offsetHeight > window.innerHeight) {
                         menu.style.top = "auto";
                         menu.style.bottom = "50px";
                         menu.style.boxShadow =
@@ -802,51 +857,61 @@
                     }
                 }
 
+                // UNIFIED SETTINGS RENDERER
                 renderSettings() {
+                    const list = document.getElementById("hierarchy-list");
+                    list.innerHTML = "";
+
                     const types = this.state.getTypes();
                     const projects = this.state.getProjects();
 
-                    const typeSelect = document.getElementById("new-proj-type");
-                    typeSelect.innerHTML =
-                        types.length === 0
-                            ? "<option disabled>No types available</option>"
-                            : "";
-                    types.forEach(
-                        (t) =>
-                            (typeSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`),
-                    );
-
-                    const typesList = document.getElementById(
-                        "settings-types-list",
-                    );
-                    typesList.innerHTML = "";
                     types.forEach((t) => {
-                        typesList.innerHTML += `
-                        <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
-                            <span class="text-sm font-medium text-gray-700">${t.name}</span>
-                            <button onclick="app.removeType('${t.id}')" class="text-red-400 hover:text-red-600 font-bold text-xs">Remove</button>
-                        </div>`;
-                    });
+                        const typeProjs = projects.filter(
+                            (p) => p.typeId === t.id,
+                        );
 
-                    const projList = document.getElementById(
-                        "settings-projects-list",
-                    );
-                    projList.innerHTML = "";
-                    projects.forEach((p) => {
-                        const typeName =
-                            types.find((t) => t.id === p.typeId)?.name ||
-                            "Unknown";
-                        projList.innerHTML += `
-                        <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
-                            <div class="flex items-center gap-3">
-                                <div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div>
-                                <div class="flex flex-col">
-                                    <span class="text-sm font-bold text-gray-800">${p.name}</span>
-                                    <span class="text-[10px] text-gray-400 uppercase">${typeName}</span>
+                        // Type Header
+                        const typeBlock = document.createElement("div");
+                        typeBlock.className = "mb-8";
+
+                        typeBlock.innerHTML = `
+                            <div class="flex items-center justify-between mb-3 group/type border-b border-gray-200 pb-2">
+                                <div class="flex items-center gap-2">
+                                    <svg class="grab-handle w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                                    <h4 class="text-sm font-black text-gray-900 uppercase tracking-widest" contenteditable="true" data-entity="type" data-id="${t.id}" title="Click to edit">${t.name}</h4>
+                                    <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">${typeProjs.length}</span>
+                                </div>
+                                <div class="flex gap-2 opacity-0 group-hover/type:opacity-100 transition">
+                                    <button onclick="app.addProjectToType('${t.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded">Add Project</button>
+                                    <button onclick="app.requestRemoveType('${t.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded">Delete</button>
                                 </div>
                             </div>
-                            <button onclick="app.removeProject('${p.id}')" class="text-red-400 hover:text-red-600 font-bold text-xs">Remove</button>
-                        </div>`;
+                            <div class="flex flex-col gap-2 pl-6" id="proj-container-${t.id}"></div>
+                        `;
+                        list.appendChild(typeBlock);
+
+                        // Nested Projects
+                        const projContainer = document.getElementById(
+                            `proj-container-${t.id}`,
+                        );
+                        if (typeProjs.length === 0) {
+                            projContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-2">No projects yet. Click 'Add Project' above.</div>`;
+                        } else {
+                            typeProjs.forEach((p) => {
+                                const pCard = document.createElement("div");
+                                pCard.className =
+                                    "flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition group/proj";
+                                pCard.innerHTML = `
+                                    <div class="flex items-center gap-3 flex-1">
+                                        <svg class="grab-handle w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+                                        <input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="w-6 h-6 rounded-md cursor-pointer border-0 p-0 shadow-inner shrink-0 bg-transparent"/>
+                                        <span class="text-sm font-semibold text-gray-800" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to edit">${p.name}</span>
+                                    </div>
+                                    <button onclick="app.removeProject('${p.id}')" class="opacity-0 group-hover/proj:opacity-100 text-red-400 hover:text-red-600 font-bold text-xs transition px-2 py-1">Remove</button>
+                                `;
+                                projContainer.appendChild(pCard);
+                            });
+                        }
                     });
                 }
 
@@ -870,7 +935,6 @@
                     this.state = new StateManager();
                     this.ui = new UIManager(this.state);
                     this.setupLogicListeners();
-
                     this.state.ensureDateExists(this.state.getCurrentDate());
                     globalBus.emit("view:refresh");
                 }
@@ -884,12 +948,11 @@
                             if (projectId) blocks[key] = projectId;
                             else delete blocks[key];
                         });
-
                         const project = projectId
                             ? this.state.getProjectById(projectId)
                             : null;
                         globalBus.emit("block:updated", { row, col, project });
-                        globalBus.emit("analytics:refreshed"); // UI updates itself
+                        globalBus.emit("analytics:refreshed");
                     });
 
                     globalBus.on("schedule:fillRow", ({ row, projectId }) => {
@@ -902,20 +965,52 @@
                                 else delete blocks[`${row}-${c}`];
                             }
                         });
-
-                        globalBus.emit("schedule:refreshed"); // UI handles rendering
-                        globalBus.emit("analytics:refreshed"); // UI handles rendering
+                        globalBus.emit("schedule:refreshed");
+                        globalBus.emit("analytics:refreshed");
                     });
+
+                    // Hierarchy Updates (Inline Edit Saves)
+                    globalBus.on("hierarchy:updateType", ({ id, name }) => {
+                        if (!name) return;
+                        this.state.updateState((data) => {
+                            const t = data.types.find((x) => x.id === id);
+                            if (t) t.name = name;
+                        });
+                        globalBus.emit("hierarchy:refreshed");
+                    });
+
+                    globalBus.on("hierarchy:updateProject", ({ id, name }) => {
+                        if (!name) return;
+                        this.state.updateState((data) => {
+                            const p = data.projects.find((x) => x.id === id);
+                            if (p) p.name = name;
+                        });
+                        globalBus.emit("schedule:refreshed");
+                        globalBus.emit("hierarchy:refreshed");
+                    });
+
+                    globalBus.on(
+                        "hierarchy:updateProjectColor",
+                        ({ id, color }) => {
+                            this.state.updateState((data) => {
+                                const p = data.projects.find(
+                                    (x) => x.id === id,
+                                );
+                                if (p) p.color = color;
+                            });
+                            globalBus.emit("schedule:refreshed");
+                            globalBus.emit("hierarchy:refreshed");
+                        },
+                    );
                 }
 
                 // --- HTML Bound Actions ---
                 goToToday() {
                     const today = new Date();
                     const offset = today.getTimezoneOffset() * 60000;
-                    const localISOTime = new Date(today - offset)
-                        .toISOString()
-                        .split("T")[0];
-                    this.selectDate(localISOTime);
+                    this.selectDate(
+                        new Date(today - offset).toISOString().split("T")[0],
+                    );
                 }
 
                 selectDate(dateStr) {
@@ -939,51 +1034,55 @@
                     const input = document.getElementById("new-type-name");
                     const name = input.value.trim();
                     if (!name) return;
-
                     this.state.updateState((data) => {
                         data.types.push({ id: "t_" + Date.now(), name });
                     });
                     input.value = "";
-                    this.ui.renderSettings();
+                    globalBus.emit("hierarchy:refreshed");
                 }
 
-                removeType(id) {
+                requestRemoveType(id) {
+                    const projectsLinked = this.state.getProjectsByType(id);
+                    if (projectsLinked.length > 0) {
+                        const confirmDelete = confirm(
+                            `⚠️ Watch out! This category contains ${projectsLinked.length} active project(s).\n\nDeleting this category will permanently delete these projects and clear them from your schedule.\n\nProceed?`,
+                        );
+                        if (!confirmDelete) return;
+                    }
                     this.state.updateState((data) => {
                         data.types = data.types.filter((t) => t.id !== id);
+                        // Cascade delete
+                        const toDeleteIds = projectsLinked.map((p) => p.id);
+                        data.projects = data.projects.filter(
+                            (p) => !toDeleteIds.includes(p.id),
+                        );
+
+                        // Scrub schedule
+                        for (let date in data.schedules) {
+                            const blocks = data.schedules[date].blocks;
+                            for (let key in blocks) {
+                                if (toDeleteIds.includes(blocks[key]))
+                                    delete blocks[key];
+                            }
+                        }
                     });
-                    this.state
-                        .getProjects()
-                        .filter((p) => p.typeId === id)
-                        .forEach((p) => this.removeProject(p.id, false));
+                    globalBus.emit("view:refresh"); // Need full refresh due to scrub
                     this.ui.renderSettings();
-                    globalBus.emit("view:refresh");
                 }
 
-                addProject() {
-                    const nameInput = document.getElementById("new-proj-name");
-                    const colorInput =
-                        document.getElementById("new-proj-color");
-                    const typeInput = document.getElementById("new-proj-type");
-                    const name = nameInput.value.trim();
-
-                    if (!name || !typeInput.value)
-                        return alert("Name and Type are required!");
-
+                addProjectToType(typeId) {
                     this.state.updateState((data) => {
                         data.projects.push({
                             id: "p_" + Date.now(),
-                            name: name,
-                            color: colorInput.value,
-                            typeId: typeInput.value,
+                            name: "New Project",
+                            color: "#94a3b8", // Default slate
+                            typeId: typeId,
                         });
                     });
-
-                    nameInput.value = "";
-                    this.ui.renderSettings();
-                    globalBus.emit("view:refresh");
+                    globalBus.emit("hierarchy:refreshed");
                 }
 
-                removeProject(id, renderAfter = true) {
+                removeProject(id) {
                     this.state.updateState((data) => {
                         data.projects = data.projects.filter(
                             (p) => p.id !== id,
@@ -995,11 +1094,8 @@
                             }
                         }
                     });
-
-                    if (renderAfter) {
-                        this.ui.renderSettings();
-                        globalBus.emit("view:refresh");
-                    }
+                    globalBus.emit("view:refresh");
+                    this.ui.renderSettings();
                 }
             }
 
