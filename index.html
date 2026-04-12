@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Visual Schedule Planner</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            body {
+                font-family: "Inter", sans-serif;
+                background-color: #ffffff;
+                color: #1a1a1a;
+            }
+            .circle-btn {
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: transform 0.1s ease;
+            }
+            .circle-btn:hover {
+                transform: scale(1.05);
+            }
+            .active-date {
+                background-color: #5842be;
+                color: white;
+                border-radius: 50%;
+            }
+            .sidebar-item {
+                border-top: 1px solid #f0f0f0;
+                padding: 20px 0;
+            }
+        </style>
+    </head>
+    <body class="p-4 md:p-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- Header -->
+            <header class="flex items-center justify-between mb-8">
+                <div class="flex items-center gap-6">
+                    <!-- Logo Mockup -->
+                    <div class="grid grid-cols-2 gap-1 w-8 h-8">
+                        <div class="bg-indigo-600 rounded-sm"></div>
+                        <div class="bg-indigo-600 rounded-sm"></div>
+                        <div class="bg-indigo-600 rounded-sm"></div>
+                        <div class="bg-indigo-600 rounded-sm"></div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button
+                            class="px-5 py-2 border border-gray-300 rounded-full text-sm font-medium hover:bg-gray-50"
+                        >
+                            Today
+                        </button>
+                        <div class="flex gap-1">
+                            <button
+                                class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full hover:bg-gray-50"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="m15 18-6-6 6-6" />
+                                </svg>
+                            </button>
+                            <button
+                                class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full hover:bg-gray-50"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="m9 18 6-6-6-6" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-right">
+                    <p class="text-gray-500 text-sm">Tuesday</p>
+                    <h1 class="text-2xl font-bold font-serif">
+                        March 25, 2025
+                    </h1>
+                </div>
+
+                <button class="p-2 text-gray-500 hover:text-gray-800">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path
+                            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                        />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                </button>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                <!-- Sidebar -->
+                <aside class="lg:col-span-4">
+                    <div class="mb-8">
+                        <div
+                            class="flex items-center justify-between mb-4 px-2"
+                        >
+                            <button class="p-1 hover:bg-gray-100 rounded-full">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="m15 18-6-6 6-6" />
+                                </svg>
+                            </button>
+                            <span class="text-sm font-semibold text-gray-600"
+                                >March 2025</span
+                            >
+                            <button class="p-1 hover:bg-gray-100 rounded-full">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="m9 18 6-6-6-6" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div
+                            class="grid grid-cols-7 gap-y-2 text-center text-sm"
+                        >
+                            <div class="text-gray-400 py-1">S</div>
+                            <div class="text-gray-400 py-1">M</div>
+                            <div class="text-gray-400 py-1">T</div>
+                            <div class="text-gray-400 py-1">W</div>
+                            <div class="text-gray-400 py-1">T</div>
+                            <div class="text-gray-400 py-1">F</div>
+                            <div class="text-gray-400 py-1">S</div>
+
+                            <!-- Calendar Days (Mocked) -->
+                            <div class="py-2 text-gray-300"></div>
+                            <div class="py-2 text-gray-300"></div>
+                            <div class="py-2 text-gray-300"></div>
+                            <div class="py-2 text-gray-300"></div>
+                            <div class="py-2 text-gray-300"></div>
+                            <div class="py-2 text-gray-300"></div>
+                            <div class="py-2">1</div>
+                            <div class="py-2">2</div>
+                            <div class="py-2">3</div>
+                            <div class="py-2">4</div>
+                            <div class="py-2">5</div>
+                            <div class="py-2">6</div>
+                            <div class="py-2">7</div>
+                            <div class="py-2">8</div>
+                            <div class="py-2">9</div>
+                            <div class="py-2">10</div>
+                            <div class="py-2">11</div>
+                            <div class="py-2">12</div>
+                            <div class="py-2">13</div>
+                            <div class="py-2">14</div>
+                            <div class="py-2">15</div>
+                            <div class="py-2">16</div>
+                            <div class="py-2">17</div>
+                            <div class="py-2">18</div>
+                            <div class="py-2">19</div>
+                            <div class="py-2">20</div>
+                            <div class="py-2">21</div>
+                            <div class="py-2">22</div>
+                            <div class="py-2">23</div>
+                            <div class="py-2">24</div>
+                            <div
+                                class="py-2 active-date w-8 h-8 flex items-center justify-center mx-auto"
+                            >
+                                25
+                            </div>
+                            <div class="py-2 font-bold">26</div>
+                            <div class="py-2">27</div>
+                            <div class="py-2">28</div>
+                            <div class="py-2">29</div>
+                            <div class="py-2">30</div>
+                            <div class="py-2">31</div>
+                        </div>
+
+                        <div
+                            class="mt-6 flex bg-gray-100 p-1 rounded-full w-fit mx-auto"
+                        >
+                            <button
+                                class="px-6 py-1 bg-black text-white rounded-full text-xs font-medium"
+                            >
+                                Day
+                            </button>
+                            <button
+                                class="px-6 py-1 text-gray-500 rounded-full text-xs font-medium"
+                            >
+                                Week
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-item">
+                        <div
+                            class="flex items-center justify-between cursor-pointer"
+                        >
+                            <span class="font-semibold text-sm"
+                                >Blocks Timer</span
+                            >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="m9 18 6-6-6-6" />
+                            </svg>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">
+                            No timers created yet.
+                        </p>
+                    </div>
+
+                    <div class="sidebar-item">
+                        <div
+                            class="flex items-center justify-between cursor-pointer"
+                        >
+                            <span class="font-semibold text-sm"
+                                >Focus Seasons</span
+                            >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="m9 18 6-6-6-6" />
+                            </svg>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">
+                            Create a season of focus with time goals for the
+                            activities you choose.
+                        </p>
+                    </div>
+                </aside>
+
+                <!-- Main Planner Content -->
+                <main
+                    class="lg:col-span-8 border-l border-gray-100 pl-4 md:pl-10"
+                >
+                    <a
+                        href="#"
+                        class="text-indigo-600 text-sm font-semibold hover:underline mb-6 block"
+                        >Use Template</a
+                    >
+
+                    <div class="space-y-4">
+                        <!-- Schedule Rows -->
+                        <div id="schedule-grid" class="flex flex-col gap-6">
+                            <!-- Row Template will be inserted here -->
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <script>
+            const scheduleData = [
+                {
+                    time: "10 AM",
+                    blocks: ["blue", "blue", "blue", "blue", "blue", "blue"],
+                },
+                {
+                    time: "11 AM",
+                    blocks: ["blue", "blue", "blue", "blue", "blue", "blue"],
+                },
+                {
+                    time: "12 PM",
+                    blocks: [
+                        "green-meal",
+                        "green",
+                        "green",
+                        "green",
+                        "green",
+                        "green",
+                    ],
+                },
+                {
+                    time: "1 PM",
+                    blocks: [
+                        "green",
+                        "orange-book",
+                        "orange",
+                        "orange",
+                        "orange",
+                        "orange",
+                    ],
+                },
+                {
+                    time: "2 PM",
+                    blocks: [
+                        "orange",
+                        "orange",
+                        "blue-laptop",
+                        "blue",
+                        "blue",
+                        "blue",
+                    ],
+                },
+                {
+                    time: "3 PM",
+                    blocks: ["blue", "blue", "blue", "blue", "blue", "blue"],
+                },
+            ];
+
+            const container = document.getElementById("schedule-grid");
+
+            const colors = {
+                blue: "#6b92f2",
+                green: "#568f32",
+                orange: "#f2a644",
+                "blue-laptop": "#5d87e6",
+            };
+
+            const icons = {
+                meal: `<svg viewBox="0 0 24 24" width="20" height="20" stroke="white" stroke-width="2" fill="none"><path d="M18 8c0 4.5-4.5 4.5-4.5 4.5s-4.5 0-4.5-4.5c0-4 4.5-4 4.5-4s4.5 0 4.5 4z"/><path d="M12 12.5V22M10 22h4"/></svg>`,
+                book: `<svg viewBox="0 0 24 24" width="20" height="20" stroke="white" stroke-width="2" fill="none"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+                laptop: `<svg viewBox="0 0 24 24" width="20" height="20" stroke="white" stroke-width="2" fill="none"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`,
+            };
+
+            scheduleData.forEach((row) => {
+                const rowEl = document.createElement("div");
+                rowEl.className = "flex items-center gap-10";
+
+                const timeLabel = document.createElement("div");
+                timeLabel.className =
+                    "w-16 text-xs font-semibold text-gray-500 whitespace-nowrap";
+                timeLabel.textContent = row.time;
+
+                const blocksContainer = document.createElement("div");
+                blocksContainer.className = "flex gap-4 md:gap-8 flex-wrap";
+
+                row.blocks.forEach((blockType) => {
+                    const block = document.createElement("div");
+                    block.className = "circle-btn shadow-sm";
+
+                    let bgColor = colors.blue;
+                    let content = "";
+
+                    if (blockType.startsWith("green")) bgColor = colors.green;
+                    if (blockType.startsWith("orange")) bgColor = colors.orange;
+                    if (blockType.startsWith("blue-laptop"))
+                        bgColor = colors["blue-laptop"];
+
+                    if (blockType.includes("meal")) content = icons.meal;
+                    if (blockType.includes("book")) content = icons.book;
+                    if (blockType.includes("laptop")) content = icons.laptop;
+
+                    block.style.backgroundColor = bgColor;
+                    block.innerHTML = content;
+                    blocksContainer.appendChild(block);
+                });
+
+                rowEl.appendChild(timeLabel);
+                rowEl.appendChild(blocksContainer);
+                container.appendChild(rowEl);
+            });
+        </script>
+    </body>
+</html>
