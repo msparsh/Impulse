@@ -27,6 +27,7 @@
                 position: relative;
                 background-color: #e5e7eb;
                 border: 2px solid transparent;
+                cursor: pointer;
             }
             .circle-btn:hover {
                 transform: scale(1.1);
@@ -54,9 +55,9 @@
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
-                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
                 z-index: 50;
-                width: 180px;
+                width: 200px;
             }
             .custom-scroll::-webkit-scrollbar {
                 width: 6px;
@@ -107,15 +108,21 @@
                     <h1 class="text-xl font-bold">Visual Planner Pro</h1>
                 </div>
                 <div class="flex items-center gap-6">
-                    <div class="text-right">
+                    <button
+                        onclick="goToToday()"
+                        class="px-4 py-2 border border-gray-200 rounded-full text-xs font-bold hover:bg-gray-50 text-gray-600 transition shadow-sm"
+                    >
+                        Today
+                    </button>
+                    <div class="text-right border-l border-gray-200 pl-6">
                         <h2
                             id="display-date"
                             class="text-xl font-bold text-indigo-900"
                         >
-                            April 12, 2026
+                            ...
                         </h2>
                         <p id="display-day" class="text-gray-500 text-sm">
-                            Sunday
+                            ...
                         </p>
                     </div>
                     <button
@@ -317,8 +324,8 @@
         </div>
 
         <script>
-            // --- CORE APPLICATION STATE ---
-            let state = {
+            // --- DATA PERSISTENCE & STATE ---
+            const defaultState = {
                 currentDate: "2026-04-12",
                 types: [
                     { id: "t_work", name: "Work" },
@@ -360,6 +367,14 @@
                 },
             };
 
+            // Load from LocalStorage or use default
+            const savedData = localStorage.getItem("planner_state");
+            let state = savedData ? JSON.parse(savedData) : defaultState;
+
+            const saveState = () => {
+                localStorage.setItem("planner_state", JSON.stringify(state));
+            };
+
             const hours = [
                 "8 AM",
                 "9 AM",
@@ -373,11 +388,20 @@
                 "5 PM",
             ];
 
+            // --- UTILITIES ---
             const closeAllMenus = () =>
                 document
                     .querySelectorAll(".choice-menu")
                     .forEach((m) => m.remove());
             document.addEventListener("click", closeAllMenus);
+
+            // Escape key listener for QoL
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") {
+                    closeAllMenus();
+                    closeSettingsModal();
+                }
+            });
 
             // --- MODAL CONTROLS ---
             function openSettingsModal() {
@@ -398,6 +422,13 @@
                 .addEventListener("click", function (e) {
                     if (e.target === this) closeSettingsModal();
                 });
+
+            function goToToday() {
+                // Force April 12, 2026 to match calendar UI layout, or use actual today
+                state.currentDate = "2026-04-12";
+                saveState();
+                refreshAllViews();
+            }
 
             // --- RENDER FUNCTIONS ---
             function updateDateDisplay() {
@@ -427,7 +458,7 @@
                     const isActive = dateStr === state.currentDate;
                     grid.innerHTML += `
                     <div onclick="selectDate('${dateStr}')"
-                         class="py-1 cursor-pointer hover:bg-indigo-50 rounded-md transition ${isActive ? "active-date" : "text-gray-700"}">
+                         class="py-1 cursor-pointer hover:bg-indigo-50 rounded-md transition ${isActive ? "active-date shadow-md" : "text-gray-700"}">
                         ${day}
                     </div>`;
                 }
@@ -489,10 +520,12 @@
                 const container = document.getElementById("schedule-grid");
                 container.innerHTML = "";
 
+                // Ensure array exists for selected date
                 if (!state.schedules[state.currentDate]) {
                     state.schedules[state.currentDate] = Array(10)
                         .fill(null)
                         .map(() => Array(6).fill(null));
+                    saveState();
                 }
 
                 const dayData = state.schedules[state.currentDate];
@@ -521,8 +554,16 @@
                         if (project) {
                             block.style.backgroundColor = project.color;
                             block.classList.add("filled");
-                            block.title = project.name; // Tooltip on hover
+                            block.title = project.name;
+                        } else {
+                            block.title = "Empty (Click to set)";
                         }
+
+                        // QoL: Right-Click to instantly clear
+                        block.oncontextmenu = (e) => {
+                            e.preventDefault();
+                            updateBlock(rowIndex, colIndex, null);
+                        };
 
                         block.onclick = (e) => {
                             e.stopPropagation();
@@ -534,12 +575,28 @@
                             state.projects.forEach((p) => {
                                 const btn = document.createElement("button");
                                 btn.className =
-                                    "flex items-center gap-3 p-2 w-full hover:bg-gray-100 rounded-lg transition text-left";
-                                btn.innerHTML = `<div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div>
-                                             <span class="text-xs font-bold text-gray-700 truncate">${p.name}</span>`;
+                                    "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
+
+                                btn.innerHTML = `
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div>
+                                    <span class="text-xs font-bold text-gray-700 truncate">${p.name}</span>
+                                </div>
+                                <div class="opacity-0 group-hover/btn:opacity-100 text-[10px] text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-100 fill-hour-btn" title="Fill entire hour">Fill Hr</div>
+                            `;
+
                                 btn.onclick = (event) => {
                                     event.stopPropagation();
-                                    updateBlock(rowIndex, colIndex, p.id);
+                                    // QoL: Click "Fill Hr" inside the button to fill row
+                                    if (
+                                        event.target.classList.contains(
+                                            "fill-hour-btn",
+                                        )
+                                    ) {
+                                        fillRow(rowIndex, p.id);
+                                    } else {
+                                        updateBlock(rowIndex, colIndex, p.id);
+                                    }
                                 };
                                 menu.appendChild(btn);
                             });
@@ -567,17 +624,16 @@
 
             // --- SETTINGS MANAGEMENT ---
             function renderSettingsData() {
-                // Populate Types Select in Project Form
                 const typeSelect = document.getElementById("new-proj-type");
                 typeSelect.innerHTML =
                     state.types.length === 0
                         ? "<option disabled>No types available</option>"
                         : "";
-                state.types.forEach((t) => {
-                    typeSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-                });
+                state.types.forEach(
+                    (t) =>
+                        (typeSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`),
+                );
 
-                // Render Types List
                 const typesList = document.getElementById(
                     "settings-types-list",
                 );
@@ -590,7 +646,6 @@
                     </div>`;
                 });
 
-                // Render Projects List
                 const projList = document.getElementById(
                     "settings-projects-list",
                 );
@@ -619,16 +674,18 @@
                 if (!name) return;
                 state.types.push({ id: "t_" + Date.now(), name });
                 input.value = "";
+                saveState();
                 renderSettingsData();
             }
 
             function removeType(id) {
                 state.types = state.types.filter((t) => t.id !== id);
-                // Cascade: remove projects linked to this type
                 state.projects
                     .filter((p) => p.typeId === id)
-                    .forEach((p) => removeProject(p.id));
+                    .forEach((p) => removeProject(p.id, false));
+                saveState();
                 renderSettingsData();
+                refreshAllViews();
             }
 
             function addProject() {
@@ -648,18 +705,19 @@
                 });
 
                 nameInput.value = "";
+                saveState();
                 renderSettingsData();
                 refreshAllViews();
             }
 
-            function removeProject(id) {
+            function removeProject(id, updateStorage = true) {
                 state.projects = state.projects.filter((p) => p.id !== id);
-                // Scrub from schedules
                 for (let date in state.schedules) {
                     state.schedules[date] = state.schedules[date].map((row) =>
                         row.map((block) => (block === id ? null : block)),
                     );
                 }
+                if (updateStorage) saveState();
                 renderSettingsData();
                 refreshAllViews();
             }
@@ -667,11 +725,23 @@
             // --- ACTIONS ---
             function selectDate(dateStr) {
                 state.currentDate = dateStr;
+                saveState();
                 refreshAllViews();
             }
 
             function updateBlock(row, col, projectId) {
                 state.schedules[state.currentDate][row][col] = projectId;
+                saveState();
+                closeAllMenus();
+                renderSchedule();
+                renderAnalytics();
+            }
+
+            function fillRow(row, projectId) {
+                for (let i = 0; i < 6; i++) {
+                    state.schedules[state.currentDate][row][i] = projectId;
+                }
+                saveState();
                 closeAllMenus();
                 renderSchedule();
                 renderAnalytics();
