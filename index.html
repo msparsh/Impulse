@@ -154,8 +154,10 @@
                         class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"
                     >
                         <div class="flex items-center justify-between mb-4">
-                            <span class="text-sm font-bold text-gray-800"
-                                >April 2026</span
+                            <span
+                                id="calendar-month-label"
+                                class="text-sm font-bold text-gray-800"
+                                >...</span
                             >
                         </div>
                         <div
@@ -322,12 +324,8 @@
             // -----------------------------------------------------------------------------
             // 1. STATE MANAGEMENT (Model)
             // -----------------------------------------------------------------------------
-            // -----------------------------------------------------------------------------
-            // 1. STATE MANAGEMENT (Model)
-            // -----------------------------------------------------------------------------
             class StateManager {
                 constructor() {
-                    // ⚠️ Bumped version to v3 so old 10-hour arrays don't break the new 17-hour grid
                     this.storageKey = "planner_state_v3";
                     this.hours = [
                         "7 AM",
@@ -352,8 +350,45 @@
                 }
 
                 getDefaultState() {
+                    const today = new Date();
+                    const offset = today.getTimezoneOffset() * 60000;
+                    const localISOTime = new Date(today - offset)
+                        .toISOString()
+                        .split("T")[0];
+
+                    // Generate a 17-row (hours) by 6-column (10min blocks) empty grid
+                    let defaultSchedule = Array(17)
+                        .fill(null)
+                        .map(() => Array(6).fill(null));
+
+                    // Add some sample default blocks
+                    defaultSchedule[1] = [
+                        "p_deep",
+                        "p_deep",
+                        "p_deep",
+                        null,
+                        null,
+                        null,
+                    ]; // 8 AM
+                    defaultSchedule[2] = [
+                        null,
+                        null,
+                        "p_study",
+                        "p_study",
+                        "p_study",
+                        null,
+                    ]; // 9 AM
+                    defaultSchedule[5] = [
+                        "p_health",
+                        "p_health",
+                        "p_health",
+                        null,
+                        null,
+                        null,
+                    ]; // 12 PM
+
                     return {
-                        currentDate: "2026-04-12",
+                        currentDate: localISOTime,
                         types: [
                             { id: "t_work", name: "Work" },
                             { id: "t_personal", name: "Personal" },
@@ -379,46 +414,7 @@
                             },
                         ],
                         schedules: {
-                            "2026-04-12": [
-                                [null, null, null, null, null, null], // 7 AM
-                                [
-                                    "p_deep",
-                                    "p_deep",
-                                    "p_deep",
-                                    null,
-                                    null,
-                                    null,
-                                ], // 8 AM
-                                [
-                                    null,
-                                    null,
-                                    "p_study",
-                                    "p_study",
-                                    "p_study",
-                                    null,
-                                ], // 9 AM
-                                [null, null, null, null, null, null], // 10 AM
-                                [null, null, null, null, null, null], // 11 AM
-                                [
-                                    "p_health",
-                                    "p_health",
-                                    "p_health",
-                                    null,
-                                    null,
-                                    null,
-                                ], // 12 PM
-                                [null, null, null, null, null, null], // 1 PM
-                                [null, null, null, null, null, null], // 2 PM
-                                [null, null, null, null, null, null], // 3 PM
-                                [null, null, null, null, null, null], // 4 PM
-                                [null, null, null, null, null, null], // 5 PM
-                                [null, null, null, null, null, null], // 6 PM
-                                [null, null, null, null, null, null], // 7 PM
-                                [null, null, null, null, null, null], // 8 PM
-                                [null, null, null, null, null, null], // 9 PM
-                                [null, null, null, null, null, null], // 10 PM
-                                [null, null, null, null, null, null], // 11 PM
-                            ],
+                            [localISOTime]: defaultSchedule,
                         },
                     };
                 }
@@ -452,6 +448,7 @@
                     return this.data.types.find((t) => t.id === id);
                 }
             }
+
             // -----------------------------------------------------------------------------
             // 2. UI MANAGEMENT (View)
             // -----------------------------------------------------------------------------
@@ -467,7 +464,8 @@
                 }
 
                 renderHeader(dateStr) {
-                    const dateObj = new Date(dateStr);
+                    const [year, month, day] = dateStr.split("-");
+                    const dateObj = new Date(year, month - 1, day);
                     const options = {
                         weekday: "long",
                         year: "numeric",
@@ -484,15 +482,39 @@
 
                 renderCalendar(currentDate) {
                     const grid = document.getElementById("calendar-grid");
+                    const monthLabel = document.getElementById(
+                        "calendar-month-label",
+                    );
                     grid.innerHTML = "";
-                    for (let i = 0; i < 3; i++)
-                        grid.innerHTML += `<div class="py-2 text-gray-300"></div>`;
 
-                    for (let day = 1; day <= 30; day++) {
-                        const dateStr = `2026-04-${day.toString().padStart(2, "0")}`;
-                        const isActive = dateStr === currentDate;
+                    const [yearStr, monthStr, dayStr] = currentDate.split("-");
+                    const year = parseInt(yearStr, 10);
+                    const month = parseInt(monthStr, 10) - 1;
+
+                    // Set dynamic month header
+                    const localDateObj = new Date(year, month, 1);
+                    monthLabel.innerText = localDateObj.toLocaleString(
+                        "default",
+                        { month: "long", year: "numeric" },
+                    );
+
+                    const firstDay = new Date(year, month, 1).getDay();
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+                    // Blank spaces for the start of the month
+                    for (let i = 0; i < firstDay; i++) {
+                        grid.innerHTML += `<div class="py-2 text-gray-300"></div>`;
+                    }
+
+                    // Render actual days
+                    for (let day = 1; day <= daysInMonth; day++) {
+                        const mStr = String(month + 1).padStart(2, "0");
+                        const dStr = String(day).padStart(2, "0");
+                        const loopDateStr = `${year}-${mStr}-${dStr}`;
+                        const isActive = loopDateStr === currentDate;
+
                         grid.innerHTML += `
-                        <div onclick="app.selectDate('${dateStr}')"
+                        <div onclick="app.selectDate('${loopDateStr}')"
                              class="py-1 cursor-pointer hover:bg-indigo-50 rounded-md transition ${isActive ? "active-date shadow-md" : "text-gray-700"}">
                             ${day}
                         </div>`;
@@ -628,7 +650,7 @@
                             <span class="text-xs font-bold text-gray-700 truncate">${p.name}</span>
                         </div>
                         <div class="opacity-0 group-hover/btn:opacity-100 text-[10px] text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-100 fill-hour-btn" title="Fill entire hour">Fill Hr</div>
-                    `;
+                        `;
                         btn.onclick = (event) => {
                             event.stopPropagation();
                             if (
@@ -653,6 +675,16 @@
 
                     menu.appendChild(reset);
                     blockElement.appendChild(menu);
+
+                    // SMART POSITIONING: Prevent bottom clipping
+                    const rect = blockElement.getBoundingClientRect();
+                    const menuHeight = menu.offsetHeight;
+                    if (rect.bottom + menuHeight > window.innerHeight) {
+                        menu.style.top = "auto";
+                        menu.style.bottom = "50px"; // Open upwards
+                        menu.style.boxShadow =
+                            "0 -10px 25px -5px rgba(0, 0, 0, 0.15)";
+                    }
                 }
 
                 renderSettings(types, projects) {
@@ -761,7 +793,13 @@
 
                 // --- USER ACTIONS ---
                 goToToday() {
-                    this.state.data.currentDate = "2026-04-12"; // Standardized for prototype
+                    const today = new Date();
+                    const offset = today.getTimezoneOffset() * 60000;
+                    const localISOTime = new Date(today - offset)
+                        .toISOString()
+                        .split("T")[0];
+
+                    this.state.data.currentDate = localISOTime;
                     this.state.saveState();
                     this.refreshAllViews();
                 }
