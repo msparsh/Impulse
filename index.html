@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Visual Schedule Planner</title>
+        <title>Visual Schedule Planner Pro</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
@@ -12,7 +12,7 @@
         <style>
             body {
                 font-family: "Inter", sans-serif;
-                background-color: #ffffff;
+                background-color: #f9fafb;
                 color: #1a1a1a;
             }
             .circle-btn {
@@ -22,394 +22,457 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: transform 0.1s ease;
+                font-size: 20px;
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                background-color: #e5e7eb;
+                border: 2px solid transparent;
             }
             .circle-btn:hover {
-                transform: scale(1.05);
+                transform: scale(1.1);
+                filter: brightness(95%);
+                z-index: 10;
+            }
+            .circle-btn.filled {
+                border-color: rgba(0, 0, 0, 0.1);
             }
             .active-date {
-                background-color: #5842be;
-                color: white;
-                border-radius: 50%;
+                background-color: #4f46e5;
+                color: white !important;
+                font-weight: bold;
+                border-radius: 8px;
             }
-            .sidebar-item {
-                border-top: 1px solid #f0f0f0;
-                padding: 20px 0;
+            .choice-menu {
+                position: absolute;
+                top: 50px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                padding: 8px;
+                display: flex;
+                gap: 8px;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                z-index: 50;
+                width: max-content;
+                max-width: 200px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .custom-scroll::-webkit-scrollbar {
+                width: 6px;
+            }
+            .custom-scroll::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 4px;
             }
         </style>
     </head>
-    <body class="p-4 md:p-8">
-        <div class="max-w-6xl mx-auto">
-            <!-- Header -->
-            <header class="flex items-center justify-between mb-8">
-                <div class="flex items-center gap-6">
-                    <!-- Logo Mockup -->
-                    <div class="grid grid-cols-2 gap-1 w-8 h-8">
-                        <div class="bg-indigo-600 rounded-sm"></div>
-                        <div class="bg-indigo-600 rounded-sm"></div>
-                        <div class="bg-indigo-600 rounded-sm"></div>
-                        <div class="bg-indigo-600 rounded-sm"></div>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <button
-                            class="px-5 py-2 border border-gray-300 rounded-full text-sm font-medium hover:bg-gray-50"
-                        >
-                            Today
-                        </button>
-                        <div class="flex gap-1">
-                            <button
-                                class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full hover:bg-gray-50"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <path d="m15 18-6-6 6-6" />
-                                </svg>
-                            </button>
-                            <button
-                                class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full hover:bg-gray-50"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <path d="m9 18 6-6-6-6" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="text-right">
-                    <p class="text-gray-500 text-sm">Tuesday</p>
-                    <h1 class="text-2xl font-bold font-serif">
-                        March 25, 2025
-                    </h1>
-                </div>
-
-                <button class="p-2 text-gray-500 hover:text-gray-800">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+    <body class="p-4 md:p-8 h-screen flex flex-col overflow-hidden">
+        <div
+            class="max-w-7xl mx-auto w-full h-full flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+        >
+            <header
+                class="flex items-center justify-between p-6 border-b border-gray-100"
+            >
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xl"
                     >
-                        <path
-                            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-                        />
-                        <circle cx="12" cy="12" r="3" />
-                    </svg>
-                </button>
+                        V
+                    </div>
+                    <h1 class="text-xl font-bold">Visual Planner Pro</h1>
+                </div>
+                <div class="text-right">
+                    <h2
+                        id="display-date"
+                        class="text-2xl font-bold text-indigo-900"
+                    >
+                        April 12, 2026
+                    </h2>
+                    <p id="display-day" class="text-gray-500 text-sm">Sunday</p>
+                </div>
             </header>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
-                <!-- Sidebar -->
-                <aside class="lg:col-span-4">
-                    <div class="mb-8">
-                        <div
-                            class="flex items-center justify-between mb-4 px-2"
-                        >
-                            <button class="p-1 hover:bg-gray-100 rounded-full">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <path d="m15 18-6-6 6-6" />
-                                </svg>
-                            </button>
-                            <span class="text-sm font-semibold text-gray-600"
-                                >March 2025</span
+            <div class="flex flex-1 overflow-hidden">
+                <aside
+                    class="w-80 border-r border-gray-100 p-6 flex flex-col gap-8 overflow-y-auto custom-scroll bg-gray-50"
+                >
+                    <div
+                        class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"
+                    >
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-sm font-bold text-gray-800"
+                                >April 2026</span
                             >
-                            <button class="p-1 hover:bg-gray-100 rounded-full">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <path d="m9 18 6-6-6-6" />
-                                </svg>
-                            </button>
                         </div>
                         <div
-                            class="grid grid-cols-7 gap-y-2 text-center text-sm"
+                            class="grid grid-cols-7 gap-1 text-center text-xs font-medium mb-2"
                         >
-                            <div class="text-gray-400 py-1">S</div>
-                            <div class="text-gray-400 py-1">M</div>
-                            <div class="text-gray-400 py-1">T</div>
-                            <div class="text-gray-400 py-1">W</div>
-                            <div class="text-gray-400 py-1">T</div>
-                            <div class="text-gray-400 py-1">F</div>
-                            <div class="text-gray-400 py-1">S</div>
+                            <div class="text-gray-400">S</div>
+                            <div class="text-gray-400">M</div>
+                            <div class="text-gray-400">T</div>
+                            <div class="text-gray-400">W</div>
+                            <div class="text-gray-400">T</div>
+                            <div class="text-gray-400">F</div>
+                            <div class="text-gray-400">S</div>
+                        </div>
+                        <div
+                            id="calendar-grid"
+                            class="grid grid-cols-7 gap-1 text-center text-sm"
+                        ></div>
+                    </div>
 
-                            <!-- Calendar Days (Mocked) -->
-                            <div class="py-2 text-gray-300"></div>
-                            <div class="py-2 text-gray-300"></div>
-                            <div class="py-2 text-gray-300"></div>
-                            <div class="py-2 text-gray-300"></div>
-                            <div class="py-2 text-gray-300"></div>
-                            <div class="py-2 text-gray-300"></div>
-                            <div class="py-2">1</div>
-                            <div class="py-2">2</div>
-                            <div class="py-2">3</div>
-                            <div class="py-2">4</div>
-                            <div class="py-2">5</div>
-                            <div class="py-2">6</div>
-                            <div class="py-2">7</div>
-                            <div class="py-2">8</div>
-                            <div class="py-2">9</div>
-                            <div class="py-2">10</div>
-                            <div class="py-2">11</div>
-                            <div class="py-2">12</div>
-                            <div class="py-2">13</div>
-                            <div class="py-2">14</div>
-                            <div class="py-2">15</div>
-                            <div class="py-2">16</div>
-                            <div class="py-2">17</div>
-                            <div class="py-2">18</div>
-                            <div class="py-2">19</div>
-                            <div class="py-2">20</div>
-                            <div class="py-2">21</div>
-                            <div class="py-2">22</div>
-                            <div class="py-2">23</div>
-                            <div class="py-2">24</div>
-                            <div
-                                class="py-2 active-date w-8 h-8 flex items-center justify-center mx-auto"
+                    <div>
+                        <h3
+                            class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"
+                        >
+                            🛠️ Active Projects
+                        </h3>
+                        <div
+                            id="project-list"
+                            class="flex flex-col gap-2 mb-4"
+                        ></div>
+
+                        <div
+                            class="bg-white p-3 rounded-xl shadow-sm border border-gray-100"
+                        >
+                            <h4
+                                class="text-xs font-bold text-gray-500 mb-2 uppercase"
                             >
-                                25
+                                Add New Project
+                            </h4>
+                            <div class="flex flex-col gap-2">
+                                <input
+                                    type="text"
+                                    id="new-proj-name"
+                                    placeholder="Project Name"
+                                    class="text-sm p-2 border rounded-md w-full"
+                                />
+                                <div class="flex gap-2">
+                                    <input
+                                        type="color"
+                                        id="new-proj-color"
+                                        value="#ec4899"
+                                        class="h-8 w-8 rounded cursor-pointer"
+                                    />
+                                    <select
+                                        id="new-proj-icon"
+                                        class="text-sm p-1 border rounded-md flex-1"
+                                    >
+                                        <option value="💻">💻 Laptop</option>
+                                        <option value="📚">📚 Book</option>
+                                        <option value="🍎">🍎 Meal</option>
+                                        <option value="🏋️">🏋️ Workout</option>
+                                        <option value="🎨">🎨 Art</option>
+                                        <option value="📞">📞 Call</option>
+                                    </select>
+                                </div>
+                                <button
+                                    onclick="addNewProject()"
+                                    class="bg-indigo-600 text-white text-sm py-2 rounded-md font-medium hover:bg-indigo-700 transition"
+                                >
+                                    Add Project
+                                </button>
                             </div>
-                            <div class="py-2 font-bold">26</div>
-                            <div class="py-2">27</div>
-                            <div class="py-2">28</div>
-                            <div class="py-2">29</div>
-                            <div class="py-2">30</div>
-                            <div class="py-2">31</div>
                         </div>
-
-                        <div
-                            class="mt-6 flex bg-gray-100 p-1 rounded-full w-fit mx-auto"
-                        >
-                            <button
-                                class="px-6 py-1 bg-black text-white rounded-full text-xs font-medium"
-                            >
-                                Day
-                            </button>
-                            <button
-                                class="px-6 py-1 text-gray-500 rounded-full text-xs font-medium"
-                            >
-                                Week
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="sidebar-item">
-                        <div
-                            class="flex items-center justify-between cursor-pointer"
-                        >
-                            <span class="font-semibold text-sm"
-                                >Blocks Timer</span
-                            >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            >
-                                <path d="m9 18 6-6-6-6" />
-                            </svg>
-                        </div>
-                        <p class="text-xs text-gray-400 mt-2">
-                            No timers created yet.
-                        </p>
-                    </div>
-
-                    <div class="sidebar-item">
-                        <div
-                            class="flex items-center justify-between cursor-pointer"
-                        >
-                            <span class="font-semibold text-sm"
-                                >Focus Seasons</span
-                            >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            >
-                                <path d="m9 18 6-6-6-6" />
-                            </svg>
-                        </div>
-                        <p class="text-xs text-gray-400 mt-2">
-                            Create a season of focus with time goals for the
-                            activities you choose.
-                        </p>
                     </div>
                 </aside>
 
-                <!-- Main Planner Content -->
-                <main
-                    class="lg:col-span-8 border-l border-gray-100 pl-4 md:pl-10"
-                >
-                    <a
-                        href="#"
-                        class="text-indigo-600 text-sm font-semibold hover:underline mb-6 block"
-                        >Use Template</a
+                <main class="flex-1 flex flex-col overflow-hidden bg-white">
+                    <div
+                        class="p-6 border-b border-gray-100 bg-white z-10 shadow-sm"
                     >
+                        <h3
+                            class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"
+                        >
+                            📊 Daily Time Allocation
+                        </h3>
+                        <div
+                            id="analytics-bar"
+                            class="flex flex-wrap gap-4"
+                        ></div>
+                    </div>
 
-                    <div class="space-y-4">
-                        <!-- Schedule Rows -->
-                        <div id="schedule-grid" class="flex flex-col gap-6">
-                            <!-- Row Template will be inserted here -->
-                        </div>
+                    <div class="flex-1 overflow-y-auto p-6 custom-scroll">
+                        <div
+                            id="schedule-grid"
+                            class="flex flex-col gap-6 max-w-4xl mx-auto pb-20"
+                        ></div>
                     </div>
                 </main>
             </div>
         </div>
 
         <script>
-            const scheduleData = [
-                {
-                    time: "10 AM",
-                    blocks: ["blue", "blue", "blue", "blue", "blue", "blue"],
-                },
-                {
-                    time: "11 AM",
-                    blocks: ["blue", "blue", "blue", "blue", "blue", "blue"],
-                },
-                {
-                    time: "12 PM",
-                    blocks: [
-                        "green-meal",
-                        "green",
-                        "green",
-                        "green",
-                        "green",
-                        "green",
+            // --- CORE APPLICATION STATE ---
+            let state = {
+                currentDate: "2026-04-12", // Format: YYYY-MM-DD
+                projects: [
+                    {
+                        id: "p_deep",
+                        name: "Deep Work",
+                        color: "#6b92f2",
+                        icon: "💻",
+                    },
+                    {
+                        id: "p_study",
+                        name: "Study",
+                        color: "#f2a644",
+                        icon: "📚",
+                    },
+                    {
+                        id: "p_health",
+                        name: "Health/Meals",
+                        color: "#568f32",
+                        icon: "🍎",
+                    },
+                ],
+                // Data store mapping dates to an array of rows (hours). Each row has 6 blocks.
+                schedules: {
+                    "2026-04-12": [
+                        ["p_deep", "p_deep", "p_deep", null, null, null], // 8 AM
+                        [null, null, "p_study", "p_study", "p_study", null], // 9 AM
+                        [null, null, null, null, null, null], // 10 AM
+                        [null, null, null, null, null, null], // 11 AM
+                        ["p_health", "p_health", "p_health", null, null, null], // 12 PM
+                        [null, null, null, null, null, null], // 1 PM
+                        [null, null, null, null, null, null], // 2 PM
+                        [null, null, null, null, null, null], // 3 PM
+                        [null, null, null, null, null, null], // 4 PM
+                        [null, null, null, null, null, null], // 5 PM
                     ],
                 },
-                {
-                    time: "1 PM",
-                    blocks: [
-                        "green",
-                        "orange-book",
-                        "orange",
-                        "orange",
-                        "orange",
-                        "orange",
-                    ],
-                },
-                {
-                    time: "2 PM",
-                    blocks: [
-                        "orange",
-                        "orange",
-                        "blue-laptop",
-                        "blue",
-                        "blue",
-                        "blue",
-                    ],
-                },
-                {
-                    time: "3 PM",
-                    blocks: ["blue", "blue", "blue", "blue", "blue", "blue"],
-                },
+            };
+
+            const hours = [
+                "8 AM",
+                "9 AM",
+                "10 AM",
+                "11 AM",
+                "12 PM",
+                "1 PM",
+                "2 PM",
+                "3 PM",
+                "4 PM",
+                "5 PM",
             ];
 
-            const container = document.getElementById("schedule-grid");
+            // --- UTILITIES ---
+            const closeAllMenus = () =>
+                document
+                    .querySelectorAll(".choice-menu")
+                    .forEach((m) => m.remove());
+            document.addEventListener("click", closeAllMenus);
 
-            const colors = {
-                blue: "#6b92f2",
-                green: "#568f32",
-                orange: "#f2a644",
-                "blue-laptop": "#5d87e6",
-            };
+            // --- RENDER FUNCTIONS ---
+            function updateDateDisplay() {
+                const dateObj = new Date(state.currentDate);
+                const options = {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                };
+                const parts = dateObj
+                    .toLocaleDateString("en-US", options)
+                    .split(", ");
+                document.getElementById("display-day").innerText = parts[0];
+                document.getElementById("display-date").innerText =
+                    parts[1] + ", " + parts[2];
+            }
 
-            const icons = {
-                meal: `<svg viewBox="0 0 24 24" width="20" height="20" stroke="white" stroke-width="2" fill="none"><path d="M18 8c0 4.5-4.5 4.5-4.5 4.5s-4.5 0-4.5-4.5c0-4 4.5-4 4.5-4s4.5 0 4.5 4z"/><path d="M12 12.5V22M10 22h4"/></svg>`,
-                book: `<svg viewBox="0 0 24 24" width="20" height="20" stroke="white" stroke-width="2" fill="none"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
-                laptop: `<svg viewBox="0 0 24 24" width="20" height="20" stroke="white" stroke-width="2" fill="none"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`,
-            };
+            function renderCalendar() {
+                const grid = document.getElementById("calendar-grid");
+                grid.innerHTML = "";
+                // Offset for April 2026 (Starts on Wednesday)
+                for (let i = 0; i < 3; i++)
+                    grid.innerHTML += `<div class="py-2 text-gray-300"></div>`;
 
-            scheduleData.forEach((row) => {
-                const rowEl = document.createElement("div");
-                rowEl.className = "flex items-center gap-10";
+                for (let day = 1; day <= 30; day++) {
+                    const dateStr = `2026-04-${day.toString().padStart(2, "0")}`;
+                    const isActive = dateStr === state.currentDate;
+                    grid.innerHTML += `
+                    <div onclick="selectDate('${dateStr}')"
+                         class="py-1 cursor-pointer hover:bg-indigo-50 rounded-md transition ${isActive ? "active-date" : "text-gray-700"}">
+                        ${day}
+                    </div>`;
+                }
+            }
 
-                const timeLabel = document.createElement("div");
-                timeLabel.className =
-                    "w-16 text-xs font-semibold text-gray-500 whitespace-nowrap";
-                timeLabel.textContent = row.time;
+            function renderProjects() {
+                const list = document.getElementById("project-list");
+                list.innerHTML = "";
+                state.projects.forEach((p) => {
+                    list.innerHTML += `
+                    <div class="flex items-center gap-3 p-2 rounded-lg bg-white border border-gray-100 shadow-sm">
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs" style="background-color: ${p.color}; color: white;">${p.icon}</div>
+                        <span class="text-sm font-medium text-gray-700">${p.name}</span>
+                    </div>`;
+                });
+            }
 
-                const blocksContainer = document.createElement("div");
-                blocksContainer.className = "flex gap-4 md:gap-8 flex-wrap";
+            function renderAnalytics() {
+                const bar = document.getElementById("analytics-bar");
+                bar.innerHTML = "";
+                const todayData = state.schedules[state.currentDate] || [];
+                let counts = {};
 
-                row.blocks.forEach((blockType) => {
-                    const block = document.createElement("div");
-                    block.className = "circle-btn shadow-sm";
-
-                    let bgColor = colors.blue;
-                    let content = "";
-
-                    if (blockType.startsWith("green")) bgColor = colors.green;
-                    if (blockType.startsWith("orange")) bgColor = colors.orange;
-                    if (blockType.startsWith("blue-laptop"))
-                        bgColor = colors["blue-laptop"];
-
-                    if (blockType.includes("meal")) content = icons.meal;
-                    if (blockType.includes("book")) content = icons.book;
-                    if (blockType.includes("laptop")) content = icons.laptop;
-
-                    block.style.backgroundColor = bgColor;
-                    block.innerHTML = content;
-                    blocksContainer.appendChild(block);
+                todayData.forEach((row) => {
+                    row.forEach((block) => {
+                        if (block) counts[block] = (counts[block] || 0) + 1;
+                    });
                 });
 
-                rowEl.appendChild(timeLabel);
-                rowEl.appendChild(blocksContainer);
-                container.appendChild(rowEl);
-            });
+                let totalAssigned = 0;
+                state.projects.forEach((p) => {
+                    const blocks = counts[p.id] || 0;
+                    if (blocks > 0) {
+                        const minutes = blocks * 10;
+                        const hoursStr =
+                            minutes >= 60
+                                ? `${(minutes / 60).toFixed(1)}h`
+                                : `${minutes}m`;
+                        bar.innerHTML += `
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200">
+                            <span class="w-3 h-3 rounded-full" style="background-color: ${p.color}"></span>
+                            <span class="text-xs font-semibold text-gray-700">${p.name}: <span class="text-gray-500">${hoursStr}</span></span>
+                        </div>`;
+                        totalAssigned++;
+                    }
+                });
+
+                if (totalAssigned === 0) {
+                    bar.innerHTML = `<span class="text-sm text-gray-400 italic">No blocks assigned for this date yet.</span>`;
+                }
+            }
+
+            function renderSchedule() {
+                const container = document.getElementById("schedule-grid");
+                container.innerHTML = "";
+
+                // Ensure data exists for current date
+                if (!state.schedules[state.currentDate]) {
+                    state.schedules[state.currentDate] = Array(10)
+                        .fill(null)
+                        .map(() => Array(6).fill(null));
+                }
+
+                const dayData = state.schedules[state.currentDate];
+
+                hours.forEach((time, rowIndex) => {
+                    const rowEl = document.createElement("div");
+                    rowEl.className = "flex items-center gap-8 group";
+
+                    const timeLabel = document.createElement("div");
+                    timeLabel.className =
+                        "w-16 text-xs font-bold text-gray-400 uppercase tracking-wider text-right";
+                    timeLabel.textContent = time;
+
+                    const blocksContainer = document.createElement("div");
+                    blocksContainer.className =
+                        "flex gap-3 md:gap-4 flex-wrap bg-gray-50 p-2 rounded-2xl group-hover:bg-gray-100 transition";
+
+                    dayData[rowIndex].forEach((blockProjectId, colIndex) => {
+                        const block = document.createElement("button");
+                        block.className = "circle-btn shadow-sm";
+
+                        const project = state.projects.find(
+                            (p) => p.id === blockProjectId,
+                        );
+
+                        if (project) {
+                            block.style.backgroundColor = project.color;
+                            block.innerHTML = `<span class="text-white">${project.icon}</span>`;
+                            block.classList.add("filled");
+                        }
+
+                        block.onclick = (e) => {
+                            e.stopPropagation();
+                            closeAllMenus();
+
+                            const menu = document.createElement("div");
+                            menu.className = "choice-menu";
+
+                            state.projects.forEach((p) => {
+                                const btn = document.createElement("button");
+                                btn.className =
+                                    "w-10 h-10 rounded-full flex flex-col items-center justify-center hover:scale-110 transition shadow-sm";
+                                btn.style.backgroundColor = p.color;
+                                btn.innerHTML = `<span class="text-white text-sm">${p.icon}</span>`;
+                                btn.title = p.name;
+                                btn.onclick = (event) => {
+                                    event.stopPropagation();
+                                    updateBlock(rowIndex, colIndex, p.id);
+                                };
+                                menu.appendChild(btn);
+                            });
+
+                            const reset = document.createElement("button");
+                            reset.className =
+                                "w-10 h-10 rounded-full flex items-center justify-center bg-gray-200 hover:bg-red-500 hover:text-white transition shadow-sm text-gray-500 font-bold text-xs";
+                            reset.innerText = "✖";
+                            reset.onclick = (event) => {
+                                event.stopPropagation();
+                                updateBlock(rowIndex, colIndex, null);
+                            };
+                            menu.appendChild(reset);
+                            block.appendChild(menu);
+                        };
+
+                        blocksContainer.appendChild(block);
+                    });
+
+                    rowEl.appendChild(timeLabel);
+                    rowEl.appendChild(blocksContainer);
+                    container.appendChild(rowEl);
+                });
+            }
+
+            // --- ACTIONS ---
+            function selectDate(dateStr) {
+                state.currentDate = dateStr;
+                updateDateDisplay();
+                renderCalendar();
+                renderSchedule();
+                renderAnalytics();
+            }
+
+            function updateBlock(row, col, projectId) {
+                state.schedules[state.currentDate][row][col] = projectId;
+                closeAllMenus();
+                renderSchedule();
+                renderAnalytics(); // Instantly update chart
+            }
+
+            function addNewProject() {
+                const nameEl = document.getElementById("new-proj-name");
+                const colorEl = document.getElementById("new-proj-color");
+                const iconEl = document.getElementById("new-proj-icon");
+
+                if (!nameEl.value.trim())
+                    return alert("Project name required!");
+
+                const newProj = {
+                    id: "p_" + Date.now(),
+                    name: nameEl.value.trim(),
+                    color: colorEl.value,
+                    icon: iconEl.value,
+                };
+
+                state.projects.push(newProj);
+                nameEl.value = ""; // Reset
+
+                renderProjects();
+            }
+
+            // --- INITIALIZE ---
+            updateDateDisplay();
+            renderCalendar();
+            renderProjects();
+            renderSchedule();
+            renderAnalytics();
         </script>
     </body>
 </html>
