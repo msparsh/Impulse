@@ -52,13 +52,11 @@
                 border-radius: 12px;
                 padding: 8px;
                 display: flex;
-                gap: 8px;
+                flex-direction: column;
+                gap: 4px;
                 box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
                 z-index: 50;
-                width: max-content;
-                max-width: 200px;
-                flex-wrap: wrap;
-                justify-content: center;
+                width: 180px;
             }
             .custom-scroll::-webkit-scrollbar {
                 width: 6px;
@@ -67,8 +65,6 @@
                 background: #cbd5e1;
                 border-radius: 4px;
             }
-
-            /* Modal Animation */
             @keyframes fadeIn {
                 from {
                     opacity: 0;
@@ -123,9 +119,9 @@
                         </p>
                     </div>
                     <button
-                        onclick="openProjectModal()"
+                        onclick="openSettingsModal()"
                         class="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-gray-300 transition text-gray-600 shadow-sm"
-                        title="Add Project"
+                        title="Settings & Data"
                     >
                         <svg
                             width="20"
@@ -212,18 +208,18 @@
         </div>
 
         <div
-            id="project-modal"
-            class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center backdrop-blur-sm"
+            id="settings-modal"
+            class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center backdrop-blur-sm p-4"
         >
             <div
-                class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden modal-content"
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden modal-content flex flex-col max-h-[90vh]"
             >
                 <div
                     class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"
                 >
-                    <h3 class="font-bold text-gray-800">Add New Project</h3>
+                    <h3 class="font-bold text-gray-800">Manage Data</h3>
                     <button
-                        onclick="closeProjectModal()"
+                        onclick="closeSettingsModal()"
                         class="text-gray-400 hover:text-gray-700 transition"
                     >
                         <svg
@@ -241,58 +237,81 @@
                         </svg>
                     </button>
                 </div>
-                <div class="p-6 flex flex-col gap-4">
-                    <div>
-                        <label
-                            class="block text-xs font-bold text-gray-500 uppercase mb-1"
-                            >Project Name</label
-                        >
-                        <input
-                            type="text"
-                            id="new-proj-name"
-                            placeholder="e.g. Content Creation"
-                            class="text-sm p-3 border border-gray-200 rounded-lg w-full focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                        />
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label
-                                class="block text-xs font-bold text-gray-500 uppercase mb-1"
-                                >Color</label
-                            >
-                            <input
-                                type="color"
-                                id="new-proj-color"
-                                value="#8b5cf6"
-                                class="h-10 w-full rounded-lg cursor-pointer border border-gray-200 p-1"
-                            />
-                        </div>
-                        <div>
-                            <label
-                                class="block text-xs font-bold text-gray-500 uppercase mb-1"
-                                >Initials</label
-                            >
-                            <select
-                                id="new-proj-icon"
-                                class="text-sm p-2 border border-gray-200 rounded-lg w-full h-10 font-bold text-gray-700 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                            >
-                                <option value="DW">DW (Deep Work)</option>
-                                <option value="ST">ST (Study)</option>
-                                <option value="HM">HM (Health)</option>
-                                <option value="WK">WK (Workout)</option>
-                                <option value="AR">AR (Art)</option>
-                                <option value="CL">CL (Call)</option>
-                                <option value="MT">MT (Meeting)</option>
-                                <option value="AD">AD (Admin)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button
-                        onclick="addNewProject()"
-                        class="mt-2 w-full bg-indigo-600 text-white text-sm py-3 rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm"
+
+                <div class="flex flex-1 overflow-hidden">
+                    <div
+                        class="flex-1 border-r border-gray-100 p-6 overflow-y-auto custom-scroll"
                     >
-                        Save Project
-                    </button>
+                        <h4
+                            class="text-sm font-bold text-gray-800 mb-4 border-b pb-2"
+                        >
+                            1. Types
+                        </h4>
+
+                        <div class="flex gap-2 mb-6">
+                            <input
+                                type="text"
+                                id="new-type-name"
+                                placeholder="New Type Name"
+                                class="text-sm p-2 border border-gray-200 rounded-lg flex-1 focus:outline-none focus:border-indigo-500"
+                            />
+                            <button
+                                onclick="addType()"
+                                class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-700 transition"
+                            >
+                                Add
+                            </button>
+                        </div>
+
+                        <div
+                            id="settings-types-list"
+                            class="flex flex-col gap-2"
+                        ></div>
+                    </div>
+
+                    <div
+                        class="flex-1 p-6 overflow-y-auto custom-scroll bg-gray-50/50"
+                    >
+                        <h4
+                            class="text-sm font-bold text-gray-800 mb-4 border-b pb-2"
+                        >
+                            2. Projects
+                        </h4>
+
+                        <div
+                            class="flex flex-col gap-3 mb-6 bg-white p-4 rounded-xl border border-gray-100 shadow-sm"
+                        >
+                            <input
+                                type="text"
+                                id="new-proj-name"
+                                placeholder="Project Name"
+                                class="text-sm p-2 border border-gray-200 rounded-lg w-full focus:outline-none focus:border-indigo-500"
+                            />
+                            <div class="flex gap-2">
+                                <input
+                                    type="color"
+                                    id="new-proj-color"
+                                    value="#8b5cf6"
+                                    class="h-10 w-12 rounded-lg cursor-pointer border border-gray-200 p-1"
+                                />
+                                <select
+                                    id="new-proj-type"
+                                    class="text-sm p-2 border border-gray-200 rounded-lg flex-1 bg-white focus:outline-none focus:border-indigo-500"
+                                ></select>
+                            </div>
+                            <button
+                                onclick="addProject()"
+                                class="w-full bg-indigo-600 text-white text-sm py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm"
+                            >
+                                Save Project
+                            </button>
+                        </div>
+
+                        <div
+                            id="settings-projects-list"
+                            class="flex flex-col gap-2"
+                        ></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -300,25 +319,29 @@
         <script>
             // --- CORE APPLICATION STATE ---
             let state = {
-                currentDate: "2026-04-12", // Format: YYYY-MM-DD
+                currentDate: "2026-04-12",
+                types: [
+                    { id: "t_work", name: "Work" },
+                    { id: "t_personal", name: "Personal" },
+                ],
                 projects: [
                     {
                         id: "p_deep",
                         name: "Deep Work",
                         color: "#6b92f2",
-                        icon: "DW",
+                        typeId: "t_work",
                     },
                     {
                         id: "p_study",
                         name: "Study",
                         color: "#f2a644",
-                        icon: "ST",
+                        typeId: "t_personal",
                     },
                     {
                         id: "p_health",
                         name: "Health/Meals",
                         color: "#568f32",
-                        icon: "HM",
+                        typeId: "t_personal",
                     },
                 ],
                 schedules: {
@@ -350,7 +373,6 @@
                 "5 PM",
             ];
 
-            // --- UTILITIES ---
             const closeAllMenus = () =>
                 document
                     .querySelectorAll(".choice-menu")
@@ -358,25 +380,23 @@
             document.addEventListener("click", closeAllMenus);
 
             // --- MODAL CONTROLS ---
-            function openProjectModal() {
-                const modal = document.getElementById("project-modal");
+            function openSettingsModal() {
+                renderSettingsData();
+                const modal = document.getElementById("settings-modal");
                 modal.classList.remove("hidden");
                 modal.classList.add("modal-bg");
             }
 
-            function closeProjectModal() {
-                const modal = document.getElementById("project-modal");
+            function closeSettingsModal() {
+                const modal = document.getElementById("settings-modal");
                 modal.classList.add("hidden");
                 modal.classList.remove("modal-bg");
             }
 
-            // Close modal if clicking outside the content box
             document
-                .getElementById("project-modal")
+                .getElementById("settings-modal")
                 .addEventListener("click", function (e) {
-                    if (e.target === this) {
-                        closeProjectModal();
-                    }
+                    if (e.target === this) closeSettingsModal();
                 });
 
             // --- RENDER FUNCTIONS ---
@@ -413,14 +433,20 @@
                 }
             }
 
-            function renderProjects() {
+            function renderProjectsSidebar() {
                 const list = document.getElementById("project-list");
                 list.innerHTML = "";
                 state.projects.forEach((p) => {
+                    const typeName =
+                        state.types.find((t) => t.id === p.typeId)?.name ||
+                        "Unknown";
                     list.innerHTML += `
                     <div class="flex items-center gap-3 p-2 rounded-lg bg-white border border-gray-100 shadow-sm">
-                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style="background-color: ${p.color}; color: white;">${p.icon}</div>
-                        <span class="text-sm font-medium text-gray-700">${p.name}</span>
+                        <div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-gray-800 leading-tight">${p.name}</span>
+                            <span class="text-[10px] text-gray-400 uppercase tracking-wide">${typeName}</span>
+                        </div>
                     </div>`;
                 });
             }
@@ -455,9 +481,8 @@
                     }
                 });
 
-                if (totalAssigned === 0) {
-                    bar.innerHTML = `<span class="text-sm text-gray-400 italic">No blocks assigned for this date yet.</span>`;
-                }
+                if (totalAssigned === 0)
+                    bar.innerHTML = `<span class="text-sm text-gray-400 italic">No blocks assigned.</span>`;
             }
 
             function renderSchedule() {
@@ -495,8 +520,8 @@
 
                         if (project) {
                             block.style.backgroundColor = project.color;
-                            block.innerHTML = `<span class="text-white text-sm font-bold tracking-tight">${project.icon}</span>`;
                             block.classList.add("filled");
+                            block.title = project.name; // Tooltip on hover
                         }
 
                         block.onclick = (e) => {
@@ -509,10 +534,9 @@
                             state.projects.forEach((p) => {
                                 const btn = document.createElement("button");
                                 btn.className =
-                                    "w-10 h-10 rounded-full flex flex-col items-center justify-center hover:scale-110 transition shadow-sm";
-                                btn.style.backgroundColor = p.color;
-                                btn.innerHTML = `<span class="text-white text-[11px] font-bold tracking-tight">${p.icon}</span>`;
-                                btn.title = p.name;
+                                    "flex items-center gap-3 p-2 w-full hover:bg-gray-100 rounded-lg transition text-left";
+                                btn.innerHTML = `<div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div>
+                                             <span class="text-xs font-bold text-gray-700 truncate">${p.name}</span>`;
                                 btn.onclick = (event) => {
                                     event.stopPropagation();
                                     updateBlock(rowIndex, colIndex, p.id);
@@ -522,8 +546,8 @@
 
                             const reset = document.createElement("button");
                             reset.className =
-                                "w-10 h-10 rounded-full flex items-center justify-center bg-gray-200 hover:bg-red-500 hover:text-white transition shadow-sm text-gray-500 font-bold text-xs";
-                            reset.innerText = "X";
+                                "mt-1 p-2 w-full text-left text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition border-t border-gray-100";
+                            reset.innerText = "Clear Block";
                             reset.onclick = (event) => {
                                 event.stopPropagation();
                                 updateBlock(rowIndex, colIndex, null);
@@ -541,13 +565,109 @@
                 });
             }
 
+            // --- SETTINGS MANAGEMENT ---
+            function renderSettingsData() {
+                // Populate Types Select in Project Form
+                const typeSelect = document.getElementById("new-proj-type");
+                typeSelect.innerHTML =
+                    state.types.length === 0
+                        ? "<option disabled>No types available</option>"
+                        : "";
+                state.types.forEach((t) => {
+                    typeSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+                });
+
+                // Render Types List
+                const typesList = document.getElementById(
+                    "settings-types-list",
+                );
+                typesList.innerHTML = "";
+                state.types.forEach((t) => {
+                    typesList.innerHTML += `
+                    <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
+                        <span class="text-sm font-medium text-gray-700">${t.name}</span>
+                        <button onclick="removeType('${t.id}')" class="text-red-400 hover:text-red-600 font-bold text-xs">Remove</button>
+                    </div>`;
+                });
+
+                // Render Projects List
+                const projList = document.getElementById(
+                    "settings-projects-list",
+                );
+                projList.innerHTML = "";
+                state.projects.forEach((p) => {
+                    const typeName =
+                        state.types.find((t) => t.id === p.typeId)?.name ||
+                        "Unknown";
+                    projList.innerHTML += `
+                    <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-4 h-4 rounded-full" style="background-color: ${p.color};"></div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-800">${p.name}</span>
+                                <span class="text-[10px] text-gray-400 uppercase">${typeName}</span>
+                            </div>
+                        </div>
+                        <button onclick="removeProject('${p.id}')" class="text-red-400 hover:text-red-600 font-bold text-xs">Remove</button>
+                    </div>`;
+                });
+            }
+
+            function addType() {
+                const input = document.getElementById("new-type-name");
+                const name = input.value.trim();
+                if (!name) return;
+                state.types.push({ id: "t_" + Date.now(), name });
+                input.value = "";
+                renderSettingsData();
+            }
+
+            function removeType(id) {
+                state.types = state.types.filter((t) => t.id !== id);
+                // Cascade: remove projects linked to this type
+                state.projects
+                    .filter((p) => p.typeId === id)
+                    .forEach((p) => removeProject(p.id));
+                renderSettingsData();
+            }
+
+            function addProject() {
+                const nameInput = document.getElementById("new-proj-name");
+                const colorInput = document.getElementById("new-proj-color");
+                const typeInput = document.getElementById("new-proj-type");
+
+                const name = nameInput.value.trim();
+                if (!name || !typeInput.value)
+                    return alert("Name and Type are required!");
+
+                state.projects.push({
+                    id: "p_" + Date.now(),
+                    name: name,
+                    color: colorInput.value,
+                    typeId: typeInput.value,
+                });
+
+                nameInput.value = "";
+                renderSettingsData();
+                refreshAllViews();
+            }
+
+            function removeProject(id) {
+                state.projects = state.projects.filter((p) => p.id !== id);
+                // Scrub from schedules
+                for (let date in state.schedules) {
+                    state.schedules[date] = state.schedules[date].map((row) =>
+                        row.map((block) => (block === id ? null : block)),
+                    );
+                }
+                renderSettingsData();
+                refreshAllViews();
+            }
+
             // --- ACTIONS ---
             function selectDate(dateStr) {
                 state.currentDate = dateStr;
-                updateDateDisplay();
-                renderCalendar();
-                renderSchedule();
-                renderAnalytics();
+                refreshAllViews();
             }
 
             function updateBlock(row, col, projectId) {
@@ -557,36 +677,16 @@
                 renderAnalytics();
             }
 
-            function addNewProject() {
-                const nameEl = document.getElementById("new-proj-name");
-                const colorEl = document.getElementById("new-proj-color");
-                const iconEl = document.getElementById("new-proj-icon");
-
-                if (!nameEl.value.trim())
-                    return alert("Project name required!");
-
-                const selectedText = iconEl.options[iconEl.selectedIndex].value;
-
-                const newProj = {
-                    id: "p_" + Date.now(),
-                    name: nameEl.value.trim(),
-                    color: colorEl.value,
-                    icon: selectedText,
-                };
-
-                state.projects.push(newProj);
-                nameEl.value = ""; // Clear input
-
-                renderProjects();
-                closeProjectModal(); // Close modal on success
+            function refreshAllViews() {
+                updateDateDisplay();
+                renderCalendar();
+                renderProjectsSidebar();
+                renderSchedule();
+                renderAnalytics();
             }
 
             // --- INITIALIZE ---
-            updateDateDisplay();
-            renderCalendar();
-            renderProjects();
-            renderSchedule();
-            renderAnalytics();
+            refreshAllViews();
         </script>
     </body>
 </html>
