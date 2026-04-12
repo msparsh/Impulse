@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Visual Schedule Planner Pro - v9 (Command Palette)</title>
+        <title>Visual Schedule Planner Pro - v10 (Command Engine)</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap"
@@ -30,31 +30,29 @@
                 background-color: #e5e7eb;
                 border: 2px solid transparent;
                 cursor: pointer;
-                outline: none; /* Removed default outline for custom focus */
+                outline: none;
             }
             .circle-btn:hover {
                 transform: scale(1.1);
                 filter: brightness(95%);
                 z-index: 10;
             }
-
-            /* --- NEW: Keyboard Nav Focus --- */
-            .circle-btn:focus-visible {
+            .circle-btn:focus-visible,
+            .circle-btn.js-focus {
                 box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.5);
                 transform: scale(1.1);
                 z-index: 30;
                 border-color: #4f46e5;
             }
-
             .circle-btn.filled {
                 border-color: rgba(0, 0, 0, 0.1);
             }
-
             .active-block {
                 box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.4);
                 transform: scale(1.1);
                 z-index: 20;
             }
+
             .pulse-fill {
                 animation: pulseFill 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
@@ -116,13 +114,13 @@
                 font-weight: 900;
                 margin-left: auto;
             }
-
             .active-date {
                 background-color: #4f46e5;
                 color: white !important;
                 font-weight: bold;
                 border-radius: 8px;
             }
+
             .choice-menu {
                 position: absolute;
                 background: white;
@@ -137,7 +135,6 @@
                 width: 200px;
                 animation: fadeIn 0.15s ease-out;
             }
-            /* Make menu items keyboard focusable visually */
             .choice-menu button:focus-visible {
                 background-color: #f3f4f6;
                 outline: 2px solid #4f46e5;
@@ -151,7 +148,6 @@
                 background: #cbd5e1;
                 border-radius: 4px;
             }
-
             .sidebar-collapsed {
                 width: 0 !important;
                 padding-left: 0 !important;
@@ -226,7 +222,6 @@
             .modal-content.closing {
                 animation: slideDown 0.1s ease-in forwards;
             }
-
             [contenteditable="true"] {
                 outline: none;
                 border-bottom: 1px dashed transparent;
@@ -271,7 +266,6 @@
             .grab-handle:active {
                 cursor: grabbing;
             }
-
             .dragging {
                 opacity: 0.6 !important;
                 transform: scale(0.97);
@@ -297,7 +291,7 @@
                 background: #ef4444;
             }
 
-            /* --- NEW: Command Palette Styles --- */
+            /* Command Palette */
             .cmd-palette-wrapper {
                 position: fixed;
                 inset: 0;
@@ -306,9 +300,9 @@
                 align-items: flex-start;
                 justify-content: center;
                 padding-top: 12vh;
-                background: rgba(255, 255, 255, 0.3);
+                background: rgba(255, 255, 255, 0.4);
                 backdrop-filter: blur(8px);
-                animation: fadeIn 0.15s ease-out forwards;
+                animation: fadeIn 0.1s ease-out forwards;
             }
             .cmd-palette-wrapper.closing {
                 animation: fadeOut 0.1s ease-in forwards;
@@ -316,7 +310,7 @@
             }
             .cmd-palette {
                 width: 100%;
-                max-width: 600px;
+                max-width: 650px;
                 background: white;
                 border-radius: 16px;
                 box-shadow:
@@ -325,7 +319,7 @@
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
-                animation: slideUp 0.15s ease-out forwards;
+                animation: slideUp 0.1s ease-out forwards;
             }
             .cmd-palette-input {
                 width: 100%;
@@ -339,9 +333,10 @@
             }
             .cmd-palette-input::placeholder {
                 color: #9ca3af;
+                font-weight: 400;
             }
             .cmd-palette-list {
-                max-height: 350px;
+                max-height: 400px;
                 overflow-y: auto;
                 padding: 8px;
                 border-top: 1px solid #f3f4f6;
@@ -366,31 +361,24 @@
             .cmd-item-title {
                 font-weight: 600;
                 font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
             }
             .cmd-subtext {
-                font-size: 12px;
+                font-size: 11px;
                 color: #9ca3af;
                 text-transform: uppercase;
-                font-weight: 700;
+                font-weight: 800;
                 letter-spacing: 0.5px;
             }
-            .cmd-shortcut {
-                display: flex;
-                gap: 4px;
-            }
-            .cmd-key {
-                background: #f3f4f6;
-                color: #6b7280;
+            .cmd-context-badge {
+                background: #fee2e2;
+                color: #b91c1c;
+                font-size: 10px;
                 padding: 2px 6px;
                 border-radius: 4px;
-                font-size: 10px;
-                font-weight: 700;
-                border: 1px solid #e5e7eb;
-            }
-            .cmd-item.active .cmd-key {
-                background: rgba(255, 255, 255, 0.2);
-                color: white;
-                border-color: transparent;
+                font-weight: 800;
             }
         </style>
     </head>
@@ -445,14 +433,15 @@
                         </div>
                     </button>
                     <div
-                        class="hidden md:flex items-center gap-2 text-xs text-gray-400 font-medium bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100"
+                        class="hidden md:flex items-center gap-2 text-xs text-gray-400 font-medium bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 cursor-pointer hover:bg-gray-100 transition"
+                        onclick="app.cmd.toggle()"
                     >
                         Press
                         <span
                             class="bg-white border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 font-bold shadow-sm"
                             >/</span
                         >
-                        to issue commands
+                        for commands
                     </div>
                 </div>
                 <div class="flex items-center gap-4 md:gap-6">
@@ -506,7 +495,7 @@
                     >
                         <div class="flex items-center justify-between mb-4">
                             <button
-                                onclick="app.prevMonth()"
+                                onclick="app.shiftMonth(-1)"
                                 class="text-gray-400 hover:text-indigo-600 transition p-1"
                             >
                                 <svg
@@ -530,7 +519,7 @@
                                 >...</span
                             >
                             <button
-                                onclick="app.nextMonth()"
+                                onclick="app.shiftMonth(1)"
                                 class="text-gray-400 hover:text-indigo-600 transition p-1"
                             >
                                 <svg
@@ -565,7 +554,6 @@
                             class="grid grid-cols-7 gap-1 text-center text-sm"
                         ></div>
                     </div>
-
                     <div>
                         <h3
                             class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"
@@ -578,7 +566,6 @@
                         ></div>
                     </div>
                 </aside>
-
                 <main
                     class="flex-1 flex flex-col overflow-hidden bg-white relative"
                 >
@@ -615,24 +602,7 @@
                 <div
                     class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"
                 >
-                    <h3 class="font-bold text-gray-800 flex items-center gap-2">
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-                            <path d="M12 20h9"></path>
-                            <path
-                                d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
-                            ></path>
-                        </svg>
-                        Manage Hierarchy
-                    </h3>
+                    <h3 class="font-bold text-gray-800">Manage Hierarchy</h3>
                     <button
                         onclick="app.closeSettingsModal()"
                         class="text-gray-400 hover:text-gray-700 transition p-2"
@@ -685,27 +655,11 @@
                 <div
                     class="p-6 border-b border-gray-100 bg-red-50 text-red-600 flex items-center gap-3"
                 >
-                    <svg
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path
-                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
-                        ></path>
-                        <line x1="12" y1="9" x2="12" y2="13"></line>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
                     <h3 class="font-bold text-lg">Delete Category?</h3>
                 </div>
                 <div class="p-6 text-gray-700 text-sm">
                     <p class="mb-4">
-                        This will permanently delete the category and the
+                        Permanently delete category and
                         <span id="confirm-count" class="font-bold"></span>
                         project(s):
                     </p>
@@ -713,11 +667,6 @@
                         id="confirm-project-list"
                         class="list-disc pl-5 mb-4 space-y-1 font-medium text-gray-900 bg-gray-50 p-3 rounded-lg border border-gray-100"
                     ></ul>
-                    <p
-                        class="text-red-600 font-semibold text-xs uppercase tracking-wide"
-                    >
-                        All scheduled blocks for these projects will be erased.
-                    </p>
                 </div>
                 <div
                     class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3"
@@ -771,7 +720,7 @@
 
             class StateManager {
                 constructor() {
-                    this.storageKey = "planner_state_v9";
+                    this.storageKey = "planner_state_v10";
                     this.hours = [
                         "7 AM",
                         "8 AM",
@@ -800,12 +749,13 @@
 
                 getDefaultState() {
                     const today = new Date();
-                    const offset = today.getTimezoneOffset() * 60000;
-                    const localISOTime = new Date(today - offset)
+                    const localISOTime = new Date(
+                        today.getTime() - today.getTimezoneOffset() * 60000,
+                    )
                         .toISOString()
                         .split("T")[0];
                     return {
-                        version: 6,
+                        version: 7,
                         currentDate: localISOTime,
                         types: [
                             { id: "t_1", name: "Work" },
@@ -901,27 +851,271 @@
                     return this.data.schedules[this.data.currentDate];
                 }
                 getDailyAnalytics() {
-                    let typeCounts = {};
+                    let counts = {};
                     const blocks =
                         this.data.schedules[this.data.currentDate]?.blocks ||
                         {};
-                    Object.values(blocks).forEach((projectId) => {
-                        const project = this.getProjectById(projectId);
-                        if (project)
-                            typeCounts[project.typeId] =
-                                (typeCounts[project.typeId] || 0) + 1;
+                    Object.values(blocks).forEach((pid) => {
+                        const p = this.getProjectById(pid);
+                        if (p) counts[p.typeId] = (counts[p.typeId] || 0) + 1;
                     });
-                    return typeCounts;
+                    return counts;
                 }
             }
 
-            // --- NEW: Universal Command Palette ---
+            // --- PART 2: COMMAND REGISTRY (Core Engine) ---
+            class CommandRegistry {
+                constructor(app, state) {
+                    this.app = app;
+                    this.state = state;
+                    this.clipboardDay = null; // Power feature: Copy/Paste Day
+                }
+
+                getCommands(context) {
+                    let cmds = [
+                        // Navigation
+                        {
+                            id: "nav-today",
+                            title: "Go to Today",
+                            category: "Navigation",
+                            keywords: "today now jump",
+                            action: () => this.app.goToToday(),
+                        },
+                        {
+                            id: "nav-tmrw",
+                            title: "Go to Tomorrow",
+                            category: "Navigation",
+                            keywords: "tomorrow next day",
+                            action: () => this.app.shiftDate(1),
+                        },
+                        {
+                            id: "nav-yest",
+                            title: "Go to Yesterday",
+                            category: "Navigation",
+                            keywords: "yesterday prev previous day",
+                            action: () => this.app.shiftDate(-1),
+                        },
+                        {
+                            id: "nav-next-wk",
+                            title: "Next Week",
+                            category: "Navigation",
+                            keywords: "next week jump forward",
+                            action: () => this.app.shiftDate(7),
+                        },
+                        {
+                            id: "nav-prev-wk",
+                            title: "Previous Week",
+                            category: "Navigation",
+                            keywords: "previous week jump back",
+                            action: () => this.app.shiftDate(-7),
+                        },
+                        {
+                            id: "nav-next-mo",
+                            title: "Next Month",
+                            category: "Navigation",
+                            keywords: "next month",
+                            action: () => this.app.shiftMonth(1),
+                        },
+                        {
+                            id: "nav-prev-mo",
+                            title: "Previous Month",
+                            category: "Navigation",
+                            keywords: "prev previous month",
+                            action: () => this.app.shiftMonth(-1),
+                        },
+
+                        // UI
+                        {
+                            id: "ui-sidebar",
+                            title: "Toggle Sidebar",
+                            category: "UI",
+                            keywords: "sidebar menu hide show",
+                            action: () => this.app.toggleSidebar(),
+                        },
+                        {
+                            id: "ui-settings",
+                            title: "Open Settings",
+                            category: "UI",
+                            keywords: "settings config preferences hierarchy",
+                            action: () => this.app.openSettingsModal(),
+                        },
+
+                        // Global Scheduling
+                        {
+                            id: "sched-clear-day",
+                            title: "Clear Entire Day",
+                            category: "Scheduling",
+                            keywords: "clear day reset empty everything",
+                            action: () => this.app.clearDay(),
+                        },
+                        {
+                            id: "sched-copy-day",
+                            title: "Copy Day",
+                            category: "Scheduling",
+                            keywords: "copy day clipboard duplicate",
+                            action: () => {
+                                this.clipboardDay = JSON.parse(
+                                    JSON.stringify(
+                                        this.state.getCurrentSchedule(),
+                                    ),
+                                );
+                                Toast.show("Day copied to clipboard");
+                            },
+                        },
+                        {
+                            id: "sched-paste-day",
+                            title: "Paste Day",
+                            category: "Scheduling",
+                            keywords: "paste day clipboard",
+                            action: () => {
+                                if (this.clipboardDay)
+                                    this.app.pasteDay(this.clipboardDay);
+                                else Toast.show("Clipboard empty", "error");
+                            },
+                        },
+                        {
+                            id: "sched-focus",
+                            title: "Focus Mode (Fill day with Deep Work)",
+                            category: "Smart Scheduling",
+                            keywords: "focus mode deep work fill all",
+                            action: () => {
+                                const dw = this.state
+                                    .getProjects()
+                                    .find((p) =>
+                                        p.name.toLowerCase().includes("deep"),
+                                    );
+                                if (dw) this.app.fillDay(dw.id);
+                                else
+                                    Toast.show(
+                                        "No Deep Work project found",
+                                        "error",
+                                    );
+                            },
+                        },
+                    ];
+
+                    const projects = this.state.getProjects();
+                    const hours = this.state.getHours();
+
+                    // Projects / Day Level
+                    projects.forEach((p) => {
+                        cmds.push({
+                            id: `fill-day-${p.id}`,
+                            title: `Fill Day: ${p.name}`,
+                            category: "Scheduling",
+                            keywords: `fill day ${p.name}`,
+                            color: p.color,
+                            action: () => this.app.fillDay(p.id),
+                        });
+                    });
+
+                    // Manage Projects
+                    cmds.push({
+                        id: "proj-add",
+                        title: "Add New Project",
+                        category: "Projects",
+                        keywords: "add create new project",
+                        action: () => {
+                            this.app.openSettingsModal();
+                            setTimeout(
+                                () =>
+                                    document
+                                        .getElementById("new-type-name")
+                                        .focus(),
+                                300,
+                            );
+                        },
+                    });
+                    cmds.push({
+                        id: "type-add",
+                        title: "Add New Category",
+                        category: "Categories",
+                        keywords: "add create new category type",
+                        action: () => {
+                            this.app.openSettingsModal();
+                            setTimeout(
+                                () =>
+                                    document
+                                        .getElementById("new-type-name")
+                                        .focus(),
+                                300,
+                            );
+                        },
+                    });
+
+                    // --- PART 1: CONTEXT-AWARE COMMANDS ---
+                    if (context && context.type === "block") {
+                        const { row, col } = context;
+                        const hr = hours[row];
+
+                        cmds.push({
+                            id: "ctx-clear-blk",
+                            title: `Clear Block`,
+                            isContext: true,
+                            category: "Active Block",
+                            keywords: "clear empty block erase remove",
+                            action: () =>
+                                globalBus.emit("block:update", {
+                                    row,
+                                    col,
+                                    projectId: null,
+                                }),
+                        });
+                        cmds.push({
+                            id: "ctx-clear-row",
+                            title: `Clear Row (${hr})`,
+                            isContext: true,
+                            category: "Active Block",
+                            keywords: `clear row empty ${hr}`,
+                            action: () =>
+                                globalBus.emit("schedule:fillRow", {
+                                    row,
+                                    projectId: null,
+                                }),
+                        });
+
+                        projects.forEach((p) => {
+                            cmds.push({
+                                id: `ctx-set-${p.id}`,
+                                title: `Assign ${p.name} to Block`,
+                                isContext: true,
+                                category: "Active Block",
+                                keywords: `assign set block ${p.name}`,
+                                color: p.color,
+                                action: () =>
+                                    globalBus.emit("block:update", {
+                                        row,
+                                        col,
+                                        projectId: p.id,
+                                    }),
+                            });
+                            cmds.push({
+                                id: `ctx-fillrow-${p.id}`,
+                                title: `Fill Row (${hr}): ${p.name}`,
+                                isContext: true,
+                                category: "Active Block",
+                                keywords: `fill row hour assign ${hr} ${p.name}`,
+                                color: p.color,
+                                action: () =>
+                                    globalBus.emit("schedule:fillRow", {
+                                        row,
+                                        projectId: p.id,
+                                    }),
+                            });
+                        });
+                    }
+
+                    return cmds;
+                }
+            }
+
+            // --- PART 3: COMMAND PALETTE UI & MATCHER ---
             class CommandPalette {
                 constructor(app, state) {
                     this.app = app;
                     this.state = state;
+                    this.registry = new CommandRegistry(app, state);
                     this.isOpen = false;
-                    this.commands = [];
                     this.filteredCommands = [];
                     this.selectedIndex = 0;
                     this.setupDOM();
@@ -933,7 +1127,7 @@
                     this.wrapper.className = "cmd-palette-wrapper hidden";
                     this.wrapper.innerHTML = `
                         <div class="cmd-palette">
-                            <input type="text" class="cmd-palette-input" placeholder="Type a command or search..." autocomplete="off" spellcheck="false" />
+                            <input type="text" class="cmd-palette-input" placeholder="Type a command or search (e.g. 'dw' for Deep Work)..." autocomplete="off" spellcheck="false" />
                             <div class="cmd-palette-list"></div>
                         </div>
                     `;
@@ -945,7 +1139,6 @@
 
                 setupListeners() {
                     document.addEventListener("keydown", (e) => {
-                        // Prevent triggering if inside an input field unless it's Ctrl+K
                         const activeEl = document.activeElement;
                         const inInput =
                             activeEl.tagName === "INPUT" ||
@@ -961,9 +1154,8 @@
                         }
 
                         if (this.isOpen) {
-                            if (e.key === "Escape") {
-                                this.close();
-                            } else if (e.key === "ArrowDown") {
+                            if (e.key === "Escape") this.close();
+                            else if (e.key === "ArrowDown") {
                                 e.preventDefault();
                                 this.moveSelection(1);
                             } else if (e.key === "ArrowUp") {
@@ -975,11 +1167,9 @@
                             }
                         }
                     });
-
-                    this.input.addEventListener("input", () => {
-                        this.filterCommands(this.input.value);
-                    });
-
+                    this.input.addEventListener("input", () =>
+                        this.filterCommands(this.input.value),
+                    );
                     this.wrapper.addEventListener("click", (e) => {
                         if (e.target === this.wrapper) this.close();
                     });
@@ -994,9 +1184,32 @@
                     this.isOpen = true;
                     this.wrapper.classList.remove("hidden", "closing");
                     this.input.value = "";
-                    this.buildCommands();
+
+                    // Detect Context (is a schedule block focused?)
+                    let context = null;
+                    const activeEl = document.activeElement;
+                    if (
+                        activeEl &&
+                        activeEl.classList.contains("schedule-block")
+                    ) {
+                        context = {
+                            type: "block",
+                            row: parseInt(activeEl.dataset.row),
+                            col: parseInt(activeEl.dataset.col),
+                        };
+                    }
+
+                    this.baseCommands = this.registry.getCommands(context);
+
+                    // Sort: Contextual commands first
+                    this.baseCommands.sort((a, b) => {
+                        if (a.isContext && !b.isContext) return -1;
+                        if (!a.isContext && b.isContext) return 1;
+                        return 0;
+                    });
+
                     this.filterCommands("");
-                    setTimeout(() => this.input.focus(), 10); // Ensure focus applies
+                    setTimeout(() => this.input.focus(), 10);
                 }
 
                 close() {
@@ -1005,115 +1218,64 @@
                     setTimeout(() => {
                         this.wrapper.classList.add("hidden");
                         this.wrapper.classList.remove("closing");
-                    }, 150);
+                        // Restore focus to grid if a block was active
+                        const gridFocus = document.querySelector(
+                            ".schedule-block.js-focus",
+                        );
+                        if (gridFocus) gridFocus.focus();
+                    }, 100);
                 }
 
-                getAcronym(text) {
-                    return text
+                // --- PART 2: SMART FUZZY SEARCH ---
+                smartMatch(query, targetStr) {
+                    const q = query.toLowerCase().replace(/\s+/g, "");
+                    const t = targetStr.toLowerCase();
+
+                    // 1. Check exact word match or substring
+                    if (t.includes(q)) return true;
+
+                    // 2. Check acronym (e.g., "dw" matches "Deep Work")
+                    const acronym = t
                         .split(/\s+/)
                         .map((w) => w[0])
-                        .join("")
-                        .toLowerCase();
-                }
+                        .join("");
+                    if (acronym.includes(q)) return true;
 
-                buildCommands() {
-                    this.commands = [
-                        {
-                            name: "Go to Today",
-                            category: "Navigation",
-                            handler: () => this.app.goToToday(),
-                        },
-                        {
-                            name: "Next Month",
-                            category: "Navigation",
-                            handler: () => this.app.nextMonth(),
-                        },
-                        {
-                            name: "Previous Month",
-                            category: "Navigation",
-                            handler: () => this.app.prevMonth(),
-                        },
-                        {
-                            name: "Toggle Sidebar",
-                            category: "UI",
-                            handler: () => this.app.toggleSidebar(),
-                        },
-                        {
-                            name: "Open Settings",
-                            category: "Settings",
-                            handler: () => this.app.openSettingsModal(),
-                        },
-                        {
-                            name: "Reset Day",
-                            category: "Actions",
-                            handler: () => {
-                                this.state.updateState((data) => {
-                                    data.schedules[data.currentDate] = {
-                                        blocks: {},
-                                    };
-                                });
-                                globalBus.emit("schedule:refreshed");
-                                globalBus.emit("analytics:refreshed");
-                                Toast.show("Day cleared");
-                            },
-                        },
-                    ];
-
-                    // Generate Dynamic Scheduling Commands (Action Picker Style)
-                    const projects = this.state.getProjects();
-                    const hours = this.state.getHours();
-
-                    hours.forEach((hour, rowIndex) => {
-                        // Clear Hour
-                        this.commands.push({
-                            name: `Clear ${hour}`,
-                            category: "Scheduling",
-                            searchTerms: `clear empty delete ${hour.toLowerCase()}`,
-                            handler: () =>
-                                globalBus.emit("schedule:fillRow", {
-                                    row: rowIndex,
-                                    projectId: null,
-                                }),
-                        });
-
-                        // Assign Project to Hour
-                        projects.forEach((p) => {
-                            const acronym = this.getAcronym(p.name);
-                            this.commands.push({
-                                name: `Assign ${p.name} ➔ ${hour}`,
-                                category: "Scheduling",
-                                // Bake the acronym into the search terms to make "dw 9" work for "Deep Work 9 AM"
-                                searchTerms: `assign fill ${p.name.toLowerCase()} ${acronym} ${hour.toLowerCase()}`,
-                                color: p.color,
-                                handler: () =>
-                                    globalBus.emit("schedule:fillRow", {
-                                        row: rowIndex,
-                                        projectId: p.id,
-                                    }),
-                            });
-                        });
-                    });
+                    // 3. Sequential Fuzzy Match (chars exist in order)
+                    let qIdx = 0;
+                    for (let i = 0; i < t.length && qIdx < q.length; i++) {
+                        if (t[i] === q[qIdx]) qIdx++;
+                    }
+                    return qIdx === q.length;
                 }
 
                 filterCommands(query) {
-                    const terms = query
-                        .toLowerCase()
-                        .split(/\s+/)
-                        .filter((t) => t);
+                    this.filteredCommands = [];
 
-                    if (terms.length === 0) {
-                        this.filteredCommands = this.commands.slice(0, 20); // Show default top 20
+                    // POWER USER COMMANDS (Dynamic Generation)
+                    // e.g., /goto 2026-04-15
+                    if (query.toLowerCase().startsWith("goto ")) {
+                        const dateStr = query.substring(5).trim();
+                        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                            this.filteredCommands.push({
+                                id: "dyn-goto",
+                                title: `Jump to Date: ${dateStr}`,
+                                category: "Dynamic Command",
+                                action: () => this.app.selectDate(dateStr),
+                            });
+                        }
+                    }
+
+                    if (query.trim() === "") {
+                        this.filteredCommands.push(
+                            ...this.baseCommands.slice(0, 15),
+                        );
                     } else {
-                        this.filteredCommands = this.commands
-                            .filter((cmd) => {
-                                const target = (
-                                    cmd.searchTerms || cmd.name
-                                ).toLowerCase();
-                                return terms.every((term) =>
-                                    target.includes(term),
-                                );
-                            })
-                            .slice(0, 50); // Cap for performance
+                        const matched = this.baseCommands.filter((cmd) => {
+                            const searchTarget = cmd.title + " " + cmd.keywords;
+                            return this.smartMatch(query, searchTarget);
+                        });
+                        this.filteredCommands.push(...matched.slice(0, 20));
                     }
 
                     this.selectedIndex = 0;
@@ -1123,7 +1285,7 @@
                 renderList() {
                     this.list.innerHTML = "";
                     if (this.filteredCommands.length === 0) {
-                        this.list.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm">No commands found.</div>`;
+                        this.list.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm">No commands found. Try a different keyword.</div>`;
                         return;
                     }
 
@@ -1132,15 +1294,16 @@
                         item.className = `cmd-item ${idx === this.selectedIndex ? "active" : ""}`;
 
                         let dot = cmd.color
-                            ? `<div class="w-3 h-3 rounded-full mr-3 shadow-sm" style="background-color: ${cmd.color}"></div>`
+                            ? `<div class="w-3 h-3 rounded-full shadow-sm" style="background-color: ${cmd.color}"></div>`
+                            : "";
+                        let contextBadge = cmd.isContext
+                            ? `<span class="cmd-context-badge">Active Block</span>`
                             : "";
 
                         item.innerHTML = `
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-3">
                                 ${dot}
-                                <div>
-                                    <div class="cmd-item-title">${cmd.name}</div>
-                                </div>
+                                <div class="cmd-item-title">${cmd.title} ${contextBadge}</div>
                             </div>
                             <div class="cmd-subtext">${cmd.category}</div>
                         `;
@@ -1149,7 +1312,6 @@
                             this.selectedIndex = idx;
                             this.updateSelectionVisuals();
                         };
-
                         item.onclick = () => this.executeSelected();
                         this.list.appendChild(item);
                     });
@@ -1162,12 +1324,8 @@
                     if (this.selectedIndex >= this.filteredCommands.length)
                         this.selectedIndex = 0;
                     this.updateSelectionVisuals();
-
-                    // Scroll into view
                     const activeEl = this.list.children[this.selectedIndex];
-                    if (activeEl) {
-                        activeEl.scrollIntoView({ block: "nearest" });
-                    }
+                    if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
                 }
 
                 updateSelectionVisuals() {
@@ -1181,7 +1339,7 @@
                 executeSelected() {
                     const cmd = this.filteredCommands[this.selectedIndex];
                     if (cmd) {
-                        cmd.handler();
+                        cmd.action();
                         this.close();
                     }
                 }
@@ -1212,14 +1370,12 @@
                             this.paintBlock(block);
                         }
                     });
-
                     grid.addEventListener("mouseover", (e) => {
                         if (isPainting && this.state.paintProjectId) {
                             const block = e.target.closest(".schedule-block");
                             if (block) this.paintBlock(block);
                         }
                     });
-
                     document.addEventListener("mouseup", () => {
                         isPainting = false;
                         document.body.classList.remove("select-none");
@@ -1227,12 +1383,10 @@
 
                     grid.addEventListener("click", (e) => {
                         if (this.state.paintProjectId) return;
-
                         const block = e.target.closest(".schedule-block");
                         if (block) {
                             e.stopPropagation();
                             this.closeAllMenus();
-
                             if (block.classList.contains("filled")) {
                                 globalBus.emit("block:update", {
                                     row: block.dataset.row,
@@ -1276,25 +1430,21 @@
                         },
                         true,
                     );
-
                     hierarchyList.addEventListener(
                         "blur",
                         (e) => {
                             if (e.target.hasAttribute("contenteditable")) {
                                 const newText = e.target.innerText.trim();
                                 const original = e.target.dataset.original;
-
                                 if (!newText) {
                                     e.target.innerText = original;
                                     Toast.show("Name cannot be empty", "error");
                                     return;
                                 }
                                 if (newText === original) return;
-
                                 const entityType = e.target.dataset.entity;
                                 const id = e.target.dataset.id;
                                 let isDuplicate = false;
-
                                 if (entityType === "type")
                                     isDuplicate = this.state
                                         .getTypes()
@@ -1313,7 +1463,6 @@
                                                     newText.toLowerCase() &&
                                                 p.id !== id,
                                         );
-
                                 if (isDuplicate) {
                                     e.target.innerText = original;
                                     Toast.show(
@@ -1322,7 +1471,6 @@
                                     );
                                     return;
                                 }
-
                                 if (entityType === "type")
                                     globalBus.emit("hierarchy:updateType", {
                                         id,
@@ -1349,7 +1497,6 @@
                             e.target.blur();
                         }
                     });
-
                     hierarchyList.addEventListener("change", (e) => {
                         if (e.target.dataset.entity === "project-color")
                             globalBus.emit("hierarchy:updateProjectColor", {
@@ -1357,7 +1504,6 @@
                                 color: e.target.value,
                             });
                     });
-
                     hierarchyList.addEventListener("dragstart", (e) => {
                         const target = e.target.closest("[data-drag-id]");
                         if (!target) return;
@@ -1367,7 +1513,6 @@
                         target.style.opacity = "0.5";
                         target.classList.add("dragging");
                     });
-
                     hierarchyList.addEventListener("dragover", (e) => {
                         e.preventDefault();
                         const target = e.target.closest("[data-drop-zone]");
@@ -1388,7 +1533,6 @@
                         )
                             target.classList.add("drag-over");
                     });
-
                     hierarchyList.addEventListener("dragleave", (e) => {
                         const target = e.target.closest("[data-drop-zone]");
                         if (target)
@@ -1397,7 +1541,6 @@
                                 "drag-over",
                             );
                     });
-
                     hierarchyList.addEventListener("dragend", (e) => {
                         e.target.style.opacity = "1";
                         e.target.classList.remove("dragging");
@@ -1414,7 +1557,6 @@
                             .forEach((el) => el.classList.remove("dragging"));
                         this.dragState = { type: null, sourceId: null };
                     });
-
                     hierarchyList.addEventListener("drop", (e) => {
                         e.preventDefault();
                         document
@@ -1428,10 +1570,8 @@
                         document
                             .querySelectorAll(".dragging")
                             .forEach((el) => el.classList.remove("dragging"));
-
                         const target = e.target.closest("[data-drop-zone]");
                         if (!target || !this.dragState.sourceId) return;
-
                         if (
                             this.dragState.type === "type" &&
                             target.dataset.dropEntity === "type"
@@ -1470,37 +1610,38 @@
                     });
                 }
 
-                // --- NEW: Spatial Keyboard Navigation ---
                 setupKeyboardNav() {
                     const grid = document.getElementById("schedule-grid");
+
+                    // Track custom focus for returning from command palette
+                    grid.addEventListener("focusin", (e) => {
+                        if (e.target.classList.contains("schedule-block")) {
+                            document
+                                .querySelectorAll(".js-focus")
+                                .forEach((el) =>
+                                    el.classList.remove("js-focus"),
+                                );
+                            e.target.classList.add("js-focus");
+                        }
+                    });
 
                     grid.addEventListener("keydown", (e) => {
                         const block = e.target.closest(".schedule-block");
                         if (!block) return;
-
                         const r = parseInt(block.dataset.row);
                         const c = parseInt(block.dataset.col);
                         let nextR = r;
                         let nextC = c;
-
-                        if (e.key === "ArrowRight") {
-                            nextC++;
-                        } else if (e.key === "ArrowLeft") {
-                            nextC--;
-                        } else if (e.key === "ArrowDown") {
-                            nextR++;
-                        } else if (e.key === "ArrowUp") {
-                            nextR--;
-                        } else if (e.key === "Enter" || e.key === " ") {
-                            // Trigger click on enter/space
+                        if (e.key === "ArrowRight") nextC++;
+                        else if (e.key === "ArrowLeft") nextC--;
+                        else if (e.key === "ArrowDown") nextR++;
+                        else if (e.key === "ArrowUp") nextR--;
+                        else if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
                             block.click();
                             return;
-                        } else {
-                            return; // Ignore other keys
-                        }
+                        } else return;
 
-                        // Wrap around logic
                         if (nextC > 5) {
                             nextC = 0;
                             nextR++;
@@ -1509,11 +1650,11 @@
                             nextC = 5;
                             nextR--;
                         }
-                        if (nextR < 0 || nextR > 16) return; // Top/Bottom bounds
+                        if (nextR < 0 || nextR > 16) return;
 
                         const nextBlock = this.blockNodes[`${nextR}-${nextC}`];
                         if (nextBlock) {
-                            e.preventDefault(); // Prevent scrolling with arrows
+                            e.preventDefault();
                             nextBlock.focus();
                         }
                     });
@@ -1526,21 +1667,18 @@
                         this.state.getCurrentSchedule()?.blocks[
                             `${row}-${col}`
                         ];
-
-                    if (currentProjId !== this.state.paintProjectId) {
+                    if (currentProjId !== this.state.paintProjectId)
                         globalBus.emit("block:update", {
                             row,
                             col,
                             projectId: this.state.paintProjectId,
                         });
-                    }
                 }
 
                 listenToEvents() {
                     globalBus.on("block:updated", ({ row, col, project }) => {
                         const blockEl = this.blockNodes[`${row}-${col}`];
                         if (!blockEl) return;
-
                         if (project) {
                             blockEl.style.backgroundColor = project.color;
                             blockEl.classList.add("filled");
@@ -1554,7 +1692,6 @@
                             blockEl.title = "Empty (Click to set)";
                         }
                     });
-
                     globalBus.on("view:refresh", () => this.refreshAllViews());
                     globalBus.on("schedule:refreshed", () =>
                         this.renderSchedule(
@@ -1641,7 +1778,6 @@
                     });
                     const firstDay = new Date(year, month, 1).getDay();
                     const daysInMonth = new Date(year, month + 1, 0).getDate();
-
                     for (let i = 0; i < firstDay; i++)
                         grid.innerHTML += `<div class="py-2"></div>`;
                     for (let day = 1; day <= daysInMonth; day++) {
@@ -1655,26 +1791,22 @@
                 renderSidebarProjects(projects, types) {
                     const list = document.getElementById("project-list");
                     list.innerHTML = "";
-
                     types.forEach((t) => {
                         const typeProjects = projects.filter(
                             (p) => p.typeId === t.id,
                         );
                         if (typeProjects.length === 0) return;
-
                         const header = document.createElement("div");
                         header.className =
                             "text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-2 pl-1";
                         header.textContent = t.name;
                         list.appendChild(header);
-
                         typeProjects.forEach((p) => {
                             const isActivePaint =
                                 this.state.paintProjectId === p.id;
                             const badgeHTML = isActivePaint
                                 ? `<span class="paint-active-indicator">Paint</span>`
                                 : "";
-
                             const pCard = document.createElement("div");
                             pCard.className = `flex items-center gap-3 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer hover:shadow-md transition`;
                             pCard.innerHTML = `<div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${p.color};"></div><span class="text-sm font-semibold text-gray-800 truncate">${p.name}</span>${badgeHTML}`;
@@ -1701,7 +1833,7 @@
                         }
                     });
                     if (totalAssigned === 0)
-                        bar.innerHTML = `<span class="text-sm text-gray-400 font-medium italic">Click a block to start planning.</span>`;
+                        bar.innerHTML = `<span class="text-sm text-gray-400 font-medium italic">Press '/' to explore commands or click to schedule.</span>`;
                 }
 
                 renderSchedule(scheduleObj, hours, projects) {
@@ -1709,7 +1841,6 @@
                     container.innerHTML = "";
                     this.blockNodes = {};
                     const blocks = scheduleObj.blocks;
-
                     const todayStr = new Date(
                         new Date().getTime() -
                             new Date().getTimezoneOffset() * 60000,
@@ -1736,7 +1867,6 @@
                         timeLabel.className =
                             "w-12 md:w-16 text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider text-right shrink-0";
                         timeLabel.textContent = time;
-
                         if (isToday && time === currentHourStr)
                             timeLabel.classList.add("current-time-label");
 
@@ -1750,7 +1880,7 @@
                                 "schedule-block circle-btn shadow-sm";
                             block.dataset.row = rowIndex;
                             block.dataset.col = colIndex;
-                            block.tabIndex = 0; // NEW: Make block focusable via keyboard tab/arrows
+                            block.tabIndex = 0;
 
                             const blockProjectId =
                                 blocks[`${rowIndex}-${colIndex}`];
@@ -1765,6 +1895,7 @@
                             } else {
                                 block.title = "Empty (Click to set)";
                             }
+
                             this.blockNodes[`${rowIndex}-${colIndex}`] = block;
                             blocksContainer.appendChild(block);
                         }
@@ -1777,8 +1908,6 @@
                 renderChoiceMenu(blockElement, rowIndex, colIndex) {
                     const menu = document.createElement("div");
                     menu.className = "choice-menu";
-
-                    // Small "Clear" option
                     const clearBtn = document.createElement("button");
                     clearBtn.className =
                         "flex items-center gap-2 p-2 w-full hover:bg-gray-100 rounded-lg transition text-left text-xs font-bold text-gray-500 mb-1";
@@ -1797,7 +1926,6 @@
                     this.state.getTypes().forEach((t) => {
                         const typeProjs = this.state.getProjectsByType(t.id);
                         if (typeProjs.length === 0) return;
-
                         const header = document.createElement("div");
                         header.className =
                             "text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1 mt-1 border-t border-gray-100 pt-2";
@@ -1809,30 +1937,25 @@
                             btn.className =
                                 "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
                             btn.innerHTML = `
-                            <div class="flex items-center gap-3 overflow-hidden">
-                                <div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div>
-                                <span class="text-xs font-bold text-gray-700 truncate">${p.name}</span>
-                            </div>
-                            <div class="opacity-0 group-hover/btn:opacity-100 focus-visible:opacity-100 bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-[10px] fill-hour-btn shadow-sm transition" title="Fill entire hour">FILL HR</div>
-                            `;
+                            <div class="flex items-center gap-3 overflow-hidden"><div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div><span class="text-xs font-bold text-gray-700 truncate">${p.name}</span></div>
+                            <div class="opacity-0 group-hover/btn:opacity-100 focus-visible:opacity-100 bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-[10px] fill-hour-btn shadow-sm transition" title="Fill entire hour">FILL HR</div>`;
                             btn.onclick = (event) => {
                                 event.stopPropagation();
                                 if (
                                     event.target.classList.contains(
                                         "fill-hour-btn",
                                     )
-                                ) {
+                                )
                                     globalBus.emit("schedule:fillRow", {
                                         row: rowIndex,
                                         projectId: p.id,
                                     });
-                                } else {
+                                else
                                     globalBus.emit("block:update", {
                                         row: rowIndex,
                                         col: colIndex,
                                         projectId: p.id,
                                     });
-                                }
                                 this.closeAllMenus();
                             };
                             menu.appendChild(btn);
@@ -1840,23 +1963,18 @@
                     });
 
                     document.body.appendChild(menu);
-
                     const rect = blockElement.getBoundingClientRect();
                     const menuHeight = menu.offsetHeight;
                     let top = rect.bottom + window.scrollY + 8;
                     let left =
                         rect.left + window.scrollX + rect.width / 2 - 100;
-
                     if (top + menuHeight > window.innerHeight + window.scrollY)
                         top = rect.top + window.scrollY - menuHeight - 8;
                     if (left < 10) left = 10;
                     if (left + 200 > window.innerWidth)
                         left = window.innerWidth - 210;
-
                     menu.style.top = `${top}px`;
                     menu.style.left = `${left}px`;
-
-                    // Focus the first button in the menu for quick keyboard entry
                     setTimeout(() => {
                         const firstBtn = menu.querySelector("button");
                         if (firstBtn) firstBtn.focus();
@@ -1868,7 +1986,6 @@
                     list.innerHTML = "";
                     const types = this.state.getTypes();
                     const projects = this.state.getProjects();
-
                     types.forEach((t) => {
                         const typeProjs = projects.filter(
                             (p) => p.typeId === t.id,
@@ -1880,29 +1997,20 @@
                         typeBlock.dataset.dragId = t.id;
                         typeBlock.dataset.dropZone = "true";
                         typeBlock.dataset.dropEntity = "type";
-
                         typeBlock.innerHTML = `
                             <div class="flex items-center justify-between mb-3 group/type border-b border-gray-200 pb-2">
-                                <div class="flex items-center gap-2">
-                                    <svg class="grab-handle w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
-                                    <h4 class="text-sm font-black text-gray-900 uppercase tracking-widest" contenteditable="true" data-entity="type" data-id="${t.id}" title="Click to edit">${t.name}</h4>
-                                    <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">${typeProjs.length}</span>
-                                </div>
-                                <div class="flex gap-2 opacity-0 group-hover/type:opacity-100 transition">
-                                    <button onclick="app.addProjectToType('${t.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded border border-indigo-100">Add Project</button>
-                                    <button onclick="app.requestRemoveType('${t.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded">Delete</button>
-                                </div>
+                                <div class="flex items-center gap-2"><svg class="grab-handle w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg><h4 class="text-sm font-black text-gray-900 uppercase tracking-widest" contenteditable="true" data-entity="type" data-id="${t.id}" title="Click to edit">${t.name}</h4><span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">${typeProjs.length}</span></div>
+                                <div class="flex gap-2 opacity-0 group-hover/type:opacity-100 transition"><button onclick="app.addProjectToType('${t.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded border border-indigo-100">Add Project</button><button onclick="app.requestRemoveType('${t.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded">Delete</button></div>
                             </div>
                             <div class="flex flex-col gap-2 pl-6 pb-4" id="proj-container-${t.id}" data-drop-zone="true" data-drop-entity="type-container" data-drop-id="${t.id}"></div>
                         `;
                         list.appendChild(typeBlock);
-
                         const projContainer = document.getElementById(
                             `proj-container-${t.id}`,
                         );
-                        if (typeProjs.length === 0) {
+                        if (typeProjs.length === 0)
                             projContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-3 pointer-events-none">Empty category. Drop projects here or click 'Add'.</div>`;
-                        } else {
+                        else {
                             typeProjs.forEach((p) => {
                                 const pCard = document.createElement("div");
                                 pCard.className =
@@ -1912,13 +2020,8 @@
                                 pCard.dataset.dragId = p.id;
                                 pCard.dataset.dropZone = "true";
                                 pCard.dataset.dropEntity = "project";
-
                                 pCard.innerHTML = `
-                                    <div class="flex items-center gap-3 flex-1 overflow-hidden">
-                                        <svg class="grab-handle w-5 h-5 text-gray-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
-                                        <input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="w-6 h-6 rounded-md cursor-pointer border-0 p-0 shadow-inner shrink-0 bg-transparent"/>
-                                        <span class="text-sm font-semibold text-gray-800 truncate" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to edit">${p.name}</span>
-                                    </div>
+                                    <div class="flex items-center gap-3 flex-1 overflow-hidden"><svg class="grab-handle w-5 h-5 text-gray-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg><input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="w-6 h-6 rounded-md cursor-pointer border-0 p-0 shadow-inner shrink-0 bg-transparent"/><span class="text-sm font-semibold text-gray-800 truncate" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to edit">${p.name}</span></div>
                                     <button onclick="app.removeProject('${p.id}')" class="opacity-0 group-hover/proj:opacity-100 text-red-400 hover:text-red-600 font-bold text-xs transition px-2 py-1">Remove</button>
                                 `;
                                 projContainer.appendChild(pCard);
@@ -1931,7 +2034,6 @@
                     const modal = document.getElementById(modalId);
                     const bg = modal;
                     const content = modal.querySelector(".modal-content");
-
                     if (show) {
                         modal.classList.remove("hidden");
                         bg.classList.remove("closing");
@@ -1954,18 +2056,13 @@
                     const projs = this.state.getProjectsByType(typeId);
                     document.getElementById("confirm-count").innerText =
                         projs.length;
-                    const list = document.getElementById(
-                        "confirm-project-list",
-                    );
-                    list.innerHTML = projs
-                        .map((p) => `<li>${p.name}</li>`)
-                        .join("");
-
-                    const btn = document.getElementById("confirm-action-btn");
-                    btn.onclick = () => {
-                        app.executeRemoveType(typeId);
-                        this.toggleModal("confirm-modal", false);
-                    };
+                    document.getElementById("confirm-project-list").innerHTML =
+                        projs.map((p) => `<li>${p.name}</li>`).join("");
+                    document.getElementById("confirm-action-btn").onclick =
+                        () => {
+                            app.executeRemoveType(typeId);
+                            this.toggleModal("confirm-modal", false);
+                        };
                     this.toggleModal("confirm-modal", true);
                 }
             }
@@ -1974,10 +2071,20 @@
                 constructor() {
                     this.state = new StateManager();
                     this.ui = new UIManager(this.state);
-                    this.cmd = new CommandPalette(this, this.state); // NEW
+                    this.cmd = new CommandPalette(this, this.state);
                     this.setupLogicListeners();
                     this.state.ensureDateExists(this.state.getCurrentDate());
                     globalBus.emit("view:refresh");
+
+                    // NEW: Set initial keyboard focus to first block on startup
+                    setTimeout(() => {
+                        const firstBlock =
+                            document.querySelector(".schedule-block");
+                        if (firstBlock) {
+                            firstBlock.focus();
+                            firstBlock.classList.add("js-focus");
+                        }
+                    }, 300);
                 }
 
                 setupLogicListeners() {
@@ -1988,10 +2095,13 @@
                             if (projectId) blocks[`${row}-${col}`] = projectId;
                             else delete blocks[`${row}-${col}`];
                         });
-                        const project = projectId
-                            ? this.state.getProjectById(projectId)
-                            : null;
-                        globalBus.emit("block:updated", { row, col, project });
+                        globalBus.emit("block:updated", {
+                            row,
+                            col,
+                            project: projectId
+                                ? this.state.getProjectById(projectId)
+                                : null,
+                        });
                         globalBus.emit("analytics:refreshed");
                     });
 
@@ -2025,7 +2135,6 @@
                             globalBus.emit("hierarchy:refreshed");
                         },
                     );
-
                     globalBus.on(
                         "hierarchy:updateProject",
                         ({ id, name, element }) => {
@@ -2045,7 +2154,6 @@
                             globalBus.emit("hierarchy:refreshed");
                         },
                     );
-
                     globalBus.on(
                         "hierarchy:updateProjectColor",
                         ({ id, color }) => {
@@ -2059,7 +2167,6 @@
                             globalBus.emit("hierarchy:refreshed");
                         },
                     );
-
                     globalBus.on(
                         "hierarchy:reorderType",
                         ({ sourceId, targetId }) => {
@@ -2078,7 +2185,6 @@
                             globalBus.emit("hierarchy:refreshed");
                         },
                     );
-
                     globalBus.on(
                         "hierarchy:reorderProject",
                         ({ sourceId, targetId }) => {
@@ -2099,7 +2205,6 @@
                             globalBus.emit("hierarchy:refreshed");
                         },
                     );
-
                     globalBus.on(
                         "hierarchy:moveProjectToType",
                         ({ projectId, typeId }) => {
@@ -2119,7 +2224,6 @@
                     sidebar.classList.toggle("sidebar-collapsed");
                     const burger = document.getElementById("icon-burger");
                     const arrow = document.getElementById("icon-arrow");
-
                     if (sidebar.classList.contains("sidebar-collapsed")) {
                         burger.style.opacity = "0";
                         burger.style.transform = "rotate(90deg)";
@@ -2144,27 +2248,69 @@
                     globalBus.emit("hierarchy:refreshed");
                 }
 
-                prevMonth() {
-                    let m = this.state.viewMonth - 1;
+                // --- NEW DATE/SCHEDULING ACTIONS FOR COMMANDS ---
+                shiftMonth(dir) {
+                    let m = this.state.viewMonth + dir;
                     let y = this.state.viewYear;
                     if (m < 0) {
                         m = 11;
                         y--;
-                    }
-                    this.state.viewMonth = m;
-                    this.state.viewYear = y;
-                    this.ui.renderCalendar();
-                }
-                nextMonth() {
-                    let m = this.state.viewMonth + 1;
-                    let y = this.state.viewYear;
-                    if (m > 11) {
+                    } else if (m > 11) {
                         m = 0;
                         y++;
                     }
                     this.state.viewMonth = m;
                     this.state.viewYear = y;
                     this.ui.renderCalendar();
+                }
+
+                shiftDate(days) {
+                    const curr = new Date(
+                        this.state.getCurrentDate() + "T00:00:00",
+                    );
+                    curr.setDate(curr.getDate() + days);
+                    const localISOTime = new Date(
+                        curr.getTime() - curr.getTimezoneOffset() * 60000,
+                    )
+                        .toISOString()
+                        .split("T")[0];
+                    this.state.viewMonth = curr.getMonth();
+                    this.state.viewYear = curr.getFullYear();
+                    this.selectDate(localISOTime);
+                }
+
+                clearDay() {
+                    this.state.updateState((data) => {
+                        data.schedules[data.currentDate] = { blocks: {} };
+                    });
+                    globalBus.emit("schedule:refreshed");
+                    globalBus.emit("analytics:refreshed");
+                    Toast.show("Day cleared");
+                }
+
+                fillDay(projectId) {
+                    this.state.updateState((data) => {
+                        const blocks = {};
+                        for (let r = 0; r < 17; r++) {
+                            for (let c = 0; c < 6; c++)
+                                blocks[`${r}-${c}`] = projectId;
+                        }
+                        data.schedules[data.currentDate] = { blocks };
+                    });
+                    globalBus.emit("schedule:refreshed");
+                    globalBus.emit("analytics:refreshed");
+                    Toast.show("Day filled");
+                }
+
+                pasteDay(scheduleObj) {
+                    this.state.updateState((data) => {
+                        data.schedules[data.currentDate] = JSON.parse(
+                            JSON.stringify(scheduleObj),
+                        );
+                    });
+                    globalBus.emit("schedule:refreshed");
+                    globalBus.emit("analytics:refreshed");
+                    Toast.show("Schedule pasted");
                 }
 
                 goToToday() {
@@ -2189,7 +2335,6 @@
                     this.ui.renderSettings();
                     this.ui.toggleModal("settings-modal", true);
                 }
-
                 closeSettingsModal() {
                     this.ui.toggleModal("settings-modal", false);
                 }
