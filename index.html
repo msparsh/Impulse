@@ -500,24 +500,6 @@
                             ...
                         </p>
                     </div>
-                    <button
-                        onclick="app.openSettingsModal()"
-                        class="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-gray-300 transition text-gray-600 shadow-sm"
-                    >
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                    </button>
                 </div>
             </header>
 
@@ -1121,6 +1103,21 @@
                 getRegistryCommands() {
                     return [
                         {
+                            title: "open settings",
+                            category: "UI",
+                            action: () => this.app.openSettingsModal(),
+                        },
+                        {
+                            title: "today",
+                            category: "Navigation",
+                            action: () => this.app.goToToday(),
+                        },
+                        {
+                            title: "clear day",
+                            category: "Scheduling",
+                            action: () => this.app.clearDay(),
+                        },
+                        {
                             title: "copy day",
                             category: "Clipboard",
                             action: () => this.app.copyDay(),
@@ -1129,16 +1126,6 @@
                             title: "paste day",
                             category: "Clipboard",
                             action: () => this.app.pasteDay(),
-                        },
-                        {
-                            title: "clear day",
-                            category: "Scheduling",
-                            action: () => this.app.clearDay(),
-                        },
-                        {
-                            title: "today",
-                            category: "Navigation",
-                            action: () => this.app.goToToday(),
                         },
                         {
                             title: "toggle sidebar",
