@@ -14,6 +14,7 @@
                 font-family: "Inter", sans-serif;
                 background-color: #f9fafb;
                 color: #1a1a1a;
+                user-select: none;
             }
 
             /* Day View Blocks */
@@ -408,7 +409,7 @@
             }
         </style>
     </head>
-    <body class="p-4 md:p-8 h-screen flex flex-col overflow-hidden relative">
+    <body class="h-screen flex flex-col overflow-hidden relative">
         <div
             id="paint-banner"
             class="hidden absolute top-0 left-0 w-full bg-indigo-600 text-white p-2 flex justify-center items-center gap-4 z-[60] shadow-md font-medium text-sm transition-transform"
@@ -426,7 +427,7 @@
         </div>
 
         <div
-            class="max-w-7xl mx-auto w-full h-full flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative"
+            class="mx-auto w-full h-full flex flex-col bg-white border-gray-100 overflow-hidden relative"
         >
             <header
                 class="flex items-center justify-between p-6 border-b border-gray-100 shrink-0 relative"
@@ -600,7 +601,7 @@
             <div class="flex flex-1 overflow-hidden relative">
                 <aside
                     id="app-sidebar"
-                    class="w-80 border-r border-gray-100 p-6 flex flex-col gap-6 overflow-y-auto custom-scroll bg-gray-50 sidebar-transition flex-shrink-0"
+                    class="w-[22%] min-w-[230px] max-w-[320px] border-r border-gray-100 p-6 flex flex-col gap-6 overflow-y-auto custom-scroll bg-gray-50 sidebar-transition flex-shrink-0"
                 >
                     <div
                         class="bg-gray-200/50 rounded-xl p-1 hide-on-collapse flex shadow-inner"
