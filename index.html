@@ -134,6 +134,26 @@
                 border-radius: 8px;
             }
 
+            /* Current Block Highlight */
+            .current-block-highlight {
+                box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.4) !important;
+                border-color: #eab308 !important;
+                transform: scale(1.1);
+                z-index: 25;
+                animation: pulse-border 2s infinite;
+            }
+            @keyframes pulse-border {
+                0% {
+                    box-shadow: 0 0 0 0px rgba(234, 179, 8, 0.7);
+                }
+                70% {
+                    box-shadow: 0 0 0 6px rgba(234, 179, 8, 0);
+                }
+                100% {
+                    box-shadow: 0 0 0 0px rgba(234, 179, 8, 0);
+                }
+            }
+
             /* Paint Mode & Sidebar */
             .paint-active {
                 border-color: #4f46e5 !important;
@@ -181,25 +201,6 @@
             }
 
             /* UI Overlays */
-            .choice-menu {
-                position: absolute;
-                background: white;
-                border: 1px solid #e5e7eb;
-                border-radius: 12px;
-                padding: 8px;
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
-                z-index: 9999;
-                width: 200px;
-                animation: fadeIn 0.1s ease-out;
-            }
-            .choice-menu button:focus-visible {
-                background-color: #f3f4f6;
-                outline: 2px solid #4f46e5;
-                outline-offset: -2px;
-            }
             .toast {
                 position: fixed;
                 bottom: 24px;
@@ -410,6 +411,42 @@
         </style>
     </head>
     <body class="h-screen flex flex-col overflow-hidden relative">
+        <div
+            id="focus-mode-overlay"
+            class="hidden fixed inset-0 z-[100000] bg-white flex flex-col items-center justify-center transition-opacity"
+        >
+            <h2
+                id="focus-project-name"
+                class="text-3xl md:text-5xl font-black mb-8 uppercase tracking-widest text-center px-4"
+            ></h2>
+
+            <div
+                id="focus-project-selector"
+                class="hidden w-full max-w-sm px-6 mb-8 flex flex-col items-center"
+            >
+                <h3
+                    class="text-lg font-black text-gray-800 mb-4 uppercase tracking-wider text-center"
+                >
+                    Select Project
+                </h3>
+                <div
+                    id="focus-project-list"
+                    class="flex flex-col gap-2 w-full max-h-[40vh] overflow-y-auto custom-scroll p-2 border border-gray-100 rounded-2xl bg-gray-50 shadow-inner"
+                ></div>
+            </div>
+
+            <div
+                id="focus-timer"
+                class="text-[6rem] md:text-[12rem] font-black tracking-tighter tabular-nums leading-none mb-12 text-gray-800"
+            ></div>
+            <button
+                onclick="app.exitFocusMode()"
+                class="px-8 py-4 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold transition shadow-sm border border-gray-200"
+            >
+                Exit Focus Mode
+            </button>
+        </div>
+
         <div
             id="paint-banner"
             class="hidden absolute top-0 left-0 w-full bg-indigo-600 text-white p-2 flex justify-center items-center gap-4 z-[60] shadow-md font-medium text-sm transition-transform"
@@ -942,7 +979,6 @@
             // 2. PARSERS & COMMAND ENGINE
             // ==========================================
             class CommandParser {
-                // Same implementation as original...
                 constructor(state) {
                     this.state = state;
                     this.globals = {
@@ -1157,7 +1193,6 @@
                     ];
                 }
 
-                // ... Keep existing Command Palette setupDOM/listeners/autocomplete/filter logic untouched
                 setupDOM() {
                     this.wrapper = document.createElement("div");
                     this.wrapper.className = "cmd-palette-wrapper hidden";
@@ -1474,6 +1509,31 @@
                     this.setupDelegation();
                     this.setupKeyboardNav();
                     this.listenToEvents();
+
+                    setInterval(
+                        () => this.updateCurrentBlockHighlight(),
+                        10000,
+                    );
+                }
+
+                updateCurrentBlockHighlight() {
+                    document
+                        .querySelectorAll(".current-block-highlight")
+                        .forEach((el) =>
+                            el.classList.remove("current-block-highlight"),
+                        );
+
+                    const now = new Date();
+                    const logicalToday = this.state.getLocalISODate(now);
+                    const currentHour = now.getHours();
+                    const currentCol = Math.floor(now.getMinutes() / 10);
+
+                    const blockKey = `${logicalToday}-${currentHour}-${currentCol}`;
+                    const blockEl = this.blockNodes[blockKey];
+
+                    if (blockEl) {
+                        blockEl.classList.add("current-block-highlight");
+                    }
                 }
 
                 setupDelegation() {
@@ -1510,31 +1570,46 @@
 
                         if (block) {
                             e.stopPropagation();
-                            const isAlreadyActive =
-                                block.classList.contains("active-block");
-                            this.closeAllMenus();
 
-                            if (isAlreadyActive) {
-                                block.classList.remove("js-focus");
-                                block.blur();
-                                return;
-                            }
-                            block.classList.add("active-block", "js-focus");
-                            this.renderChoiceMenu(
-                                block,
-                                block.dataset.date,
-                                block.dataset.row,
-                                block.dataset.col,
+                            const now = new Date();
+                            const logicalToday =
+                                this.state.getLocalISODate(now);
+                            const currentHour = now.getHours();
+                            const currentCol = Math.floor(
+                                now.getMinutes() / 10,
                             );
+
+                            const isCurrentBlock =
+                                block.dataset.date === logicalToday &&
+                                parseInt(block.dataset.row) === currentHour &&
+                                parseInt(block.dataset.col) === currentCol;
+
+                            const projectId = this.state.getSchedule(
+                                block.dataset.date,
+                            )?.blocks[
+                                `${block.dataset.row}-${block.dataset.col}`
+                            ];
+
+                            // Enter Focus Mode or Select Project if user clicks current block
+                            if (isCurrentBlock) {
+                                if (projectId) {
+                                    app.enterFocusMode(
+                                        projectId,
+                                        currentHour,
+                                        currentCol,
+                                    );
+                                } else {
+                                    app.enterFocusModeSelection(
+                                        currentHour,
+                                        currentCol,
+                                    );
+                                }
+                            }
                         }
                     });
 
                     document.addEventListener("click", (e) => {
-                        if (
-                            !e.target.closest(".choice-menu") &&
-                            !e.target.closest(".schedule-block")
-                        ) {
-                            this.closeAllMenus();
+                        if (!e.target.closest(".schedule-block")) {
                             document
                                 .querySelectorAll(".js-focus")
                                 .forEach((el) => {
@@ -1716,7 +1791,7 @@
 
                         const dropEntity = dropZone.dataset.dropEntity;
                         const dropId =
-                            dropZone.dataset.dropId || dropZone.dataset.dragId; // Could be dropping on container or another item
+                            dropZone.dataset.dropId || dropZone.dataset.dragId;
 
                         if (
                             this.dragState.entity === "type" &&
@@ -1743,9 +1818,9 @@
 
                     document.addEventListener("keydown", (e) => {
                         if (e.key === "Escape") {
-                            this.closeAllMenus();
                             app.closeSettingsModal();
                             app.cancelConfirm();
+                            app.exitFocusMode();
 
                             const popover =
                                 document.getElementById("calendar-popover");
@@ -1858,7 +1933,6 @@
                             this.state.getProjects(),
                             this.state.getTypes(),
                         );
-                        this.closeAllMenus();
                     });
 
                     globalBus.on("preview:blocks", (changes) => {
@@ -1890,15 +1964,6 @@
                             }
                         });
                     });
-                }
-
-                closeAllMenus() {
-                    document
-                        .querySelectorAll(".choice-menu")
-                        .forEach((m) => m.remove());
-                    document
-                        .querySelectorAll(".active-block")
-                        .forEach((b) => b.classList.remove("active-block"));
                 }
 
                 refreshAllViews() {
@@ -1934,6 +1999,8 @@
                             this.state.getHours(),
                             this.state.getProjects(),
                         );
+
+                    this.updateCurrentBlockHighlight();
                 }
 
                 renderHeader(dateStr) {
@@ -2057,7 +2124,6 @@
                         bar.innerHTML = `<span class="text-sm text-gray-400 font-medium italic">Press '/' to explore commands or click to schedule.</span>`;
                 }
 
-                // ... Keep DAY VIEW and WEEK VIEW logic from previous ...
                 renderDaySchedule(targetDateStr, hours, projects) {
                     const container = document.getElementById("schedule-grid");
                     container.innerHTML = "";
@@ -2108,7 +2174,8 @@
                                 block.classList.add("filled");
                                 block.title = project.name;
                             } else {
-                                block.title = "Empty (Click to set)";
+                                block.title =
+                                    "Empty (Use Paint or Cmd '/' to set)";
                             }
                             block.dataset.origBg = block.style.backgroundColor;
                             this.blockNodes[
@@ -2216,7 +2283,8 @@
                                     block.classList.add("filled");
                                     block.title = project.name;
                                 } else {
-                                    block.title = "Empty (Click to set)";
+                                    block.title =
+                                        "Empty (Use Paint or Cmd '/' to set)";
                                 }
                                 block.dataset.origBg =
                                     block.style.backgroundColor;
@@ -2229,73 +2297,6 @@
                         });
                         container.appendChild(rowEl);
                     });
-                }
-
-                renderChoiceMenu(blockElement, dateStr, rowIndex, colIndex) {
-                    const menu = document.createElement("div");
-                    menu.className = "choice-menu";
-
-                    const clearBtn = document.createElement("button");
-                    clearBtn.className =
-                        "flex items-center gap-2 p-2 w-full hover:bg-gray-100 rounded-lg transition text-left text-xs font-bold text-gray-500 mb-1";
-                    clearBtn.innerHTML = `<span>✕</span> Clear Block`;
-                    clearBtn.onclick = (event) => {
-                        event.stopPropagation();
-                        globalBus.emit("block:update", {
-                            date: dateStr,
-                            row: rowIndex,
-                            col: colIndex,
-                            projectId: null,
-                        });
-                        this.closeAllMenus();
-                    };
-                    menu.appendChild(clearBtn);
-
-                    this.state.getTypes().forEach((t) => {
-                        const typeProjs = this.state.getProjectsByType(t.id);
-                        if (typeProjs.length === 0) return;
-                        const header = document.createElement("div");
-                        header.className =
-                            "text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1 mt-1 border-t border-gray-100 pt-2";
-                        header.innerText = t.name;
-                        menu.appendChild(header);
-
-                        typeProjs.forEach((p) => {
-                            const btn = document.createElement("button");
-                            btn.className =
-                                "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
-                            btn.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div><span class="text-xs font-bold text-gray-700 truncate">${p.name}</span></div><div class="opacity-0 group-hover/btn:opacity-100 focus-visible:opacity-100 bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-[10px] shadow-sm transition" title="Fill entire hour" onclick="event.stopPropagation(); globalBus.emit('schedule:fillRow', { date: '${dateStr}', row: ${rowIndex}, projectId: '${p.id}' }); app.ui.closeAllMenus();">FILL HR</div>`;
-                            btn.onclick = (event) => {
-                                event.stopPropagation();
-                                globalBus.emit("block:update", {
-                                    date: dateStr,
-                                    row: rowIndex,
-                                    col: colIndex,
-                                    projectId: p.id,
-                                });
-                                this.closeAllMenus();
-                            };
-                            menu.appendChild(btn);
-                        });
-                    });
-
-                    document.body.appendChild(menu);
-                    const rect = blockElement.getBoundingClientRect();
-                    const menuHeight = menu.offsetHeight;
-                    let top = rect.bottom + window.scrollY + 8;
-                    let left =
-                        rect.left + window.scrollX + rect.width / 2 - 100;
-                    if (top + menuHeight > window.innerHeight + window.scrollY)
-                        top = rect.top + window.scrollY - menuHeight - 8;
-                    if (left < 10) left = 10;
-                    if (left + 200 > window.innerWidth)
-                        left = window.innerWidth - 210;
-                    menu.style.top = `${top}px`;
-                    menu.style.left = `${left}px`;
-                    setTimeout(() => {
-                        const firstBtn = menu.querySelector("button");
-                        if (firstBtn) firstBtn.focus();
-                    }, 50);
                 }
 
                 renderSettings() {
@@ -2317,7 +2318,6 @@
                         typeBlock.dataset.dropZone = "true";
                         typeBlock.dataset.dropEntity = "type";
 
-                        // Updated visual structure for high contrast visibility
                         typeBlock.innerHTML = `
                         <div class="flex items-center justify-between mb-3 group/type border border-gray-200 bg-white p-3 rounded-xl shadow-sm"><div class="flex items-center gap-2"><svg class="grab-handle w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg><h4 class="text-sm font-black text-gray-900 uppercase tracking-widest" contenteditable="true" data-entity="type" data-id="${t.id}" title="Click to edit">${t.name}</h4><span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-bold">${typeProjs.length}</span></div><div class="flex gap-2 opacity-0 group-hover/type:opacity-100 transition"><button onclick="app.addProjectToType('${t.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">Add Project</button><button onclick="app.requestRemoveType('${t.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg border border-transparent">Delete</button></div></div>
                         <div class="flex flex-col gap-2 pl-8 pb-2" id="proj-container-${t.id}" data-drop-zone="true" data-drop-entity="type-container" data-drop-id="${t.id}"></div>
@@ -2390,6 +2390,7 @@
                     this.ui = new UIManager(this.state);
                     this.cmd = new CommandPalette(this, this.state);
                     this.clipboardDay = null;
+                    this.focusTimerInterval = null;
 
                     this.setupLogicListeners();
                     this.state.ensureDateExists(this.state.getCurrentDate());
@@ -2427,6 +2428,172 @@
                             }
                         }
                     }, 100);
+                }
+
+                enterFocusModeSelection(startRow, startCol) {
+                    const overlay =
+                        document.getElementById("focus-mode-overlay");
+                    const selector = document.getElementById(
+                        "focus-project-selector",
+                    );
+                    const nameEl =
+                        document.getElementById("focus-project-name");
+                    const timerEl = document.getElementById("focus-timer");
+                    const list = document.getElementById("focus-project-list");
+
+                    if (this.focusTimerInterval) {
+                        clearInterval(this.focusTimerInterval);
+                    }
+
+                    nameEl.classList.add("hidden");
+                    timerEl.classList.add("hidden");
+                    selector.classList.remove("hidden");
+                    overlay.classList.remove("hidden");
+
+                    list.innerHTML = "";
+                    const projects = this.state.getProjects();
+
+                    if (projects.length === 0) {
+                        list.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm font-bold border border-dashed border-gray-300 rounded-xl">No projects available. Close to create one first!</div>`;
+                    } else {
+                        projects.forEach((p) => {
+                            const btn = document.createElement("button");
+                            btn.className =
+                                "flex items-center gap-3 p-3 w-full hover:bg-indigo-50 rounded-xl transition text-left group/btn border border-gray-200 hover:border-indigo-300 hover:shadow-md bg-white shadow-sm mb-2";
+                            btn.innerHTML = `<div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${p.color}"></div><span class="text-sm font-bold text-gray-800 truncate">${p.name}</span>`;
+                            btn.onclick = () =>
+                                this.selectFocusProject(
+                                    p.id,
+                                    startRow,
+                                    startCol,
+                                );
+                            list.appendChild(btn);
+                        });
+                    }
+                }
+
+                selectFocusProject(projectId, row, col) {
+                    const dateStr = this.state.getLocalISODate(new Date());
+
+                    globalBus.emit("block:update", {
+                        date: dateStr,
+                        row: row,
+                        col: col,
+                        projectId: projectId,
+                    });
+
+                    document
+                        .getElementById("focus-project-selector")
+                        .classList.add("hidden");
+                    document
+                        .getElementById("focus-timer")
+                        .classList.remove("hidden");
+                    document
+                        .getElementById("focus-project-name")
+                        .classList.remove("hidden");
+
+                    this.enterFocusMode(projectId, row, col);
+                }
+
+                enterFocusMode(projectId, startRow, startCol) {
+                    if (this.focusTimerInterval) {
+                        clearInterval(this.focusTimerInterval);
+                    }
+
+                    const project = this.state.getProjectById(projectId);
+                    if (!project) return;
+
+                    const overlay =
+                        document.getElementById("focus-mode-overlay");
+                    const nameEl =
+                        document.getElementById("focus-project-name");
+                    const timerEl = document.getElementById("focus-timer");
+
+                    nameEl.innerText = project.name;
+                    nameEl.style.color = project.color;
+                    overlay.classList.remove("hidden");
+
+                    document
+                        .getElementById("focus-project-selector")
+                        .classList.add("hidden");
+                    document
+                        .getElementById("focus-project-name")
+                        .classList.remove("hidden");
+                    document
+                        .getElementById("focus-timer")
+                        .classList.remove("hidden");
+
+                    const today = this.state.getLocalISODate(new Date());
+                    const blocks = this.state.getSchedule(today).blocks;
+
+                    let r = startRow;
+                    let c = startCol;
+
+                    while (blocks[`${r}-${c}`] === projectId) {
+                        c++;
+                        if (c > 5) {
+                            c = 0;
+                            r++;
+                        }
+                        if (r > 23) break;
+                    }
+
+                    const now = new Date();
+                    const endTime = new Date(
+                        now.getFullYear(),
+                        now.getMonth(),
+                        now.getDate(),
+                        r,
+                        c * 10,
+                        0,
+                    );
+
+                    const updateTimer = () => {
+                        const currentTime = new Date();
+                        const diff = Math.max(0, endTime - currentTime);
+
+                        if (diff === 0) {
+                            clearInterval(this.focusTimerInterval);
+                            timerEl.innerText = "00:00";
+                            return;
+                        }
+
+                        const totalSeconds = Math.floor(diff / 1000);
+                        const h = Math.floor(totalSeconds / 3600);
+                        const m = Math.floor((totalSeconds % 3600) / 60);
+                        const s = totalSeconds % 60;
+
+                        let timeStr = "";
+                        if (h > 0) timeStr += String(h).padStart(2, "0") + ":";
+                        timeStr +=
+                            String(m).padStart(2, "0") +
+                            ":" +
+                            String(s).padStart(2, "0");
+
+                        timerEl.innerText = timeStr;
+                    };
+
+                    updateTimer();
+                    this.focusTimerInterval = setInterval(updateTimer, 1000);
+                }
+
+                exitFocusMode() {
+                    document
+                        .getElementById("focus-mode-overlay")
+                        .classList.add("hidden");
+                    if (this.focusTimerInterval) {
+                        clearInterval(this.focusTimerInterval);
+                    }
+
+                    document
+                        .getElementById("focus-project-name")
+                        .classList.remove("hidden");
+                    document
+                        .getElementById("focus-timer")
+                        .classList.remove("hidden");
+                    document
+                        .getElementById("focus-project-selector")
+                        .classList.add("hidden");
                 }
 
                 setupLogicListeners() {
