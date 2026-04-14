@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Planner - v16.0 (Optimized Local Engine)</title>
+        <title>Planner - v17.0 (CLI & Shadow Engine)</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap"
@@ -70,11 +70,6 @@
             .tiny-dot.filled {
                 border-color: transparent;
             }
-            .tiny-dot:focus-visible,
-            .tiny-dot.js-focus {
-                outline: 2px solid #4f46e5;
-                outline-offset: 1px;
-            }
 
             .week-cell {
                 display: grid;
@@ -88,14 +83,6 @@
                 border-radius: 8px;
                 background: white;
                 transition: background 0.2s;
-            }
-            .week-cell:hover {
-                background: #f8fafc;
-            }
-            .active-block {
-                box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.4) !important;
-                transform: scale(1.1);
-                z-index: 20;
             }
 
             /* Time & Date Highlighting */
@@ -127,6 +114,55 @@
                 z-index: 25;
                 animation: pulse-border 2s infinite;
             }
+
+            /* Shadow Engine Styles */
+            .shadow-add {
+                border: 2px dashed var(--shadow-color) !important;
+                background-color: color-mix(
+                    in srgb,
+                    var(--shadow-color) 40%,
+                    transparent
+                ) !important;
+                transform: scale(1.15) !important;
+                z-index: 40 !important;
+                transition: none !important;
+                border-radius: 8px;
+            }
+            .circle-btn.shadow-add {
+                border-radius: 50%;
+            }
+
+            .shadow-clear {
+                border: 2px dashed #ef4444 !important;
+                background-color: rgba(239, 68, 68, 0.15) !important;
+                transform: scale(1.15) !important;
+                z-index: 40 !important;
+                transition: none !important;
+                border-radius: 8px;
+            }
+            .circle-btn.shadow-clear {
+                border-radius: 50%;
+            }
+
+            /* CLI Glow States */
+            .cli-typing {
+                border-color: rgba(200, 200, 200, 0.6);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            }
+            .cli-valid {
+                border-color: #4f46e5;
+                box-shadow: 0 0 25px rgba(79, 70, 229, 0.5);
+            }
+            .cli-clear {
+                border-color: #ef4444;
+                box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+            }
+            .cli-error {
+                border-color: #eab308;
+                box-shadow: 0 0 25px rgba(234, 179, 8, 0.5);
+                animation: shake 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+            }
+
             @keyframes pulse-border {
                 0% {
                     box-shadow: 0 0 0 0px rgba(234, 179, 8, 0.7);
@@ -138,8 +174,47 @@
                     box-shadow: 0 0 0 0px rgba(234, 179, 8, 0);
                 }
             }
+            @keyframes shake {
+                10%,
+                90% {
+                    transform: translate3d(-2px, 0, 0);
+                }
+                20%,
+                80% {
+                    transform: translate3d(4px, 0, 0);
+                }
+                30%,
+                50%,
+                70% {
+                    transform: translate3d(-8px, 0, 0);
+                }
+                40%,
+                60% {
+                    transform: translate3d(8px, 0, 0);
+                }
+            }
+            @keyframes slideUp {
+                from {
+                    transform: translateY(20px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideDown {
+                from {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateY(20px);
+                    opacity: 0;
+                }
+            }
 
-            /* Paint Mode & Sidebar */
+            /* Sidebar, Overlays & Utils (Rest unchanged) */
             .paint-active {
                 border-color: #4f46e5 !important;
                 box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
@@ -156,25 +231,20 @@
                 font-weight: 900;
                 margin-left: auto;
             }
-            /* Sidebar Transition & Bounds */
             .sidebar-transition {
-                /* Animate ALL bounds to stop the min-width snap */
                 transition:
                     width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                     min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                     padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 overflow-x: hidden;
-                white-space: nowrap; /* Prevents text wrapping during squeeze */
+                white-space: nowrap;
             }
-
             .sidebar-collapsed {
                 width: 88px !important;
                 min-width: 88px !important;
                 padding-left: 24px !important;
                 padding-right: 24px !important;
             }
-
-            /* Smoothly hide content without breaking the layout tree */
             .hide-on-collapse {
                 transition:
                     opacity 0.2s ease,
@@ -182,46 +252,39 @@
                     margin 0.2s ease;
                 opacity: 1;
             }
-            /* Inverse collapse logic for the compact view toggle */
             .show-on-collapse {
                 opacity: 0;
                 transform: scale(0.5);
                 pointer-events: none;
                 transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             }
-            /* Dedicated crossfade for the expanded pill (prevents text crush) */
             .view-pill-expanded {
                 transition:
                     opacity 0.2s ease,
                     transform 0.2s ease;
                 opacity: 1;
                 transform: scale(1);
-                white-space: nowrap; /* Stops text from wrapping during shrink */
+                white-space: nowrap;
             }
-
             .sidebar-collapsed .view-pill-expanded {
                 opacity: 0 !important;
                 transform: scale(0.9) !important;
                 pointer-events: none;
             }
-
             .sidebar-collapsed .show-on-collapse {
                 opacity: 1 !important;
                 transform: scale(1) !important;
-                width: 36px !important; /* Matches expanded height */
-                height: 36px !important; /* Matches expanded height */
+                width: 36px !important;
+                height: 36px !important;
                 pointer-events: auto;
             }
-
             .sidebar-collapsed .hide-on-collapse {
                 opacity: 0 !important;
                 width: 0 !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                pointer-events: none; /* Replaces display:none */
+                pointer-events: none;
             }
-
-            /* Project Card Adjustments */
             .sidebar-collapsed .project-card {
                 justify-content: center;
                 padding: 8px 0;
@@ -232,8 +295,6 @@
             .sidebar-collapsed .project-card:hover {
                 transform: scale(1.1);
             }
-
-            /* Fade out spans gracefully */
             .sidebar-collapsed .project-card span,
             .sidebar-collapsed .paint-active-indicator {
                 opacity: 0;
@@ -243,15 +304,12 @@
                 overflow: hidden;
                 transition: all 0.2s ease;
             }
-
             .project-card span,
             .paint-active-indicator {
                 transition:
                     opacity 0.2s ease,
                     width 0.2s ease;
             }
-
-            /* UI Overlays */
             .toast {
                 position: fixed;
                 bottom: 24px;
@@ -269,8 +327,6 @@
             .toast.error {
                 background: #ef4444;
             }
-
-            /* Helpers & Animations */
             .custom-scroll::-webkit-scrollbar {
                 width: 6px;
             }
@@ -291,26 +347,6 @@
                     opacity: 1;
                 }
                 to {
-                    opacity: 0;
-                }
-            }
-            @keyframes slideUp {
-                from {
-                    transform: translateY(20px);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateY(0);
-                    opacity: 1;
-                }
-            }
-            @keyframes slideDown {
-                from {
-                    transform: translateY(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: translateY(20px);
                     opacity: 0;
                 }
             }
@@ -402,6 +438,36 @@
         </div>
 
         <div
+            id="cli-container"
+            class="hidden fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-[600px] px-4 z-[99999] pointer-events-none"
+        >
+            <div
+                id="cli-wrapper"
+                class="relative rounded-2xl backdrop-blur-md bg-white/75 border-2 cli-typing pointer-events-auto transition-colors duration-200 flex items-center shadow-xl"
+            >
+                <span class="pl-6 text-gray-400 font-bold text-lg select-none"
+                    >❯</span
+                >
+                <input
+                    type="text"
+                    id="cli-input"
+                    class="w-full bg-transparent pl-3 pr-24 py-4 text-lg font-bold text-gray-800 placeholder-gray-500/70 focus:outline-none rounded-2xl"
+                    placeholder="e.g. 7 dw, clear morning, 1p 1 2 stu"
+                    autocomplete="off"
+                    spellcheck="false"
+                />
+                <div
+                    class="absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-2"
+                >
+                    <span
+                        class="text-[10px] font-black tracking-wider uppercase text-gray-400 bg-gray-200/50 px-2 py-1 rounded-md"
+                        >Esc</span
+                    >
+                </div>
+            </div>
+        </div>
+
+        <div
             class="mx-auto w-full h-full flex flex-col bg-white border-gray-100 overflow-hidden relative"
         >
             <header
@@ -450,6 +516,15 @@
                             </svg>
                         </div>
                     </button>
+                    <div
+                        class="hidden sm:flex text-xs font-semibold text-gray-400 items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100"
+                    >
+                        <kbd
+                            class="bg-white px-1.5 py-0.5 rounded shadow-sm border border-gray-200 text-gray-600"
+                            >Cmd/Ctrl + K</kbd
+                        >
+                        to Command
+                    </div>
                 </div>
                 <div class="flex items-center gap-4 md:gap-6 relative">
                     <div
@@ -581,7 +656,6 @@
                                 Week
                             </button>
                         </div>
-
                         <div
                             class="show-on-collapse absolute inset-0 m-auto rounded-xl bg-gray-200/50 p-1 flex shadow-inner"
                         >
@@ -758,7 +832,7 @@
 
             class StateManager {
                 constructor() {
-                    this.storageKey = "planner_state_v16";
+                    this.storageKey = "planner_state_v17";
                     this.hours = [
                         "12 AM",
                         "1 AM",
@@ -813,9 +887,8 @@
 
                 updateBlockIndex(date, row, col, newProjectId, oldProjectId) {
                     const key = `${date}#${row}-${col}`;
-                    if (oldProjectId && this.projectBlockMap[oldProjectId]) {
+                    if (oldProjectId && this.projectBlockMap[oldProjectId])
                         this.projectBlockMap[oldProjectId].delete(key);
-                    }
                     if (newProjectId) {
                         if (!this.projectBlockMap[newProjectId])
                             this.projectBlockMap[newProjectId] = new Set();
@@ -832,7 +905,7 @@
 
                 getDefaultState() {
                     return {
-                        version: 16,
+                        version: 17,
                         currentDate: this.getLocalISODate(),
                         viewMode: "day",
                         isSidebarCollapsed: false,
@@ -893,11 +966,10 @@
                 }
 
                 ensureDateExists(dateStr) {
-                    if (!this.data.schedules[dateStr]) {
+                    if (!this.data.schedules[dateStr])
                         this.updateState((data) => {
                             data.schedules[dateStr] = { blocks: {} };
                         });
-                    }
                 }
                 getProjectById(id) {
                     return this.data.projects.find((p) => p.id === id);
@@ -943,8 +1015,6 @@
                     this.state = state;
                     this.blockNodes = {};
                     this.dragState = null;
-
-                    // DOM Skeleton Flags
                     this.isDaySkeletonBuilt = false;
                     this.isWeekSkeletonBuilt = false;
 
@@ -981,7 +1051,6 @@
                         const actionBtn = e.target.closest("[data-action]");
                         if (actionBtn) {
                             const action = actionBtn.dataset.action;
-
                             switch (action) {
                                 case "toggle-sidebar":
                                     globalBus.emit("ui:toggleSidebar");
@@ -1135,7 +1204,6 @@
                     grid.addEventListener("click", (e) => {
                         if (this.state.paintProjectId) return;
                         const block = e.target.closest(".schedule-block");
-
                         if (block) {
                             e.stopPropagation();
                             const now = new Date();
@@ -1150,7 +1218,6 @@
                                 block.dataset.date === logicalToday &&
                                 parseInt(block.dataset.row) === currentHour &&
                                 parseInt(block.dataset.col) === currentCol;
-
                             const projectId = this.state.getSchedule(
                                 block.dataset.date,
                             )?.blocks[
@@ -1342,23 +1409,22 @@
                         if (
                             this.dragState.entity === "type" &&
                             dropEntity === "type"
-                        ) {
+                        )
                             globalBus.emit("hierarchy:reorderType", {
                                 sourceId: this.dragState.id,
                                 targetId: dropId,
                             });
-                        } else if (this.dragState.entity === "project") {
-                            if (dropEntity === "project") {
+                        else if (this.dragState.entity === "project") {
+                            if (dropEntity === "project")
                                 globalBus.emit("hierarchy:reorderProject", {
                                     sourceId: this.dragState.id,
                                     targetId: dropId,
                                 });
-                            } else if (dropEntity === "type-container") {
+                            else if (dropEntity === "type-container")
                                 globalBus.emit("hierarchy:moveProjectToType", {
                                     projectId: this.dragState.id,
                                     typeId: dropId,
                                 });
-                            }
                         }
                     });
                 }
@@ -1450,12 +1516,9 @@
                             .forEach((card) => {
                                 const pId = card.dataset.projectid;
                                 const isEraser = pId === "CLEAR";
-
                                 if (pId === activeId) {
                                     card.classList.add("paint-active");
                                     card.classList.remove("border-gray-100");
-
-                                    // Add badge if missing
                                     if (
                                         !card.querySelector(
                                             ".paint-active-indicator",
@@ -1474,8 +1537,6 @@
                                 } else {
                                     card.classList.remove("paint-active");
                                     card.classList.add("border-gray-100");
-
-                                    // Remove badge
                                     const badge = card.querySelector(
                                         ".paint-active-indicator",
                                     );
@@ -1553,13 +1614,11 @@
                                 "schedule-block circle-btn shadow-sm";
                             block.dataset.row = rowIndex;
                             block.dataset.col = colIndex;
-                            // Roving tabindex prep
                             block.setAttribute(
                                 "tabindex",
                                 rowIndex === 0 && colIndex === 0 ? "0" : "-1",
                             );
 
-                            // Store generic ref
                             this.blockNodes[`DAY-${rowIndex}-${colIndex}`] =
                                 block;
                             blocksContainer.appendChild(block);
@@ -1575,7 +1634,7 @@
                 renderDaySchedule(targetDateStr, hours, projects) {
                     if (!this.isDaySkeletonBuilt) this.buildDaySkeleton(hours);
 
-                    this.blockNodes = {}; // Reset exact mappings
+                    this.blockNodes = {};
                     const scheduleObj = this.state.getSchedule(targetDateStr);
                     const blocks = scheduleObj.blocks;
                     const now = new Date();
@@ -1628,25 +1687,21 @@
                 }
 
                 refreshScheduleView() {
-                    if (this.state.data.viewMode === "week") {
-                        // Keep legacy DOM generation for week view as it rebuilds headers heavily
-                        // A skeleton here is complex due to sticky dates, but we can do a soft refresh
+                    if (this.state.data.viewMode === "week")
                         this.renderWeekSchedule(
                             this.state.getCurrentDate(),
                             this.state.getHours(),
                             this.state.getProjects(),
                         );
-                    } else {
+                    else
                         this.renderDaySchedule(
                             this.state.getCurrentDate(),
                             this.state.getHours(),
                             this.state.getProjects(),
                         );
-                    }
                     this.updateCurrentBlockHighlight();
                 }
 
-                // ... (renderHeader, renderCalendar remain similar but safe)
                 renderHeader(dateStr) {
                     const [year, month, day] = dateStr.split("-").map(Number);
                     const dateObj = new Date(year, month - 1, day);
@@ -1730,16 +1785,12 @@
                         const header = document.createElement("div");
                         header.className =
                             "text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1 hide-on-collapse";
-                        header.textContent = t.name; // XSS SAFE
+                        header.textContent = t.name;
                         list.appendChild(header);
 
                         typeProjects.forEach((p) => {
                             const isActivePaint =
                                 this.state.paintProjectId === p.id;
-                            const badgeHTML = isActivePaint
-                                ? `<span class="paint-active-indicator">Paint</span>`
-                                : "";
-
                             const pCard = document.createElement("div");
                             pCard.className = `project-card flex items-center gap-3 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition`;
                             pCard.title = p.name;
@@ -1754,7 +1805,7 @@
                             const textSpan = document.createElement("span");
                             textSpan.className =
                                 "text-sm font-semibold text-gray-800 truncate hide-on-collapse";
-                            textSpan.textContent = p.name; // XSS SAFE
+                            textSpan.textContent = p.name;
 
                             pCard.appendChild(colorDot);
                             pCard.appendChild(textSpan);
@@ -1764,7 +1815,6 @@
                                 badge.textContent = "Paint";
                                 pCard.appendChild(badge);
                             }
-
                             list.appendChild(pCard);
                         });
                     });
@@ -1790,7 +1840,7 @@
                             const span = document.createElement("span");
                             span.className =
                                 "text-xs font-semibold text-gray-700";
-                            span.textContent = `${t.name}: `; // XSS Safe
+                            span.textContent = `${t.name}: `;
 
                             const innerSpan = document.createElement("span");
                             innerSpan.className = "text-gray-500";
@@ -1799,7 +1849,6 @@
                             span.appendChild(innerSpan);
                             div.appendChild(span);
                             bar.appendChild(div);
-
                             totalAssigned++;
                         }
                     });
@@ -1902,10 +1951,10 @@
                                     block.style.backgroundColor = project.color;
                                     block.classList.add("filled");
                                     block.title = project.name;
-                                } else {
+                                } else
                                     block.title =
                                         "Empty (Click or use Paint to set)";
-                                }
+
                                 block.dataset.origBg =
                                     block.style.backgroundColor;
                                 this.blockNodes[
@@ -1952,7 +2001,6 @@
                         <div class="flex flex-col gap-2 pl-8 pb-2" id="proj-container-${t.id}" data-drop-zone="true" data-drop-entity="type-container" data-drop-id="${t.id}"></div>
                         `;
 
-                        // XSS Safe Injection
                         typeBlock.querySelector("h4").textContent = t.name;
                         list.appendChild(typeBlock);
 
@@ -1960,9 +2008,9 @@
                             `proj-container-${t.id}`,
                         );
 
-                        if (typeProjs.length === 0) {
+                        if (typeProjs.length === 0)
                             projContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-3 pointer-events-none">Empty category. Drop projects here or click 'Add Project'.</div>`;
-                        } else {
+                        else {
                             typeProjs.forEach((p) => {
                                 const pCard = document.createElement("div");
                                 pCard.className =
@@ -1981,7 +2029,6 @@
                                 </div>
                                 <button data-action="remove-project" data-projectid="${p.id}" class="opacity-0 group-hover/proj:opacity-100 text-red-400 hover:text-red-600 font-bold text-xs transition px-2 py-1 bg-red-50 rounded-md">Remove</button>`;
 
-                                // XSS Safe Injection
                                 pCard.querySelector(
                                     "span[contenteditable]",
                                 ).textContent = p.name;
@@ -2014,17 +2061,15 @@
                     const projs = this.state.getProjectsByType(typeId);
                     document.getElementById("confirm-count").textContent =
                         projs.length;
-
                     const list = document.getElementById(
                         "confirm-project-list",
                     );
                     list.innerHTML = "";
                     projs.forEach((p) => {
                         const li = document.createElement("li");
-                        li.textContent = p.name; // XSS Safe
+                        li.textContent = p.name;
                         list.appendChild(li);
                     });
-
                     document.getElementById("confirm-action-btn").onclick =
                         () => {
                             app.executeRemoveType(typeId);
@@ -2041,7 +2086,6 @@
                 constructor() {
                     this.state = new StateManager();
                     this.ui = new UIManager(this.state);
-                    this.clipboardDay = null;
                     this.focusTimerInterval = null;
 
                     this.setupLogicListeners();
@@ -2063,23 +2107,6 @@
                     }
 
                     globalBus.emit("view:refresh");
-
-                    setTimeout(() => {
-                        const timeLabel = document.querySelector(
-                            ".current-time-label",
-                        );
-                        if (timeLabel) {
-                            const row = timeLabel.closest(".grid, .flex");
-                            const rowIdx = Array.from(
-                                row.parentElement.children,
-                            ).indexOf(row);
-                            if (rowIdx < 20) {
-                                document.getElementById(
-                                    "scroll-container",
-                                ).scrollTop = row.offsetTop - 100;
-                            }
-                        }
-                    }, 100);
                 }
 
                 setupUIActionListeners() {
@@ -2154,7 +2181,6 @@
                     timerEl.classList.add("hidden");
                     selector.classList.remove("hidden");
                     overlay.classList.remove("hidden");
-
                     list.innerHTML = "";
                     const projects = this.state.getProjects();
 
@@ -2174,7 +2200,7 @@
                             const span = document.createElement("span");
                             span.className =
                                 "text-sm font-bold text-gray-800 truncate";
-                            span.textContent = p.name; // XSS Safe
+                            span.textContent = p.name;
 
                             btn.appendChild(dot);
                             btn.appendChild(span);
@@ -2197,7 +2223,6 @@
                         col: col,
                         projectId: projectId,
                     });
-
                     document
                         .getElementById("focus-project-selector")
                         .classList.add("hidden");
@@ -2207,14 +2232,12 @@
                     document
                         .getElementById("focus-project-name")
                         .classList.remove("hidden");
-
                     this.enterFocusMode(projectId, row, col);
                 }
 
                 enterFocusMode(projectId, startRow, startCol) {
                     if (this.focusTimerInterval)
                         clearInterval(this.focusTimerInterval);
-
                     const project = this.state.getProjectById(projectId);
                     if (!project) return;
 
@@ -2224,10 +2247,9 @@
                         document.getElementById("focus-project-name");
                     const timerEl = document.getElementById("focus-timer");
 
-                    nameEl.textContent = project.name; // XSS Safe
+                    nameEl.textContent = project.name;
                     nameEl.style.color = project.color;
                     overlay.classList.remove("hidden");
-
                     document
                         .getElementById("focus-project-selector")
                         .classList.add("hidden");
@@ -2243,7 +2265,6 @@
 
                     let r = startRow;
                     let c = startCol;
-
                     while (blocks[`${r}-${c}`] === projectId) {
                         c++;
                         if (c > 5) {
@@ -2266,7 +2287,6 @@
                     const updateTimer = () => {
                         const currentTime = new Date();
                         const diff = Math.max(0, endTime - currentTime);
-
                         if (diff === 0) {
                             clearInterval(this.focusTimerInterval);
                             timerEl.innerText = "00:00";
@@ -2284,10 +2304,8 @@
                             String(m).padStart(2, "0") +
                             ":" +
                             String(s).padStart(2, "0");
-
                         timerEl.innerText = timeStr;
                     };
-
                     updateTimer();
                     this.focusTimerInterval = setInterval(updateTimer, 1000);
                 }
@@ -2327,7 +2345,6 @@
                                 else delete blocks[`${row}-${col}`];
                             });
 
-                            // Update O(1) Index Map
                             this.state.updateBlockIndex(
                                 targetDate,
                                 row,
@@ -2462,38 +2479,6 @@
                     globalBus.emit("view:refresh");
                 }
 
-                // GHOST METHODS - Untouched as requested
-                copyDay() {
-                    this.clipboardDay = JSON.parse(
-                        JSON.stringify(
-                            this.state.getSchedule(this.state.getCurrentDate()),
-                        ),
-                    );
-                    Toast.show("Day copied");
-                }
-                pasteDay() {
-                    if (!this.clipboardDay) {
-                        Toast.show("Clipboard empty", "error");
-                        return;
-                    }
-                    this.state.updateState((data) => {
-                        data.schedules[data.currentDate] = JSON.parse(
-                            JSON.stringify(this.clipboardDay),
-                        );
-                    });
-                    globalBus.emit("schedule:refreshed");
-                    globalBus.emit("analytics:refreshed");
-                    Toast.show("Schedule pasted");
-                }
-                clearDay() {
-                    this.state.updateState((data) => {
-                        data.schedules[data.currentDate] = { blocks: {} };
-                    });
-                    globalBus.emit("schedule:refreshed");
-                    globalBus.emit("analytics:refreshed");
-                    Toast.show("Day cleared");
-                }
-
                 toggleSidebar() {
                     this.state.updateState((data) => {
                         data.isSidebarCollapsed = !data.isSidebarCollapsed;
@@ -2538,7 +2523,7 @@
                         }
                         document.getElementById(
                             "paint-banner-text",
-                        ).textContent = name; // XSS SAFE
+                        ).textContent = name;
                         document
                             .getElementById("paint-banner")
                             .classList.remove("hidden");
@@ -2561,19 +2546,6 @@
                     this.ui.renderCalendar();
                 }
 
-                shiftDate(days) {
-                    const [y, m, d] = this.state
-                        .getCurrentDate()
-                        .split("-")
-                        .map(Number);
-                    const curr = new Date(y, m - 1, d);
-                    curr.setDate(curr.getDate() + days);
-                    const localISOTime = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, "0")}-${String(curr.getDate()).padStart(2, "0")}`;
-                    this.state.viewMonth = curr.getMonth();
-                    this.state.viewYear = curr.getFullYear();
-                    this.selectDate(localISOTime);
-                }
-
                 goToToday() {
                     const todayStr = this.state.getLocalISODate();
                     const [y, m, d] = todayStr.split("-").map(Number);
@@ -2581,7 +2553,6 @@
                     this.state.viewYear = y;
                     this.selectDate(todayStr);
                 }
-
                 selectDate(dateStr) {
                     this.state.updateState((data) => {
                         data.currentDate = dateStr;
@@ -2602,7 +2573,6 @@
                     const input = document.getElementById("new-type-name");
                     const name = input.value.trim();
                     if (!name) return;
-
                     if (
                         this.state
                             .getTypes()
@@ -2630,7 +2600,6 @@
                     if (projectsLinked.length > 0) this.ui.showConfirm(id);
                     else this.executeRemoveType(id);
                 }
-
                 cancelConfirm() {
                     this.ui.toggleModal("confirm-modal", false);
                 }
@@ -2639,14 +2608,11 @@
                     const toDeleteIds = this.state
                         .getProjectsByType(id)
                         .map((p) => p.id);
-
                     this.state.updateState((data) => {
                         data.types = data.types.filter((t) => t.id !== id);
                         data.projects = data.projects.filter(
                             (p) => !toDeleteIds.includes(p.id),
                         );
-
-                        // O(1) Deletion via Map
                         toDeleteIds.forEach((pId) => {
                             if (this.state.projectBlockMap[pId]) {
                                 this.state.projectBlockMap[pId].forEach(
@@ -2656,18 +2622,16 @@
                                         if (
                                             data.schedules[bDate] &&
                                             data.schedules[bDate].blocks[bKey]
-                                        ) {
+                                        )
                                             delete data.schedules[bDate].blocks[
                                                 bKey
                                             ];
-                                        }
                                     },
                                 );
                                 delete this.state.projectBlockMap[pId];
                             }
                         });
                     });
-
                     Toast.show("Category deleted");
                     globalBus.emit("view:refresh");
                     this.ui.renderSettings();
@@ -2705,8 +2669,6 @@
                         data.projects = data.projects.filter(
                             (p) => p.id !== id,
                         );
-
-                        // O(1) Deletion via Map
                         if (this.state.projectBlockMap[id]) {
                             this.state.projectBlockMap[id].forEach(
                                 (blockString) => {
@@ -2715,11 +2677,10 @@
                                     if (
                                         data.schedules[bDate] &&
                                         data.schedules[bDate].blocks[bKey]
-                                    ) {
+                                    )
                                         delete data.schedules[bDate].blocks[
                                             bKey
                                         ];
-                                    }
                                 },
                             );
                             delete this.state.projectBlockMap[id];
@@ -2731,7 +2692,365 @@
                 }
             }
 
+            // ==========================================
+            // 4. CLI & SHADOW ENGINE
+            // ==========================================
+            class CLIParser {
+                constructor(stateManager) {
+                    this.state = stateManager;
+                }
+
+                parse(input) {
+                    const result = {
+                        action: "add",
+                        rows: [],
+                        cols: [0, 1, 2, 3, 4, 5],
+                        project: null,
+                        status: "typing", // typing, valid, clear, error
+                        errorMsg: "",
+                    };
+
+                    const tokens = input
+                        .trim()
+                        .toLowerCase()
+                        .split(/\s+/)
+                        .filter(Boolean);
+                    if (tokens.length === 0) return result;
+
+                    let remainingTokens = [];
+                    let specifiedCols = [];
+                    let timeTokens = [];
+
+                    // Check for Clear Flag
+                    if (tokens[0] === "clear") {
+                        result.action = "clear";
+                        tokens.shift();
+                    }
+
+                    if (tokens.length === 0 && result.action === "clear") {
+                        result.status = "error";
+                        return result;
+                    }
+
+                    // Token classification
+                    for (let i = 0; i < tokens.length; i++) {
+                        const t = tokens[i];
+
+                        // Blocks 1-6 map to 0-5
+                        if (/^[1-6]$/.test(t)) {
+                            specifiedCols.push(parseInt(t) - 1);
+                            continue;
+                        }
+
+                        // Ranges
+                        if (
+                            [
+                                "day",
+                                "morning",
+                                "afternoon",
+                                "evening",
+                                "night",
+                            ].includes(t)
+                        ) {
+                            timeTokens.push({ type: "keyword", val: t });
+                            continue;
+                        }
+
+                        // Time range format (e.g., 1am-2pm)
+                        if (/^(\d{1,2})([ap]m?)?-(\d{1,2})([ap]m?)?$/.test(t)) {
+                            timeTokens.push({ type: "range", val: t });
+                            continue;
+                        }
+
+                        // Single time (e.g., 7, 7am, 7p)
+                        if (/^(\d{1,2})([ap]m?)?$/.test(t)) {
+                            timeTokens.push({ type: "single", val: t });
+                            continue;
+                        }
+
+                        // Everything else is treated as project string
+                        remainingTokens.push(t);
+                    }
+
+                    if (specifiedCols.length > 0) result.cols = specifiedCols;
+                    result.rows = this.resolveTimes(timeTokens);
+
+                    // Project Resolving Logic
+                    if (result.action === "add") {
+                        if (remainingTokens.length === 0) {
+                            result.status = "typing";
+                            return result;
+                        }
+                        const projToken = remainingTokens.join(" ");
+                        const match = this.matchProject(projToken);
+
+                        if (match === null) {
+                            result.status = "error";
+                            result.errorMsg = "Project not found";
+                        } else if (Array.isArray(match)) {
+                            result.status = "error";
+                            result.errorMsg = "Ambiguous project";
+                        } else {
+                            result.project = match;
+                            if (result.rows.length > 0) result.status = "valid";
+                            else result.status = "typing";
+                        }
+                    } else {
+                        if (result.rows.length > 0) result.status = "clear";
+                        else result.status = "typing";
+                    }
+
+                    return result;
+                }
+
+                resolveTimes(timeTokens) {
+                    let rows = new Set();
+
+                    const parseHour = (num, ampm) => {
+                        let h = parseInt(num);
+                        if (ampm && ampm.startsWith("p") && h < 12) h += 12;
+                        else if (ampm && ampm.startsWith("a") && h === 12)
+                            h = 0;
+                        else if (!ampm) {
+                            // AM/PM inference
+                            if (h >= 1 && h <= 6) h += 12;
+                            else if (h === 12) h = 12;
+                        }
+                        return h;
+                    };
+
+                    timeTokens.forEach((t) => {
+                        if (t.type === "keyword") {
+                            if (t.val === "day")
+                                for (let i = 0; i < 24; i++) rows.add(i);
+                            else if (t.val === "morning")
+                                for (let i = 1; i < 12; i++) rows.add(i);
+                            else if (t.val === "afternoon")
+                                for (let i = 12; i < 16; i++) rows.add(i);
+                            else if (t.val === "evening")
+                                for (let i = 16; i < 22; i++) rows.add(i);
+                            else if (t.val === "night") {
+                                for (let i = 22; i < 24; i++) rows.add(i);
+                                rows.add(0);
+                            }
+                        } else if (t.type === "single") {
+                            const match = t.val.match(/^(\d{1,2})([ap]m?)?$/);
+                            rows.add(parseHour(match[1], match[2]));
+                        } else if (t.type === "range") {
+                            const match = t.val.match(
+                                /^(\d{1,2})([ap]m?)?-(\d{1,2})([ap]m?)?$/,
+                            );
+                            let start = parseHour(match[1], match[2]);
+                            let end = parseHour(match[3], match[4]);
+
+                            // Fallback inference crossing the 12-hour gap
+                            if (
+                                !match[2] &&
+                                !match[4] &&
+                                start > end &&
+                                start <= 12
+                            ) {
+                                if (end >= 1 && end <= 6) end += 12;
+                            }
+
+                            if (start <= end) {
+                                for (let i = start; i <= end; i++) rows.add(i);
+                            } else {
+                                // Wraps around midnight natively
+                                for (let i = start; i < 24; i++) rows.add(i);
+                                for (let i = 0; i <= end; i++) rows.add(i);
+                            }
+                        }
+                    });
+                    return Array.from(rows).filter((r) => r >= 0 && r <= 23);
+                }
+
+                matchProject(str) {
+                    const projects = this.state.getProjects();
+                    let exact = [],
+                        acronyms = [],
+                        prefix = [],
+                        concat = [];
+                    const cleanStr = str.replace(/\s+/g, "").toLowerCase();
+
+                    projects.forEach((p) => {
+                        const name = p.name.toLowerCase();
+                        const acr = name
+                            .split(/\s+/)
+                            .map((w) => w[0])
+                            .join("");
+                        const cleanName = name.replace(/\s+/g, "");
+
+                        if (name === str) exact.push(p);
+                        if (acr === str) acronyms.push(p);
+                        if (name.startsWith(str)) prefix.push(p);
+                        if (cleanName.includes(cleanStr)) concat.push(p);
+                    });
+
+                    // Priority Waterfall
+                    if (exact.length === 1) return exact[0];
+                    if (acronyms.length === 1) return acronyms[0];
+                    if (prefix.length === 1) return prefix[0];
+                    if (concat.length === 1) return concat[0];
+
+                    if (
+                        exact.length > 1 ||
+                        acronyms.length > 1 ||
+                        prefix.length > 1 ||
+                        concat.length > 1
+                    ) {
+                        return []; // Denotes Ambiguity
+                    }
+                    return null; // Not found
+                }
+            }
+
+            class CLIController {
+                constructor(app) {
+                    this.app = app;
+                    this.parser = new CLIParser(app.state);
+                    this.activeShadows = [];
+                    this.isVisible = false;
+
+                    this.container = document.getElementById("cli-container");
+                    this.wrapper = document.getElementById("cli-wrapper");
+                    this.input = document.getElementById("cli-input");
+
+                    this.bindEvents();
+                }
+
+                bindEvents() {
+                    document.addEventListener("keydown", (e) => {
+                        if (
+                            (e.ctrlKey || e.metaKey) &&
+                            e.key.toLowerCase() === "k"
+                        ) {
+                            e.preventDefault();
+                            this.toggleCLI();
+                        }
+                    });
+
+                    this.input.addEventListener("input", (e) =>
+                        this.handleInput(e.target.value),
+                    );
+                    this.input.addEventListener("keydown", (e) => {
+                        if (e.key === "Enter") this.commit();
+                        if (e.key === "Escape") {
+                            e.preventDefault();
+                            this.closeCLI();
+                        }
+                    });
+
+                    // Close on outside click
+                    document.addEventListener("click", (e) => {
+                        if (
+                            this.isVisible &&
+                            !this.container.contains(e.target)
+                        )
+                            this.closeCLI();
+                    });
+                }
+
+                toggleCLI() {
+                    if (this.isVisible) this.closeCLI();
+                    else this.openCLI();
+                }
+
+                openCLI() {
+                    this.isVisible = true;
+                    this.container.classList.remove("hidden");
+                    this.input.value = "";
+                    this.handleInput("");
+                    setTimeout(() => this.input.focus(), 50);
+                }
+
+                closeCLI() {
+                    this.isVisible = false;
+                    this.container.classList.add("hidden");
+                    this.clearShadows();
+                    this.input.blur();
+                }
+
+                handleInput(val) {
+                    this.clearShadows();
+                    const res = this.parser.parse(val);
+                    this.updateUIState(res.status);
+                    if (res.status === "valid" || res.status === "clear") {
+                        this.applyShadows(res);
+                    }
+                }
+
+                updateUIState(status) {
+                    this.wrapper.className =
+                        "relative rounded-2xl backdrop-blur-md bg-white/75 border-2 pointer-events-auto transition-colors duration-200 flex items-center shadow-xl " +
+                        `cli-${status}`;
+
+                    if (status === "error") {
+                        this.wrapper.style.animation = "none";
+                        void this.wrapper.offsetWidth; // Reflow to re-trigger
+                        this.wrapper.style.animation =
+                            "shake 0.3s cubic-bezier(.36,.07,.19,.97) both";
+                    }
+                }
+
+                applyShadows(res) {
+                    const dateStr = this.app.state.getCurrentDate();
+                    res.rows.forEach((r) => {
+                        res.cols.forEach((c) => {
+                            const blockId = `${dateStr}-${r}-${c}`;
+                            const block =
+                                this.app.ui.blockNodes[blockId] ||
+                                this.app.ui.blockNodes[`DAY-${r}-${c}`];
+                            if (block) {
+                                this.activeShadows.push(block);
+                                if (res.action === "add") {
+                                    block.classList.add("shadow-add");
+                                    block.style.setProperty(
+                                        "--shadow-color",
+                                        res.project.color,
+                                    );
+                                } else {
+                                    block.classList.add("shadow-clear");
+                                }
+                            }
+                        });
+                    });
+                }
+
+                clearShadows() {
+                    this.activeShadows.forEach((block) => {
+                        block.classList.remove("shadow-add", "shadow-clear");
+                        block.style.removeProperty("--shadow-color");
+                    });
+                    this.activeShadows = [];
+                }
+
+                commit() {
+                    const res = this.parser.parse(this.input.value);
+                    if (res.status === "valid" || res.status === "clear") {
+                        const dateStr = this.app.state.getCurrentDate();
+                        res.rows.forEach((r) => {
+                            res.cols.forEach((c) => {
+                                const projId =
+                                    res.action === "add"
+                                        ? res.project.id
+                                        : null;
+                                globalBus.emit("block:update", {
+                                    date: dateStr,
+                                    row: r,
+                                    col: c,
+                                    projectId: projId,
+                                });
+                            });
+                        });
+                        this.closeCLI();
+                    }
+                }
+            }
+
+            // Launch Controller
             window.app = new AppController();
+            window.cli = new CLIController(window.app);
         </script>
     </body>
 </html>
