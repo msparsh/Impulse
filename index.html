@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Planner - v15 (Midnight Engine & Clean Architecture)</title>
+        <title>Planner - v15.1 (Midnight Engine & Clean Architecture)</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap"
@@ -429,7 +429,7 @@
             class="max-w-7xl mx-auto w-full h-full flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative"
         >
             <header
-                class="flex items-center justify-between p-6 border-b border-gray-100 shrink-0"
+                class="flex items-center justify-between p-6 border-b border-gray-100 shrink-0 relative"
             >
                 <div class="flex items-center gap-4">
                     <button
@@ -486,35 +486,45 @@
                         for commands
                     </div>
                 </div>
-                <div class="flex items-center gap-4 md:gap-6">
+                <div class="flex items-center gap-4 md:gap-6 relative">
                     <div
-                        class="text-right border-gray-200 pl-4 md:pl-6 hidden sm:block"
+                        id="date-trigger"
+                        class="text-right border-gray-200 pl-4 md:pl-6 hidden sm:block cursor-pointer hover:bg-gray-50 p-2 rounded-xl transition-colors group select-none relative"
+                        onclick="app.toggleCalendarPopover(event)"
                     >
                         <h2
                             id="display-date"
-                            class="text-xl font-bold text-indigo-900"
+                            class="text-xl font-bold text-indigo-900 flex items-center justify-end gap-1.5"
                         >
-                            ...
+                            <span>...</span>
+                            <svg
+                                class="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
                         </h2>
-                        <p id="display-day" class="text-gray-500 text-sm">
+                        <p id="display-day" class="text-gray-500 text-sm mr-6">
                             ...
                         </p>
                     </div>
-                </div>
-            </header>
 
-            <div class="flex flex-1 overflow-hidden relative">
-                <aside
-                    id="app-sidebar"
-                    class="w-80 border-r border-gray-100 p-6 flex flex-col gap-6 overflow-y-auto custom-scroll bg-gray-50 sidebar-transition flex-shrink-0"
-                >
                     <div
-                        class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hide-on-collapse"
+                        id="calendar-popover"
+                        class="hidden absolute top-full mt-2 right-0 bg-white p-5 rounded-2xl shadow-xl border border-gray-100 z-[100] w-72 transition-all transform origin-top-right"
                     >
                         <div class="flex items-center justify-between mb-4">
                             <button
-                                onclick="app.shiftMonth(-1)"
-                                class="text-gray-400 hover:text-indigo-600 transition p-1"
+                                onclick="
+                                    app.shiftMonth(-1);
+                                    event.stopPropagation();
+                                "
+                                class="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition p-1.5"
                             >
                                 <svg
                                     width="16"
@@ -537,8 +547,11 @@
                                 >...</span
                             >
                             <button
-                                onclick="app.shiftMonth(1)"
-                                class="text-gray-400 hover:text-indigo-600 transition p-1"
+                                onclick="
+                                    app.shiftMonth(1);
+                                    event.stopPropagation();
+                                "
+                                class="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition p-1.5"
                             >
                                 <svg
                                     width="16"
@@ -557,43 +570,55 @@
                             </button>
                         </div>
                         <div
-                            class="grid grid-cols-7 gap-1 text-center text-xs font-medium mb-2"
+                            class="grid grid-cols-7 gap-1 text-center text-xs font-bold mb-2 text-gray-400"
                         >
-                            <div class="text-gray-400">S</div>
-                            <div class="text-gray-400">M</div>
-                            <div class="text-gray-400">T</div>
-                            <div class="text-gray-400">W</div>
-                            <div class="text-gray-400">T</div>
-                            <div class="text-gray-400">F</div>
-                            <div class="text-gray-400">S</div>
+                            <div>S</div>
+                            <div>M</div>
+                            <div>T</div>
+                            <div>W</div>
+                            <div>T</div>
+                            <div>F</div>
+                            <div>S</div>
                         </div>
                         <div
                             id="calendar-grid"
-                            class="grid grid-cols-7 gap-1 text-center text-sm mb-3"
+                            class="grid grid-cols-7 gap-1 text-center text-sm mb-4"
                         ></div>
                         <button
-                            onclick="app.goToToday()"
-                            class="w-full py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition shadow-sm border border-indigo-100"
+                            onclick="
+                                app.goToToday();
+                                app.toggleCalendarPopover(event);
+                            "
+                            class="w-full py-2 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-bold hover:bg-indigo-100 transition shadow-sm border border-indigo-100"
                         >
                             Go to Today
                         </button>
+                    </div>
+                </div>
+            </header>
 
-                        <div class="flex bg-gray-100 rounded-lg p-1 mt-4">
-                            <button
-                                id="btn-view-day"
-                                onclick="app.setViewMode('day')"
-                                class="flex-1 py-1 text-xs font-bold rounded-md shadow-sm bg-white text-gray-800 transition"
-                            >
-                                Day
-                            </button>
-                            <button
-                                id="btn-view-week"
-                                onclick="app.setViewMode('week')"
-                                class="flex-1 py-1 text-xs font-bold rounded-md text-gray-500 hover:text-gray-700 transition"
-                            >
-                                Week
-                            </button>
-                        </div>
+            <div class="flex flex-1 overflow-hidden relative">
+                <aside
+                    id="app-sidebar"
+                    class="w-80 border-r border-gray-100 p-6 flex flex-col gap-6 overflow-y-auto custom-scroll bg-gray-50 sidebar-transition flex-shrink-0"
+                >
+                    <div
+                        class="bg-gray-200/50 rounded-xl p-1 hide-on-collapse flex shadow-inner"
+                    >
+                        <button
+                            id="btn-view-day"
+                            onclick="app.setViewMode('day')"
+                            class="flex-1 py-1.5 text-xs font-bold rounded-lg shadow-sm bg-white text-gray-800 transition"
+                        >
+                            Day
+                        </button>
+                        <button
+                            id="btn-view-week"
+                            onclick="app.setViewMode('week')"
+                            class="flex-1 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:text-gray-700 transition"
+                        >
+                            Week
+                        </button>
                     </div>
                     <div>
                         <div
@@ -636,10 +661,10 @@
                 <div
                     class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"
                 >
-                    <h3 class="font-bold text-gray-800">Manage Hierarchy</h3>
+                    <h3 class="font-bold text-gray-800">Manage Projects</h3>
                     <button
                         onclick="app.closeSettingsModal()"
-                        class="text-gray-400 hover:text-gray-700 transition p-2"
+                        class="text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition p-2"
                     >
                         <svg
                             width="20"
@@ -662,18 +687,18 @@
                     <input
                         type="text"
                         id="new-type-name"
-                        placeholder="New Category Type..."
-                        class="text-sm p-2 border border-gray-200 rounded-lg flex-1 focus:outline-none focus:border-indigo-500 bg-gray-50"
+                        placeholder="New Category..."
+                        class="text-sm p-3 border border-gray-200 rounded-xl flex-1 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 bg-gray-50 transition"
                     />
                     <button
                         onclick="app.addType()"
-                        class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-700 transition shadow-sm"
+                        class="bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 transition shadow-sm"
                     >
-                        Add Type
+                        Add
                     </button>
                 </div>
                 <div
-                    class="flex-1 p-6 overflow-y-auto custom-scroll bg-gray-50/50"
+                    class="flex-1 p-6 overflow-y-auto custom-scroll bg-gray-50"
                     id="hierarchy-list"
                 ></div>
             </div>
@@ -760,7 +785,6 @@
                 constructor() {
                     this.storageKey = "planner_state_v15";
 
-                    // Midnight-to-Midnight Base Hours Array
                     this.hours = [
                         "12 AM",
                         "1 AM",
@@ -790,7 +814,6 @@
 
                     this.data = this.loadState();
 
-                    // Parse date safely via components, ignoring timezone offsets
                     const [y, m, d] = this.data.currentDate
                         .split("-")
                         .map(Number);
@@ -813,6 +836,7 @@
                         version: 12,
                         currentDate: this.getLocalISODate(),
                         viewMode: "day",
+                        isSidebarCollapsed: false,
                         types: [
                             { id: "t_1", name: "Work" },
                             { id: "t_2", name: "Personal" },
@@ -849,7 +873,12 @@
 
                 loadState() {
                     const saved = localStorage.getItem(this.storageKey);
-                    return saved ? JSON.parse(saved) : this.getDefaultState();
+                    const parsed = saved
+                        ? JSON.parse(saved)
+                        : this.getDefaultState();
+                    if (parsed.isSidebarCollapsed === undefined)
+                        parsed.isSidebarCollapsed = false;
+                    return parsed;
                 }
 
                 saveState() {
@@ -892,12 +921,10 @@
                 getHours() {
                     return this.hours;
                 }
-
                 getSchedule(dateStr) {
                     this.ensureDateExists(dateStr);
                     return this.data.schedules[dateStr];
                 }
-
                 getDailyAnalytics() {
                     let counts = {};
                     const blocks =
@@ -914,6 +941,7 @@
             // 2. PARSERS & COMMAND ENGINE
             // ==========================================
             class CommandParser {
+                // Same implementation as original...
                 constructor(state) {
                     this.state = state;
                     this.globals = {
@@ -929,16 +957,13 @@
                     let num = parseInt(t.replace(/\D/g, ""));
                     let isPm = t.includes("p");
                     let isAm = t.includes("a");
-
                     if (!isPm && !isAm) {
                         if (num >= 7 && num <= 11) isAm = true;
                         else if (num === 12 || (num >= 1 && num <= 6))
                             isPm = true;
                     }
-
                     if (isPm && num !== 12) num += 12;
                     if (isAm && num === 12) num = 0;
-
                     return num >= 0 && num <= 23 ? num : -1;
                 }
 
@@ -947,28 +972,24 @@
                     const t = target.replace(/\s+/g, "").toLowerCase();
                     let score = 0;
                     let qIdx = 0;
-
                     for (let i = 0; i < t.length && qIdx < q.length; i++) {
                         if (t[i] === q[qIdx]) {
                             score++;
                             qIdx++;
                         }
                     }
-
                     query
                         .toLowerCase()
                         .split(" ")
                         .forEach((w) => {
                             if (target.toLowerCase().includes(w)) score += 3;
                         });
-
                     return score;
                 }
 
                 parse(input, allowMissingProject = false) {
                     if (input.trim() === "help" || input.trim() === "?")
                         return { isHelp: true };
-
                     const chains = input
                         .split("|")
                         .map((s) => s.trim())
@@ -1103,7 +1124,7 @@
                 getRegistryCommands() {
                     return [
                         {
-                            title: "open settings",
+                            title: "manage projects",
                             category: "UI",
                             action: () => this.app.openSettingsModal(),
                         },
@@ -1135,6 +1156,7 @@
                     ];
                 }
 
+                // ... Keep existing Command Palette setupDOM/listeners/autocomplete/filter logic untouched
                 setupDOM() {
                     this.wrapper = document.createElement("div");
                     this.wrapper.className = "cmd-palette-wrapper hidden";
@@ -1142,14 +1164,12 @@
                     <div class="cmd-palette">
                         <input type="text" class="cmd-palette-input" placeholder="e.g. '7am deep work', '8', 'morning study | clear 1pm'..." autocomplete="off" spellcheck="false" />
                         <div class="cmd-palette-list custom-scroll"></div>
-                    </div>
-                `;
+                    </div>`;
                     document.body.appendChild(this.wrapper);
                     this.input =
                         this.wrapper.querySelector(".cmd-palette-input");
                     this.list = this.wrapper.querySelector(".cmd-palette-list");
                 }
-
                 setupListeners() {
                     document.addEventListener("keydown", (e) => {
                         const activeEl = document.activeElement;
@@ -1157,7 +1177,6 @@
                             activeEl.tagName === "INPUT" ||
                             activeEl.tagName === "TEXTAREA" ||
                             activeEl.isContentEditable;
-
                         if (e.key === "/") {
                             if (this.isOpen) {
                                 e.preventDefault();
@@ -1170,7 +1189,6 @@
                             e.preventDefault();
                             this.toggle();
                         }
-
                         if (this.isOpen) {
                             if (e.key === "Escape") {
                                 e.preventDefault();
@@ -1190,7 +1208,6 @@
                             }
                         }
                     });
-
                     this.input.addEventListener("input", () =>
                         this.filterCommands(this.input.value),
                     );
@@ -1198,12 +1215,10 @@
                         if (e.target === this.wrapper) this.close();
                     });
                 }
-
                 toggle() {
                     if (this.isOpen) this.close();
                     else this.open();
                 }
-
                 open() {
                     this.isOpen = true;
                     this.wrapper.classList.remove("hidden", "closing");
@@ -1211,7 +1226,6 @@
                     this.filterCommands("");
                     setTimeout(() => this.input.focus(), 10);
                 }
-
                 close() {
                     this.isOpen = false;
                     this.wrapper.classList.add("closing");
@@ -1221,58 +1235,48 @@
                         this.wrapper.classList.remove("closing");
                     }, 100);
                 }
-
                 autocompleteSelected() {
                     if (this.filteredCommands.length === 0) return;
                     const cmd = this.filteredCommands[this.selectedIndex];
-
                     if (cmd && cmd.autoFill) {
                         this.input.value = cmd.autoFill + " ";
                         this.filterCommands(this.input.value);
                     } else if (cmd && cmd.title && !cmd.isHelp) {
-                        // Fallback to title text strip HTML
                         this.input.value =
                             cmd.title.replace(/<[^>]*>?/gm, "") + " ";
                         this.filterCommands(this.input.value);
                     }
                 }
-
                 filterCommands(query) {
                     globalBus.emit("preview:blocks", null);
-
                     let hints = [];
                     const qTokens = query.toLowerCase().trim().split(/\s+/);
                     const qFirst = qTokens[0];
-
-                    // 1. Initial Input Catchers (Hints for numbers, times, 'clear')
                     if (/^(\d{1,2})(a|p|am|pm)?$/.test(qFirst)) {
                         let numStr = qFirst.match(/\d+/)[0];
                         let num = parseInt(numStr);
                         let suffix = qFirst.replace(/\d+/g, "");
-
                         if (num >= 1 && num <= 12) {
                             if (
                                 suffix === "" ||
                                 suffix === "a" ||
                                 suffix === "am"
-                            ) {
+                            )
                                 hints.push({
                                     title: `${num}am <span class="text-gray-400 font-normal">... (type project)</span>`,
                                     autoFill: `${num}am`,
                                     isHint: true,
                                 });
-                            }
                             if (
                                 suffix === "" ||
                                 suffix === "p" ||
                                 suffix === "pm"
-                            ) {
+                            )
                                 hints.push({
                                     title: `${num}pm <span class="text-gray-400 font-normal">... (type project)</span>`,
                                     autoFill: `${num}pm`,
                                     isHint: true,
                                 });
-                            }
                         }
                     } else if (qFirst.length > 0 && !query.includes("clear")) {
                         [
@@ -1282,16 +1286,14 @@
                             "night",
                             "day",
                         ].forEach((g) => {
-                            if (g.startsWith(qFirst)) {
+                            if (g.startsWith(qFirst))
                                 hints.push({
                                     title: `${g} <span class="text-gray-400 font-normal">... (type project)</span>`,
                                     autoFill: g,
                                     isHint: true,
                                 });
-                            }
                         });
                     }
-
                     if (qFirst === "clear") {
                         hints.push({
                             title: "clear day",
@@ -1356,7 +1358,6 @@
                             Object.keys(exactParsed).length > 0 &&
                             !Object.values(exactParsed).includes("MISSING")
                         ) {
-                            // Valid, complete command ready to execute
                             globalBus.emit("preview:blocks", exactParsed);
                             const count = Object.keys(exactParsed).length;
                             const isClear = Object.values(exactParsed).every(
@@ -1374,14 +1375,12 @@
                             targetOnlyParsed &&
                             Object.values(targetOnlyParsed).includes("MISSING")
                         ) {
-                            // Valid target, but no valid project yet -> Offer project hints
                             let dynamicHints = [];
                             dynamicHints.push({
                                 title: `${query} <span class="text-gray-400 font-normal">... (type project)</span>`,
                                 autoFill: query,
                                 isHint: true,
                             });
-
                             this.state.getProjects().forEach((p) => {
                                 dynamicHints.push({
                                     title: `${query} <span class="cmd-highlight">${p.name}</span>`,
@@ -1396,7 +1395,6 @@
                             });
                             this.filteredCommands = dynamicHints;
                         } else {
-                            // Fallback matching
                             if (hints.length > 0) {
                                 this.filteredCommands = hints;
                             } else {
@@ -1418,11 +1416,9 @@
                             }
                         }
                     }
-
                     this.selectedIndex = 0;
                     this.renderList();
                 }
-
                 renderList() {
                     this.list.innerHTML = "";
                     this.filteredCommands.forEach((cmd, idx) => {
@@ -1437,23 +1433,18 @@
                         this.list.appendChild(item);
                     });
                 }
-
                 moveSelection(dir) {
                     if (this.filteredCommands.length === 0) return;
                     this.selectedIndex += dir;
-
                     if (this.selectedIndex < 0)
                         this.selectedIndex = this.filteredCommands.length - 1;
                     if (this.selectedIndex >= this.filteredCommands.length)
                         this.selectedIndex = 0;
-
                     this.updateSelectionVisuals();
-
                     const domIndex = this.selectedIndex;
                     const activeEl = this.list.children[domIndex];
                     if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
                 }
-
                 updateSelectionVisuals() {
                     Array.from(this.list.children).forEach((el, idx) => {
                         if (idx === this.selectedIndex)
@@ -1461,7 +1452,6 @@
                         else el.classList.remove("active");
                     });
                 }
-
                 executeSelected() {
                     const cmd = this.filteredCommands[this.selectedIndex];
                     if (cmd && cmd.action) {
@@ -1478,7 +1468,7 @@
                 constructor(state) {
                     this.state = state;
                     this.blockNodes = {};
-                    this.dragState = { type: null, sourceId: null };
+                    this.dragState = null;
 
                     this.setupDelegation();
                     this.setupKeyboardNav();
@@ -1528,7 +1518,6 @@
                                 block.blur();
                                 return;
                             }
-
                             block.classList.add("active-block", "js-focus");
                             this.renderChoiceMenu(
                                 block,
@@ -1552,6 +1541,20 @@
                                     el.classList.remove("js-focus");
                                 });
                         }
+
+                        // Close Calendar Popover logic
+                        const popover =
+                            document.getElementById("calendar-popover");
+                        const dateTrigger =
+                            document.getElementById("date-trigger");
+                        if (popover && !popover.classList.contains("hidden")) {
+                            if (
+                                !e.target.closest("#calendar-popover") &&
+                                !e.target.closest("#date-trigger")
+                            ) {
+                                popover.classList.add("hidden");
+                            }
+                        }
                     });
 
                     grid.addEventListener("contextmenu", (e) => {
@@ -1567,7 +1570,7 @@
                         }
                     });
 
-                    // Hierarchy edits and drag drop logic
+                    // Manage Hierarchy Edits
                     hierarchyList.addEventListener(
                         "focus",
                         (e) => {
@@ -1619,7 +1622,6 @@
                                     );
                                     return;
                                 }
-
                                 if (entityType === "type")
                                     globalBus.emit("hierarchy:updateType", {
                                         id,
@@ -1654,11 +1656,100 @@
                             });
                     });
 
+                    // Setup HTML5 Drag and Drop logic for hierarchy
+                    hierarchyList.addEventListener("dragstart", (e) => {
+                        const draggedEl =
+                            e.target.closest('[draggable="true"]');
+                        if (draggedEl) {
+                            e.dataTransfer.effectAllowed = "move";
+                            setTimeout(
+                                () => draggedEl.classList.add("opacity-50"),
+                                0,
+                            );
+                            this.dragState = {
+                                entity: draggedEl.dataset.dragEntity,
+                                id: draggedEl.dataset.dragId,
+                            };
+                        }
+                    });
+
+                    hierarchyList.addEventListener("dragover", (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        const dropZone = e.target.closest(
+                            '[data-drop-zone="true"]',
+                        );
+                        document
+                            .querySelectorAll(".drag-over")
+                            .forEach((el) => el.classList.remove("drag-over"));
+                        if (dropZone) dropZone.classList.add("drag-over");
+                    });
+
+                    hierarchyList.addEventListener("dragleave", (e) => {
+                        const dropZone = e.target.closest(
+                            '[data-drop-zone="true"]',
+                        );
+                        if (dropZone) dropZone.classList.remove("drag-over");
+                    });
+
+                    hierarchyList.addEventListener("dragend", (e) => {
+                        const draggedEl =
+                            e.target.closest('[draggable="true"]');
+                        if (draggedEl) draggedEl.classList.remove("opacity-50");
+                        document
+                            .querySelectorAll(".drag-over")
+                            .forEach((el) => el.classList.remove("drag-over"));
+                        this.dragState = null;
+                    });
+
+                    hierarchyList.addEventListener("drop", (e) => {
+                        e.preventDefault();
+                        document
+                            .querySelectorAll(".drag-over")
+                            .forEach((el) => el.classList.remove("drag-over"));
+
+                        const dropZone = e.target.closest(
+                            '[data-drop-zone="true"]',
+                        );
+                        if (!dropZone || !this.dragState) return;
+
+                        const dropEntity = dropZone.dataset.dropEntity;
+                        const dropId =
+                            dropZone.dataset.dropId || dropZone.dataset.dragId; // Could be dropping on container or another item
+
+                        if (
+                            this.dragState.entity === "type" &&
+                            dropEntity === "type"
+                        ) {
+                            globalBus.emit("hierarchy:reorderType", {
+                                sourceId: this.dragState.id,
+                                targetId: dropId,
+                            });
+                        } else if (this.dragState.entity === "project") {
+                            if (dropEntity === "project") {
+                                globalBus.emit("hierarchy:reorderProject", {
+                                    sourceId: this.dragState.id,
+                                    targetId: dropId,
+                                });
+                            } else if (dropEntity === "type-container") {
+                                globalBus.emit("hierarchy:moveProjectToType", {
+                                    projectId: this.dragState.id,
+                                    typeId: dropId,
+                                });
+                            }
+                        }
+                    });
+
                     document.addEventListener("keydown", (e) => {
                         if (e.key === "Escape") {
                             this.closeAllMenus();
                             app.closeSettingsModal();
                             app.cancelConfirm();
+
+                            const popover =
+                                document.getElementById("calendar-popover");
+                            if (popover) popover.classList.add("hidden");
+
                             if (this.state.paintProjectId) {
                                 this.state.paintProjectId = null;
                                 globalBus.emit("hierarchy:refreshed");
@@ -1689,13 +1780,11 @@
                     grid.addEventListener("keydown", (e) => {
                         const block = e.target.closest(".schedule-block");
                         if (!block) return;
-
                         const blocks = Array.from(
                             document.querySelectorAll(".schedule-block"),
                         );
                         const index = blocks.indexOf(block);
                         let nextIndex = index;
-
                         if (e.key === "ArrowRight") nextIndex++;
                         else if (e.key === "ArrowLeft") nextIndex--;
                         else if (e.key === "ArrowDown") nextIndex += 6;
@@ -1723,15 +1812,13 @@
                         this.state.paintProjectId === "CLEAR"
                             ? null
                             : this.state.paintProjectId;
-
-                    if (currentProjId !== targetProjId) {
+                    if (currentProjId !== targetProjId)
                         globalBus.emit("block:update", {
                             date,
                             row,
                             col,
                             projectId: targetProjId,
                         });
-                    }
                 }
 
                 listenToEvents() {
@@ -1754,7 +1841,6 @@
                                 blockEl.style.backgroundColor;
                         },
                     );
-
                     globalBus.on("view:refresh", () => this.refreshAllViews());
                     globalBus.on("schedule:refreshed", () =>
                         this.refreshScheduleView(),
@@ -1790,7 +1876,6 @@
                         });
 
                         if (!changes) return;
-
                         Object.entries(changes).forEach(([key, pid]) => {
                             const block = this.blockNodes[key];
                             if (!block) return;
@@ -1830,25 +1915,24 @@
                     );
 
                     document.getElementById("btn-view-day").className =
-                        `flex-1 py-1 text-xs font-bold rounded-md transition ${this.state.data.viewMode === "day" ? "shadow-sm bg-white text-gray-800" : "text-gray-500 hover:text-gray-700"}`;
+                        `flex-1 py-1.5 text-xs font-bold rounded-lg transition ${this.state.data.viewMode === "day" ? "shadow-sm bg-white text-gray-800" : "text-gray-500 hover:text-gray-700"}`;
                     document.getElementById("btn-view-week").className =
-                        `flex-1 py-1 text-xs font-bold rounded-md transition ${this.state.data.viewMode === "week" ? "shadow-sm bg-white text-gray-800" : "text-gray-500 hover:text-gray-700"}`;
+                        `flex-1 py-1.5 text-xs font-bold rounded-lg transition ${this.state.data.viewMode === "week" ? "shadow-sm bg-white text-gray-800" : "text-gray-500 hover:text-gray-700"}`;
                 }
 
                 refreshScheduleView() {
-                    if (this.state.data.viewMode === "week") {
+                    if (this.state.data.viewMode === "week")
                         this.renderWeekSchedule(
                             this.state.getCurrentDate(),
                             this.state.getHours(),
                             this.state.getProjects(),
                         );
-                    } else {
+                    else
                         this.renderDaySchedule(
                             this.state.getCurrentDate(),
                             this.state.getHours(),
                             this.state.getProjects(),
                         );
-                    }
                 }
 
                 renderHeader(dateStr) {
@@ -1861,8 +1945,8 @@
                         end.setDate(start.getDate() + 6);
                         document.getElementById("display-day").innerText =
                             "Week View";
-                        document.getElementById("display-date").innerText =
-                            `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+                        document.getElementById("display-date").innerHTML =
+                            `<span>${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span><svg class="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>`;
                     } else {
                         const parts = dateObj
                             .toLocaleDateString("en-US", {
@@ -1874,8 +1958,8 @@
                             .split(", ");
                         document.getElementById("display-day").innerText =
                             parts[0];
-                        document.getElementById("display-date").innerText =
-                            parts[1] + ", " + parts[2];
+                        document.getElementById("display-date").innerHTML =
+                            `<span>${parts[1]}, ${parts[2]}</span><svg class="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>`;
                     }
                 }
 
@@ -1907,7 +1991,7 @@
                         const loopDateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                         const isActive =
                             loopDateStr === this.state.getCurrentDate();
-                        grid.innerHTML += `<div onclick="app.selectDate('${loopDateStr}')" class="py-1 cursor-pointer hover:bg-indigo-50 rounded-md transition ${isActive ? "active-date shadow-md" : "text-gray-700"}">${day}</div>`;
+                        grid.innerHTML += `<div onclick="app.selectDate('${loopDateStr}'); app.toggleCalendarPopover(event)" class="py-1 cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition font-medium ${isActive ? "active-date shadow-md" : "text-gray-700"}">${day}</div>`;
                     }
                 }
 
@@ -1915,7 +1999,6 @@
                     const list = document.getElementById("project-list");
                     list.innerHTML = "";
 
-                    // Add Eraser
                     const isEraserActive =
                         this.state.paintProjectId === "CLEAR";
                     const eraserCard = document.createElement("div");
@@ -1957,7 +2040,6 @@
                     const bar = document.getElementById("analytics-bar");
                     bar.innerHTML = "";
                     let totalAssigned = 0;
-
                     types.forEach((t) => {
                         const bCount = typeCounts[t.id] || 0;
                         if (bCount > 0) {
@@ -1970,20 +2052,17 @@
                             totalAssigned++;
                         }
                     });
-
                     if (totalAssigned === 0)
                         bar.innerHTML = `<span class="text-sm text-gray-400 font-medium italic">Press '/' to explore commands or click to schedule.</span>`;
                 }
 
-                // DAY VIEW
+                // ... Keep DAY VIEW and WEEK VIEW logic from previous ...
                 renderDaySchedule(targetDateStr, hours, projects) {
                     const container = document.getElementById("schedule-grid");
                     container.innerHTML = "";
                     this.blockNodes = {};
-
                     const scheduleObj = this.state.getSchedule(targetDateStr);
                     const blocks = scheduleObj.blocks;
-
                     const now = new Date();
                     const logicalToday = this.state.getLocalISODate(now);
                     const isToday = targetDateStr === logicalToday;
@@ -2018,13 +2097,11 @@
                             block.dataset.row = rowIndex;
                             block.dataset.col = colIndex;
                             block.tabIndex = 0;
-
                             const blockProjectId =
                                 blocks[`${rowIndex}-${colIndex}`];
                             const project = projects.find(
                                 (p) => p.id === blockProjectId,
                             );
-
                             if (project) {
                                 block.style.backgroundColor = project.color;
                                 block.classList.add("filled");
@@ -2032,7 +2109,6 @@
                             } else {
                                 block.title = "Empty (Click to set)";
                             }
-
                             block.dataset.origBg = block.style.backgroundColor;
                             this.blockNodes[
                                 `${targetDateStr}-${rowIndex}-${colIndex}`
@@ -2053,12 +2129,10 @@
                     return dateObj;
                 }
 
-                // WEEK VIEW
                 renderWeekSchedule(currentDateStr, hours, projects) {
                     const container = document.getElementById("schedule-grid");
                     container.innerHTML = "";
                     this.blockNodes = {};
-
                     const startOfWeek = this.getStartOfWeek(currentDateStr);
                     const weekDates = [];
                     const weekLabels = [];
@@ -2075,12 +2149,10 @@
                     for (let i = 0; i < 7; i++) {
                         let d = new Date(startOfWeek);
                         d.setDate(startOfWeek.getDate() + i);
-
                         const year = d.getFullYear();
                         const month = String(d.getMonth() + 1).padStart(2, "0");
                         const date = String(d.getDate()).padStart(2, "0");
                         const formattedDate = `${year}-${month}-${date}`;
-
                         weekDates.push(formattedDate);
                         weekLabels.push({
                             day: days[i],
@@ -2097,10 +2169,7 @@
                         weekLabels
                             .map(
                                 (l) =>
-                                    `<div class="flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded py-1 transition ${l.isCurrent ? "bg-indigo-50 text-indigo-700" : "text-gray-500"}" onclick="app.selectDate('${weekDates[weekLabels.indexOf(l)]}')">
-                        <span class="text-[9px] font-bold tracking-widest">${l.day}</span>
-                        <span class="text-sm font-black ${l.isCurrent ? "text-indigo-700" : "text-gray-800"}">${l.date}</span>
-                    </div>`,
+                                    `<div class="flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded py-1 transition ${l.isCurrent ? "bg-indigo-50 text-indigo-700" : "text-gray-500"}" onclick="app.selectDate('${weekDates[weekLabels.indexOf(l)]}')"><span class="text-[9px] font-bold tracking-widest">${l.day}</span><span class="text-sm font-black ${l.isCurrent ? "text-indigo-700" : "text-gray-800"}">${l.date}</span></div>`,
                             )
                             .join("");
                     container.appendChild(headerRow);
@@ -2124,7 +2193,6 @@
                             const isTodayCol = dateStr === logicalToday;
                             const isCurrentCell =
                                 isTodayCol && rowIndex === currentRowIndex;
-
                             const cellObj = this.state.getSchedule(dateStr);
                             const blocks = cellObj.blocks;
                             const cellContainer = document.createElement("div");
@@ -2137,13 +2205,11 @@
                                 block.dataset.row = rowIndex;
                                 block.dataset.col = colIndex;
                                 block.tabIndex = 0;
-
                                 const blockProjectId =
                                     blocks[`${rowIndex}-${colIndex}`];
                                 const project = projects.find(
                                     (p) => p.id === blockProjectId,
                                 );
-
                                 if (project) {
                                     block.style.backgroundColor = project.color;
                                     block.classList.add("filled");
@@ -2151,7 +2217,6 @@
                                 } else {
                                     block.title = "Empty (Click to set)";
                                 }
-
                                 block.dataset.origBg =
                                     block.style.backgroundColor;
                                 this.blockNodes[
@@ -2188,7 +2253,6 @@
                     this.state.getTypes().forEach((t) => {
                         const typeProjs = this.state.getProjectsByType(t.id);
                         if (typeProjs.length === 0) return;
-
                         const header = document.createElement("div");
                         header.className =
                             "text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1 mt-1 border-t border-gray-100 pt-2";
@@ -2200,7 +2264,6 @@
                             btn.className =
                                 "flex items-center justify-between p-2 w-full hover:bg-gray-100 rounded-lg transition text-left group/btn";
                             btn.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><div class="w-4 h-4 rounded-full shadow-sm flex-shrink-0" style="background-color: ${p.color}"></div><span class="text-xs font-bold text-gray-700 truncate">${p.name}</span></div><div class="opacity-0 group-hover/btn:opacity-100 focus-visible:opacity-100 bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-[10px] shadow-sm transition" title="Fill entire hour" onclick="event.stopPropagation(); globalBus.emit('schedule:fillRow', { date: '${dateStr}', row: ${rowIndex}, projectId: '${p.id}' }); app.ui.closeAllMenus();">FILL HR</div>`;
-
                             btn.onclick = (event) => {
                                 event.stopPropagation();
                                 globalBus.emit("block:update", {
@@ -2216,19 +2279,16 @@
                     });
 
                     document.body.appendChild(menu);
-
                     const rect = blockElement.getBoundingClientRect();
                     const menuHeight = menu.offsetHeight;
                     let top = rect.bottom + window.scrollY + 8;
                     let left =
                         rect.left + window.scrollX + rect.width / 2 - 100;
-
                     if (top + menuHeight > window.innerHeight + window.scrollY)
                         top = rect.top + window.scrollY - menuHeight - 8;
                     if (left < 10) left = 10;
                     if (left + 200 > window.innerWidth)
                         left = window.innerWidth - 210;
-
                     menu.style.top = `${top}px`;
                     menu.style.left = `${left}px`;
                     setTimeout(() => {
@@ -2249,15 +2309,17 @@
                             (p) => p.typeId === t.id,
                         );
                         const typeBlock = document.createElement("div");
-                        typeBlock.className = "mb-8 pb-4";
+                        typeBlock.className = "mb-8 bg-gray-50 rounded-xl";
                         typeBlock.draggable = true;
                         typeBlock.dataset.dragEntity = "type";
                         typeBlock.dataset.dragId = t.id;
                         typeBlock.dataset.dropZone = "true";
                         typeBlock.dataset.dropEntity = "type";
+
+                        // Updated visual structure for high contrast visibility
                         typeBlock.innerHTML = `
-                        <div class="flex items-center justify-between mb-3 group/type border-b border-gray-200 pb-2"><div class="flex items-center gap-2"><svg class="grab-handle w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg><h4 class="text-sm font-black text-gray-900 uppercase tracking-widest" contenteditable="true" data-entity="type" data-id="${t.id}" title="Click to edit">${t.name}</h4><span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">${typeProjs.length}</span></div><div class="flex gap-2 opacity-0 group-hover/type:opacity-100 transition"><button onclick="app.addProjectToType('${t.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded border border-indigo-100">Add Project</button><button onclick="app.requestRemoveType('${t.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded">Delete</button></div></div>
-                        <div class="flex flex-col gap-2 pl-6 pb-4" id="proj-container-${t.id}" data-drop-zone="true" data-drop-entity="type-container" data-drop-id="${t.id}"></div>
+                        <div class="flex items-center justify-between mb-3 group/type border border-gray-200 bg-white p-3 rounded-xl shadow-sm"><div class="flex items-center gap-2"><svg class="grab-handle w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg><h4 class="text-sm font-black text-gray-900 uppercase tracking-widest" contenteditable="true" data-entity="type" data-id="${t.id}" title="Click to edit">${t.name}</h4><span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-bold">${typeProjs.length}</span></div><div class="flex gap-2 opacity-0 group-hover/type:opacity-100 transition"><button onclick="app.addProjectToType('${t.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">Add Project</button><button onclick="app.requestRemoveType('${t.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg border border-transparent">Delete</button></div></div>
+                        <div class="flex flex-col gap-2 pl-8 pb-2" id="proj-container-${t.id}" data-drop-zone="true" data-drop-entity="type-container" data-drop-id="${t.id}"></div>
                     `;
                         list.appendChild(typeBlock);
 
@@ -2266,18 +2328,18 @@
                         );
 
                         if (typeProjs.length === 0) {
-                            projContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-3 pointer-events-none">Empty category. Drop projects here or click 'Add'.</div>`;
+                            projContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-3 pointer-events-none">Empty category. Drop projects here or click 'Add Project'.</div>`;
                         } else {
                             typeProjs.forEach((p) => {
                                 const pCard = document.createElement("div");
                                 pCard.className =
-                                    "flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition group/proj";
+                                    "flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition group/proj";
                                 pCard.draggable = true;
                                 pCard.dataset.dragEntity = "project";
                                 pCard.dataset.dragId = p.id;
                                 pCard.dataset.dropZone = "true";
                                 pCard.dataset.dropEntity = "project";
-                                pCard.innerHTML = `<div class="flex items-center gap-3 flex-1 overflow-hidden"><svg class="grab-handle w-5 h-5 text-gray-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg><input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="w-6 h-6 rounded-md cursor-pointer border-0 p-0 shadow-inner shrink-0 bg-transparent"/><span class="text-sm font-semibold text-gray-800 truncate" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to edit">${p.name}</span></div><button onclick="app.removeProject('${p.id}')" class="opacity-0 group-hover/proj:opacity-100 text-red-400 hover:text-red-600 font-bold text-xs transition px-2 py-1">Remove</button>`;
+                                pCard.innerHTML = `<div class="flex items-center gap-3 flex-1 overflow-hidden"><svg class="grab-handle w-5 h-5 text-gray-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg><input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="w-6 h-6 rounded-md cursor-pointer border-0 p-0 shadow-inner shrink-0 bg-transparent"/><span class="text-sm font-semibold text-gray-800 truncate" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to edit">${p.name}</span></div><button onclick="app.removeProject('${p.id}')" class="opacity-0 group-hover/proj:opacity-100 text-red-400 hover:text-red-600 font-bold text-xs transition px-2 py-1 bg-red-50 rounded-md">Remove</button>`;
                                 projContainer.appendChild(pCard);
                             });
                         }
@@ -2330,6 +2392,22 @@
 
                     this.setupLogicListeners();
                     this.state.ensureDateExists(this.state.getCurrentDate());
+
+                    // Initialize Sidebar State
+                    if (this.state.data.isSidebarCollapsed) {
+                        document
+                            .getElementById("app-sidebar")
+                            .classList.add("sidebar-collapsed");
+                        document.getElementById("icon-arrow").style.opacity =
+                            "0";
+                        document.getElementById("icon-arrow").style.transform =
+                            "rotate(-90deg)";
+                        document.getElementById("icon-burger").style.opacity =
+                            "1";
+                        document.getElementById("icon-burger").style.transform =
+                            "rotate(0deg)";
+                    }
+
                     globalBus.emit("view:refresh");
 
                     setTimeout(() => {
@@ -2459,8 +2537,10 @@
                                 const toIdx = arr.findIndex(
                                     (t) => t.id === targetId,
                                 );
-                                const [item] = arr.splice(fromIdx, 1);
-                                arr.splice(toIdx, 0, item);
+                                if (fromIdx !== -1 && toIdx !== -1) {
+                                    const [item] = arr.splice(fromIdx, 1);
+                                    arr.splice(toIdx, 0, item);
+                                }
                             });
                             globalBus.emit("hierarchy:refreshed");
                         },
@@ -2478,10 +2558,12 @@
                                 const toIdx = arr.findIndex(
                                     (p) => p.id === targetId,
                                 );
-                                const targetType = arr[toIdx].typeId;
-                                const [item] = arr.splice(fromIdx, 1);
-                                item.typeId = targetType;
-                                arr.splice(toIdx, 0, item);
+                                if (fromIdx !== -1 && toIdx !== -1) {
+                                    const targetType = arr[toIdx].typeId;
+                                    const [item] = arr.splice(fromIdx, 1);
+                                    item.typeId = targetType;
+                                    arr.splice(toIdx, 0, item);
+                                }
                             });
                             globalBus.emit("hierarchy:refreshed");
                         },
@@ -2508,11 +2590,9 @@
                             const dStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
                             const r = parts[3];
                             const c = parts[4];
-
                             if (!data.schedules[dStr])
                                 data.schedules[dStr] = { blocks: {} };
                             const blocks = data.schedules[dStr].blocks;
-
                             if (pid === null) delete blocks[`${r}-${c}`];
                             else blocks[`${r}-${c}`] = pid;
                         });
@@ -2560,6 +2640,9 @@
                 }
 
                 toggleSidebar() {
+                    this.state.updateState((data) => {
+                        data.isSidebarCollapsed = !data.isSidebarCollapsed;
+                    });
                     const sidebar = document.getElementById("app-sidebar");
                     sidebar.classList.toggle("sidebar-collapsed");
                     const burger = document.getElementById("icon-burger");
@@ -2576,6 +2659,12 @@
                         burger.style.opacity = "0";
                         burger.style.transform = "rotate(90deg)";
                     }
+                }
+
+                toggleCalendarPopover(e) {
+                    if (e) e.stopPropagation();
+                    const pop = document.getElementById("calendar-popover");
+                    pop.classList.toggle("hidden");
                 }
 
                 togglePaintMode(projectId) {
@@ -2672,7 +2761,6 @@
                         );
                         return;
                     }
-
                     this.state.updateState((data) => {
                         data.types.push({ id: "t_" + Date.now(), name });
                     });
@@ -2723,7 +2811,6 @@
                         newName = `${baseName} ${counter}`;
                         counter++;
                     }
-
                     const randomHex =
                         "#" +
                         Math.floor(Math.random() * 16777215)
