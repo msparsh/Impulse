@@ -521,7 +521,7 @@
                     >
                         <kbd
                             class="bg-white px-1.5 py-0.5 rounded shadow-sm border border-gray-200 text-gray-600"
-                            >Cmd/Ctrl + K</kbd
+                            >Cmd/Ctrl + K or /</kbd
                         >
                         to Command
                     </div>
@@ -2922,8 +2922,9 @@
                 bindEvents() {
                     document.addEventListener("keydown", (e) => {
                         if (
-                            (e.ctrlKey || e.metaKey) &&
-                            e.key.toLowerCase() === "k"
+                            e.key == "/" ||
+                            ((e.ctrlKey || e.metaKey) &&
+                                e.key.toLowerCase() === "k")
                         ) {
                             e.preventDefault();
                             this.toggleCLI();
