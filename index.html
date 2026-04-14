@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Planner - v17.0 (CLI & Shadow Engine)</title>
+        <title>Planner - v17.1 (CLI, Shadow Engine & Power Tools)</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap"
@@ -214,7 +214,7 @@
                 }
             }
 
-            /* Sidebar, Overlays & Utils (Rest unchanged) */
+            /* Sidebar, Overlays & Utils */
             .paint-active {
                 border-color: #4f46e5 !important;
                 box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
@@ -452,7 +452,7 @@
                     type="text"
                     id="cli-input"
                     class="w-full bg-transparent pl-3 pr-24 py-4 text-lg font-bold text-gray-800 placeholder-gray-500/70 focus:outline-none rounded-2xl"
-                    placeholder="e.g. 7 dw, clear morning, 1p 1 2 stu"
+                    placeholder="e.g. 7 dw, fill morning study, focus, copy, predict"
                     autocomplete="off"
                     spellcheck="false"
                 />
@@ -863,6 +863,10 @@
                     this.projectBlockMap = {};
                     this.buildIndex();
 
+                    this.undoStack = [];
+                    this.redoStack = [];
+                    this.clipboard = null;
+
                     const [y, m, d] = this.data.currentDate
                         .split("-")
                         .map(Number);
@@ -960,7 +964,40 @@
                     );
                 }
 
-                updateState(updaterFn) {
+                saveHistory() {
+                    this.undoStack.push(JSON.stringify(this.data));
+                    if (this.undoStack.length > 50) this.undoStack.shift();
+                    this.redoStack = [];
+                }
+
+                undo() {
+                    if (this.undoStack.length === 0) {
+                        Toast.show("Nothing to undo", "error");
+                        return;
+                    }
+                    this.redoStack.push(JSON.stringify(this.data));
+                    this.data = JSON.parse(this.undoStack.pop());
+                    this.saveState();
+                    this.buildIndex();
+                    globalBus.emit("view:refresh");
+                    Toast.show("Undo applied");
+                }
+
+                redo() {
+                    if (this.redoStack.length === 0) {
+                        Toast.show("Nothing to redo", "error");
+                        return;
+                    }
+                    this.undoStack.push(JSON.stringify(this.data));
+                    this.data = JSON.parse(this.redoStack.pop());
+                    this.saveState();
+                    this.buildIndex();
+                    globalBus.emit("view:refresh");
+                    Toast.show("Redo applied");
+                }
+
+                updateState(updaterFn, saveHistoryFlag = true) {
+                    if (saveHistoryFlag) this.saveHistory();
                     updaterFn(this.data);
                     this.saveState();
                 }
@@ -969,7 +1006,7 @@
                     if (!this.data.schedules[dateStr])
                         this.updateState((data) => {
                             data.schedules[dateStr] = { blocks: {} };
-                        });
+                        }, false); // don't push history just for ensuring a date object
                 }
                 getProjectById(id) {
                     return this.data.projects.find((p) => p.id === id);
@@ -1151,6 +1188,22 @@
                     });
 
                     document.addEventListener("keydown", (e) => {
+                        // Undo / Redo
+                        if (
+                            (e.ctrlKey || e.metaKey) &&
+                            e.key.toLowerCase() === "z"
+                        ) {
+                            if (
+                                e.target.tagName === "INPUT" ||
+                                e.target.hasAttribute("contenteditable")
+                            )
+                                return;
+                            e.preventDefault();
+                            if (e.shiftKey) globalBus.emit("state:redo");
+                            else globalBus.emit("state:undo");
+                            return;
+                        }
+
                         if (e.key === "Escape") {
                             globalBus.emit("ui:closeSettings");
                             globalBus.emit("ui:cancelConfirm");
@@ -1184,15 +1237,16 @@
                         const block = e.target.closest(".schedule-block");
                         if (block) {
                             isPainting = true;
+                            globalBus.emit("state:saveHistory"); // Save history once per brush stroke
                             document.body.classList.add("select-none");
-                            this.paintBlock(block);
+                            this.paintBlock(block, true);
                         }
                     });
 
                     grid.addEventListener("mouseover", (e) => {
                         if (isPainting && this.state.paintProjectId) {
                             const block = e.target.closest(".schedule-block");
-                            if (block) this.paintBlock(block);
+                            if (block) this.paintBlock(block, true);
                         }
                     });
 
@@ -1345,7 +1399,6 @@
                             });
                     });
 
-                    // HTML5 Drag and Drop
                     hierarchyList.addEventListener("dragstart", (e) => {
                         const draggedEl =
                             e.target.closest('[draggable="true"]');
@@ -1470,7 +1523,7 @@
                     });
                 }
 
-                paintBlock(block) {
+                paintBlock(block, isDrag = false) {
                     const date = block.dataset.date;
                     const row = block.dataset.row;
                     const col = block.dataset.col;
@@ -1486,6 +1539,7 @@
                             row,
                             col,
                             projectId: targetProjId,
+                            skipHistory: isDrag,
                         });
                 }
 
@@ -2138,6 +2192,9 @@
                     globalBus.on("ui:closeSettings", () =>
                         this.closeSettingsModal(),
                     );
+                    globalBus.on("ui:openSettings", () =>
+                        this.openSettingsModal(),
+                    );
                     globalBus.on("ui:addType", () => this.addType());
                     globalBus.on("ui:cancelConfirm", () =>
                         this.cancelConfirm(),
@@ -2330,7 +2387,7 @@
                 setupLogicListeners() {
                     globalBus.on(
                         "block:update",
-                        ({ date, row, col, projectId }) => {
+                        ({ date, row, col, projectId, skipHistory }) => {
                             const targetDate =
                                 date || this.state.getCurrentDate();
                             this.state.ensureDateExists(targetDate);
@@ -2343,7 +2400,7 @@
                                 if (projectId)
                                     blocks[`${row}-${col}`] = projectId;
                                 else delete blocks[`${row}-${col}`];
-                            });
+                            }, !skipHistory);
 
                             this.state.updateBlockIndex(
                                 targetDate,
@@ -2364,6 +2421,23 @@
                             globalBus.emit("analytics:refreshed");
                         },
                     );
+
+                    globalBus.on("block:updateBatch", ({ date, updates }) => {
+                        const targetDate = date || this.state.getCurrentDate();
+                        this.state.ensureDateExists(targetDate);
+
+                        this.state.updateState((data) => {
+                            const blocks = data.schedules[targetDate].blocks;
+                            updates.forEach((u) => {
+                                if (u.projectId)
+                                    blocks[`${u.row}-${u.col}`] = u.projectId;
+                                else delete blocks[`${u.row}-${u.col}`];
+                            });
+                        });
+                        this.state.buildIndex();
+                        globalBus.emit("view:refresh");
+                        globalBus.emit("analytics:refreshed");
+                    });
 
                     globalBus.on(
                         "hierarchy:updateType",
@@ -2471,6 +2545,69 @@
                             });
                             globalBus.emit("hierarchy:refreshed");
                         },
+                    );
+
+                    // Action listeners
+                    globalBus.on("action:copy", () => {
+                        const dateStr = this.state.getCurrentDate();
+                        const blocks =
+                            this.state.getSchedule(dateStr)?.blocks || {};
+                        this.state.clipboard = JSON.parse(
+                            JSON.stringify(blocks),
+                        );
+                        Toast.show("Schedule copied to clipboard!");
+                    });
+
+                    globalBus.on("action:paste", () => {
+                        if (!this.state.clipboard) {
+                            Toast.show("Clipboard is empty!", "error");
+                            return;
+                        }
+                        const dateStr = this.state.getCurrentDate();
+                        this.state.updateState((data) => {
+                            data.schedules[dateStr] = {
+                                blocks: JSON.parse(
+                                    JSON.stringify(this.state.clipboard),
+                                ),
+                            };
+                        });
+                        this.state.buildIndex();
+                        globalBus.emit("view:refresh");
+                        Toast.show("Schedule pasted!");
+                    });
+
+                    globalBus.on("action:focus", () => {
+                        const now = new Date();
+                        const currentHour = now.getHours();
+                        const currentCol = Math.floor(now.getMinutes() / 10);
+                        const dateStr = this.state.getLocalISODate(now);
+
+                        if (this.state.getCurrentDate() !== dateStr) {
+                            this.selectDate(dateStr);
+                        }
+
+                        const projectId =
+                            this.state.getSchedule(dateStr)?.blocks[
+                                `${currentHour}-${currentCol}`
+                            ];
+                        if (projectId) {
+                            this.enterFocusMode(
+                                projectId,
+                                currentHour,
+                                currentCol,
+                            );
+                        } else {
+                            this.enterFocusModeSelection(
+                                currentHour,
+                                currentCol,
+                            );
+                        }
+                    });
+
+                    globalBus.on("state:undo", () => this.state.undo());
+                    globalBus.on("state:redo", () => this.state.redo());
+                    globalBus.on("state:saveHistory", () =>
+                        this.state.saveHistory(),
                     );
                 }
 
@@ -2721,13 +2858,68 @@
                     let specifiedCols = [];
                     let timeTokens = [];
 
-                    // Check for Clear Flag
+                    // Fast Commands
+                    if (tokens[0] === "projects") {
+                        result.action = "projects";
+                        result.status = "valid";
+                        return result;
+                    } else if (tokens[0] === "copy") {
+                        result.action = "copy";
+                        result.status = "valid";
+                        return result;
+                    } else if (tokens[0] === "paste") {
+                        result.action = "paste";
+                        result.status = "valid";
+                        return result;
+                    } else if (
+                        tokens[0] === "focus" &&
+                        (tokens.length === 1 || tokens[1] === "mode")
+                    ) {
+                        result.action = "focus";
+                        result.status = "valid";
+                        return result;
+                    } else if (tokens[0] === "predict") {
+                        result.action = "predict";
+                        const freqs = {};
+                        let topProj = null;
+                        let maxFreq = 0;
+                        Object.values(this.state.data.schedules).forEach(
+                            (sched) => {
+                                Object.values(sched.blocks).forEach((pId) => {
+                                    freqs[pId] = (freqs[pId] || 0) + 1;
+                                    if (freqs[pId] > maxFreq) {
+                                        maxFreq = freqs[pId];
+                                        topProj = pId;
+                                    }
+                                });
+                            },
+                        );
+                        if (!topProj && this.state.data.projects.length > 0)
+                            topProj = this.state.data.projects[0].id;
+
+                        const now = new Date();
+                        const h = now.getHours();
+                        for (let i = h; i < h + 3 && i < 24; i++)
+                            result.rows.push(i);
+                        result.project = this.state.getProjectById(topProj);
+
+                        result.status = result.project ? "valid" : "error";
+                        return result;
+                    }
+
+                    // Check for Prefix Flags
                     if (tokens[0] === "clear") {
                         result.action = "clear";
                         tokens.shift();
+                    } else if (tokens[0] === "fill") {
+                        result.action = "fill";
+                        tokens.shift();
                     }
 
-                    if (tokens.length === 0 && result.action === "clear") {
+                    if (
+                        tokens.length === 0 &&
+                        (result.action === "clear" || result.action === "fill")
+                    ) {
                         result.status = "error";
                         return result;
                     }
@@ -2776,7 +2968,7 @@
                     result.rows = this.resolveTimes(timeTokens);
 
                     // Project Resolving Logic
-                    if (result.action === "add") {
+                    if (result.action === "add" || result.action === "fill") {
                         if (remainingTokens.length === 0) {
                             result.status = "typing";
                             return result;
@@ -2795,7 +2987,7 @@
                             if (result.rows.length > 0) result.status = "valid";
                             else result.status = "typing";
                         }
-                    } else {
+                    } else if (result.action === "clear") {
                         if (result.rows.length > 0) result.status = "clear";
                         else result.status = "typing";
                     }
@@ -2998,19 +3190,36 @@
                     const dateStr = this.app.state.getCurrentDate();
                     res.rows.forEach((r) => {
                         res.cols.forEach((c) => {
+                            // Smart fill check for Shadow Engine
+                            if (
+                                res.action === "fill" ||
+                                res.action === "predict"
+                            ) {
+                                const currentProjId =
+                                    this.app.state.getSchedule(dateStr)?.blocks[
+                                        `${r}-${c}`
+                                    ];
+                                if (currentProjId) return; // Skip if already filled
+                            }
+
                             const blockId = `${dateStr}-${r}-${c}`;
                             const block =
                                 this.app.ui.blockNodes[blockId] ||
                                 this.app.ui.blockNodes[`DAY-${r}-${c}`];
+
                             if (block) {
                                 this.activeShadows.push(block);
-                                if (res.action === "add") {
+                                if (
+                                    res.action === "add" ||
+                                    res.action === "fill" ||
+                                    res.action === "predict"
+                                ) {
                                     block.classList.add("shadow-add");
                                     block.style.setProperty(
                                         "--shadow-color",
                                         res.project.color,
                                     );
-                                } else {
+                                } else if (res.action === "clear") {
                                     block.classList.add("shadow-clear");
                                 }
                             }
@@ -3029,21 +3238,49 @@
                 commit() {
                     const res = this.parser.parse(this.input.value);
                     if (res.status === "valid" || res.status === "clear") {
-                        const dateStr = this.app.state.getCurrentDate();
-                        res.rows.forEach((r) => {
-                            res.cols.forEach((c) => {
-                                const projId =
-                                    res.action === "add"
-                                        ? res.project.id
-                                        : null;
-                                globalBus.emit("block:update", {
-                                    date: dateStr,
-                                    row: r,
-                                    col: c,
-                                    projectId: projId,
+                        if (res.action === "projects") {
+                            globalBus.emit("ui:openSettings");
+                        } else if (res.action === "copy") {
+                            globalBus.emit("action:copy");
+                        } else if (res.action === "paste") {
+                            globalBus.emit("action:paste");
+                        } else if (res.action === "focus") {
+                            globalBus.emit("action:focus");
+                        } else {
+                            const dateStr = this.app.state.getCurrentDate();
+                            let updates = [];
+
+                            res.rows.forEach((r) => {
+                                res.cols.forEach((c) => {
+                                    if (
+                                        (res.action === "fill" ||
+                                            res.action === "predict") &&
+                                        this.app.state.getSchedule(dateStr)
+                                            ?.blocks[`${r}-${c}`]
+                                    ) {
+                                        return; // Smart fill bypass
+                                    }
+                                    const projId =
+                                        res.action === "add" ||
+                                        res.action === "fill" ||
+                                        res.action === "predict"
+                                            ? res.project.id
+                                            : null;
+                                    updates.push({
+                                        row: r,
+                                        col: c,
+                                        projectId: projId,
+                                    });
                                 });
                             });
-                        });
+
+                            if (updates.length > 0) {
+                                globalBus.emit("block:updateBatch", {
+                                    date: dateStr,
+                                    updates,
+                                });
+                            }
+                        }
                         this.closeCLI();
                     }
                 }
