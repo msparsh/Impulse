@@ -384,6 +384,9 @@
                 border: 2px dashed #4f46e5 !important;
                 background-color: #e0e7ff !important;
             }
+            [draggable="true"].opacity-50 * {
+                pointer-events: none;
+            }
         </style>
     </head>
     <body class="h-screen flex flex-col overflow-hidden relative">
@@ -878,10 +881,16 @@
 
                 buildIndex() {
                     this.projectBlockMap = {};
+                    const validProjectIds = new Set(this.data.projects.map(p => p.id));
                     for (const date in this.data.schedules) {
                         const blocks = this.data.schedules[date].blocks;
                         for (const key in blocks) {
                             const pId = blocks[key];
+                            // Clean orphaned blocks referencing deleted projects
+                            if (!validProjectIds.has(pId)) {
+                                delete blocks[key];
+                                continue;
+                            }
                             if (!this.projectBlockMap[pId])
                                 this.projectBlockMap[pId] = new Set();
                             this.projectBlockMap[pId].add(`${date}#${key}`);
@@ -901,10 +910,10 @@
                 }
 
                 getLocalISODate(dateObj = new Date()) {
-                    const offset = dateObj.getTimezoneOffset() * 60000;
-                    return new Date(dateObj.getTime() - offset)
-                        .toISOString()
-                        .split("T")[0];
+                    const y = dateObj.getFullYear();
+                    const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+                    const d = String(dateObj.getDate()).padStart(2, "0");
+                    return `${y}-${m}-${d}`;
                 }
 
                 getDefaultState() {
@@ -948,25 +957,55 @@
                 }
 
                 loadState() {
-                    const saved = localStorage.getItem(this.storageKey);
-                    const parsed = saved
-                        ? JSON.parse(saved)
-                        : this.getDefaultState();
-                    if (parsed.isSidebarCollapsed === undefined)
-                        parsed.isSidebarCollapsed = false;
-                    return parsed;
+                    try {
+                        let saved = localStorage.getItem(this.storageKey);
+                        if (!saved) {
+                            // Migration: try older version keys
+                            for (let v = 16; v >= 1; v--) {
+                                const oldKey = `planner_state_v${v}`;
+                                const oldData = localStorage.getItem(oldKey);
+                                if (oldData) {
+                                    saved = oldData;
+                                    localStorage.setItem(this.storageKey, oldData);
+                                    localStorage.removeItem(oldKey);
+                                    console.log(`Migrated data from v${v}`);
+                                    break;
+                                }
+                            }
+                        }
+                        const parsed = saved
+                            ? JSON.parse(saved)
+                            : this.getDefaultState();
+                        if (parsed.isSidebarCollapsed === undefined)
+                            parsed.isSidebarCollapsed = false;
+                        parsed.version = 17;
+                        return parsed;
+                    } catch (e) {
+                        console.error("Failed to load state:", e);
+                        return this.getDefaultState();
+                    }
                 }
 
                 saveState() {
-                    localStorage.setItem(
-                        this.storageKey,
-                        JSON.stringify(this.data),
-                    );
+                    try {
+                        localStorage.setItem(
+                            this.storageKey,
+                            JSON.stringify(this.data),
+                        );
+                    } catch (e) {
+                        console.error("Failed to save state:", e);
+                        Toast.show("Save failed — storage may be full", "error");
+                    }
                 }
 
                 saveHistory() {
                     this.undoStack.push(JSON.stringify(this.data));
-                    if (this.undoStack.length > 50) this.undoStack.shift();
+                    if (this.undoStack.length > 30) this.undoStack.shift();
+                    // Size guard: trim if total exceeds ~5MB
+                    let totalSize = this.undoStack.reduce((sum, s) => sum + s.length, 0);
+                    while (totalSize > 5_000_000 && this.undoStack.length > 1) {
+                        totalSize -= this.undoStack.shift().length;
+                    }
                     this.redoStack = [];
                 }
 
@@ -1054,6 +1093,7 @@
                     this.dragState = null;
                     this.isDaySkeletonBuilt = false;
                     this.isWeekSkeletonBuilt = false;
+                    this._lastAnalyticsKey = null;
 
                     this.setupGlobalClickDelegation();
                     this.setupGridDelegation();
@@ -1061,10 +1101,20 @@
                     this.setupKeyboardNav();
                     this.listenToEvents();
 
-                    setInterval(
+                    this._highlightInterval = setInterval(
                         () => this.updateCurrentBlockHighlight(),
                         10000,
                     );
+
+                    // Auto-refresh on date change (midnight rollover)
+                    this._lastKnownDate = this.state.getLocalISODate();
+                    this._dateCheckInterval = setInterval(() => {
+                        const now = this.state.getLocalISODate();
+                        if (now !== this._lastKnownDate) {
+                            this._lastKnownDate = now;
+                            globalBus.emit("view:refresh");
+                        }
+                    }, 30000);
                 }
 
                 updateCurrentBlockHighlight() {
@@ -1215,6 +1265,8 @@
 
                             if (this.state.paintProjectId) {
                                 this.state.paintProjectId = null;
+                                document.getElementById("paint-banner").classList.add("hidden");
+                                globalBus.emit("paint:updated", null);
                                 globalBus.emit("hierarchy:refreshed");
                             }
                             document
@@ -1421,17 +1473,25 @@
                         const dropZone = e.target.closest(
                             '[data-drop-zone="true"]',
                         );
-                        document
-                            .querySelectorAll(".drag-over")
-                            .forEach((el) => el.classList.remove("drag-over"));
-                        if (dropZone) dropZone.classList.add("drag-over");
+                        if (dropZone && !dropZone.classList.contains("drag-over")) {
+                            document
+                                .querySelectorAll(".drag-over")
+                                .forEach((el) => el.classList.remove("drag-over"));
+                            dropZone.classList.add("drag-over");
+                        }
                     });
 
                     hierarchyList.addEventListener("dragleave", (e) => {
                         const dropZone = e.target.closest(
                             '[data-drop-zone="true"]',
                         );
-                        if (dropZone) dropZone.classList.remove("drag-over");
+                        if (dropZone) {
+                            const rect = dropZone.getBoundingClientRect();
+                            if (e.clientX < rect.left || e.clientX > rect.right ||
+                                e.clientY < rect.top || e.clientY > rect.bottom) {
+                                dropZone.classList.remove("drag-over");
+                            }
+                        }
                     });
 
                     hierarchyList.addEventListener("dragend", (e) => {
@@ -1503,11 +1563,13 @@
                             document.querySelectorAll(".schedule-block"),
                         );
                         const index = blocks.indexOf(block);
+                        const isWeekView = this.state.data.viewMode === "week";
+                        const colsPerRow = isWeekView ? 42 : 6;
                         let nextIndex = index;
                         if (e.key === "ArrowRight") nextIndex++;
                         else if (e.key === "ArrowLeft") nextIndex--;
-                        else if (e.key === "ArrowDown") nextIndex += 6;
-                        else if (e.key === "ArrowUp") nextIndex -= 6;
+                        else if (e.key === "ArrowDown") nextIndex += colsPerRow;
+                        else if (e.key === "ArrowUp") nextIndex -= colsPerRow;
                         else if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
                             block.click();
@@ -1640,6 +1702,8 @@
                     if (collapsedBtn)
                         collapsedBtn.textContent =
                             this.state.data.viewMode === "day" ? "D" : "W";
+                            
+                    this.updateCurrentBlockHighlight();
                 }
 
                 buildDaySkeleton(hours) {
@@ -1673,8 +1737,6 @@
                                 rowIndex === 0 && colIndex === 0 ? "0" : "-1",
                             );
 
-                            this.blockNodes[`DAY-${rowIndex}-${colIndex}`] =
-                                block;
                             blocksContainer.appendChild(block);
                         }
                         rowEl.appendChild(timeLabel);
@@ -2231,8 +2293,10 @@
                     const timerEl = document.getElementById("focus-timer");
                     const list = document.getElementById("focus-project-list");
 
-                    if (this.focusTimerInterval)
+                    if (this.focusTimerInterval) {
                         clearInterval(this.focusTimerInterval);
+                        this.focusTimerInterval = null;
+                    }
 
                     nameEl.classList.add("hidden");
                     timerEl.classList.add("hidden");
@@ -2293,8 +2357,10 @@
                 }
 
                 enterFocusMode(projectId, startRow, startCol) {
-                    if (this.focusTimerInterval)
+                    if (this.focusTimerInterval) {
                         clearInterval(this.focusTimerInterval);
+                        this.focusTimerInterval = null;
+                    }
                     const project = this.state.getProjectById(projectId);
                     if (!project) return;
 
@@ -2371,8 +2437,10 @@
                     document
                         .getElementById("focus-mode-overlay")
                         .classList.add("hidden");
-                    if (this.focusTimerInterval)
+                    if (this.focusTimerInterval) {
                         clearInterval(this.focusTimerInterval);
+                        this.focusTimerInterval = null;
+                    }
                     document
                         .getElementById("focus-project-name")
                         .classList.remove("hidden");
@@ -3203,9 +3271,7 @@
                             }
 
                             const blockId = `${dateStr}-${r}-${c}`;
-                            const block =
-                                this.app.ui.blockNodes[blockId] ||
-                                this.app.ui.blockNodes[`DAY-${r}-${c}`];
+                            const block = this.app.ui.blockNodes[blockId];
 
                             if (block) {
                                 this.activeShadows.push(block);
@@ -3285,6 +3351,16 @@
                     }
                 }
             }
+
+            // Global error boundary
+            window.onerror = (msg, src, line, col, err) => {
+                console.error("Uncaught error:", err);
+                Toast.show("Something went wrong. Try refreshing.", "error");
+            };
+            window.onunhandledrejection = (event) => {
+                console.error("Unhandled rejection:", event.reason);
+                Toast.show("Something went wrong. Try refreshing.", "error");
+            };
 
             // Launch Controller
             window.app = new AppController();
