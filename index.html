@@ -834,7 +834,26 @@
             <div
                 class="flex-1 overflow-y-auto p-6 md:p-8 custom-scroll modal-content"
             >
-                <div class="max-w-4xl mx-auto" id="analytics-content"></div>
+                <div class="max-w-5xl mx-auto">
+                    <!-- Range Selector -->
+                    <div class="flex items-center gap-2 mb-8 bg-gray-100 p-1.5 rounded-2xl w-fit">
+                        <button data-action="set-analytics-range" data-range="today" class="px-6 py-2 rounded-xl text-sm font-bold transition shadow-sm bg-white text-indigo-700">Today</button>
+                        <button data-action="set-analytics-range" data-range="week" class="px-6 py-2 rounded-xl text-sm font-bold transition text-gray-500 hover:text-gray-700">This Week</button>
+                        <button data-action="set-analytics-range" data-range="month" class="px-6 py-2 rounded-xl text-sm font-bold transition text-gray-500 hover:text-gray-700">This Month</button>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10" id="analytics-summary"></div>
+
+                    <!-- Main Stats Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-10">
+                        <div id="analytics-categories"></div>
+                        <div id="analytics-consistency"></div>
+                    </div>
+
+                    <!-- Detailed Breakdown -->
+                    <div id="analytics-projects" class="mt-8"></div>
+                </div>
             </div>
         </div>
 
@@ -1372,14 +1391,48 @@
                     return this.data.schedules[dateStr];
                 }
                 getDailyAnalytics() {
-                    let counts = {};
-                    const blocks =
-                        this.getSchedule(this.data.currentDate)?.blocks || {};
-                    Object.values(blocks).forEach((pid) => {
-                        const p = this.getProjectById(pid);
-                        if (p) counts[p.typeId] = (counts[p.typeId] || 0) + 1;
-                    });
-                    return counts;
+                    return this.getRangeAnalytics(this.data.currentDate, this.data.currentDate);
+                }
+
+                getRangeAnalytics(startStr, endStr) {
+                    const start = new Date(startStr);
+                    const end = new Date(endStr);
+                    let typeCounts = {};
+                    let projectCounts = {};
+                    let totalBlocks = 0;
+
+                    for (const date in this.data.schedules) {
+                        const d = new Date(date);
+                        if (d >= start && d <= end) {
+                            const blocks = this.data.schedules[date].blocks || {};
+                            Object.values(blocks).forEach((pid) => {
+                                const p = this.getProjectById(pid);
+                                if (p) {
+                                    typeCounts[p.typeId] = (typeCounts[p.typeId] || 0) + 1;
+                                    projectCounts[pid] = (projectCounts[pid] || 0) + 1;
+                                    totalBlocks++;
+                                }
+                            });
+                        }
+                    }
+                    return { typeCounts, projectCounts, totalBlocks };
+                }
+
+                getHeatmapData(monthsCount = 3) {
+                    const end = new Date();
+                    const start = new Date();
+                    start.setMonth(start.getMonth() - monthsCount);
+                    
+                    let heatmap = {};
+                    for (const date in this.data.schedules) {
+                        const d = new Date(date);
+                        if (d >= start && d <= end) {
+                            const blocks = this.data.schedules[date].blocks || {};
+                            const count = Object.keys(blocks).length;
+                            if (count > 0) heatmap[date] = count;
+                        }
+                    }
+                    return heatmap;
                 }
             }
 
@@ -1484,6 +1537,9 @@
                                     break;
                                 case "close-help":
                                     globalBus.emit("ui:closeHelp");
+                                    break;
+                                case "set-analytics-range":
+                                    globalBus.emit("ui:setAnalyticsRange", actionBtn.dataset.range);
                                     break;
                                 case "export-data":
                                     globalBus.emit("ui:exportData");
@@ -2486,57 +2542,117 @@
                     });
                 }
 
-                renderAnalytics(dailyStats, types) {
-                    const container =
-                        document.getElementById("analytics-content");
-                    if (!container) return;
-                    container.innerHTML = "";
+                renderAnalytics(stats, types, range = "today") {
+                    const summaryContainer = document.getElementById("analytics-summary");
+                    const categoriesContainer = document.getElementById("analytics-categories");
+                    const consistencyContainer = document.getElementById("analytics-consistency");
+                    const projectsContainer = document.getElementById("analytics-projects");
 
-                    let totalDailyBlocks = 0;
-                    Object.values(dailyStats).forEach(
-                        (count) => (totalDailyBlocks += count),
-                    );
+                    if (!summaryContainer) return;
 
-                    const titleEl = document.createElement("div");
-                    titleEl.className = "mb-8";
-                    titleEl.innerHTML = `<h3 class="text-xl font-bold">Today's Distribution</h3><p class="text-gray-500 text-sm">Based on painted blocks for today.</p>`;
-                    container.appendChild(titleEl);
+                    // 1. Render Summary Cards
+                    const totalHours = (stats.totalBlocks * 10) / 60;
+                    const topTypeId = Object.entries(stats.typeCounts).sort((a,b) => b[1] - a[1])[0]?.[0];
+                    const topType = types.find(t => t.id === topTypeId);
+                    
+                    summaryContainer.innerHTML = `
+                        <div class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                            <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Total Effort</div>
+                            <div class="text-3xl font-black text-indigo-900 tabular-nums">${totalHours.toFixed(1)}h</div>
+                            <div class="text-xs text-indigo-500 mt-1">Focused time for ${range}</div>
+                        </div>
+                        <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100">
+                            <div class="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">Top Focus</div>
+                            <div class="text-xl font-black text-amber-900 truncate">${topType ? topType.name : "N/A"}</div>
+                            <div class="text-xs text-amber-600 mt-1">Most dedicated category</div>
+                        </div>
+                        <div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
+                            <div class="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">Consistency</div>
+                            <div class="text-3xl font-black text-emerald-900 tabular-nums">${stats.totalBlocks > 0 ? "High" : "Low"}</div>
+                            <div class="text-xs text-emerald-600 mt-1">Activity score for ${range}</div>
+                        </div>
+                    `;
 
-                    if (totalDailyBlocks === 0) {
-                        container.innerHTML += `<div class="text-gray-400 italic text-center p-8 border border-dashed rounded-xl border-gray-300">No data for today yet! Paint some blocks.</div>`;
-                        return;
-                    }
-
-                    const statsWrapper = document.createElement("div");
-                    statsWrapper.className = "space-y-6";
-
-                    types.forEach((t) => {
-                        const count = dailyStats[t.id] || 0;
-                        if (count > 0) {
+                    // 2. Render Category Breakdown (Bar Chart)
+                    categoriesContainer.innerHTML = `<h3 class="text-lg font-black mb-4">Category Breakdown</h3><div class="space-y-4"></div>`;
+                    const catList = categoriesContainer.querySelector("div");
+                    
+                    types.forEach(t => {
+                        const count = stats.typeCounts[t.id] || 0;
+                        if (count > 0 || range !== "today") {
+                            const pct = stats.totalBlocks > 0 ? (count / stats.totalBlocks) * 100 : 0;
                             const hours = (count * 10) / 60;
-                            const percentage = Math.round(
-                                (count / totalDailyBlocks) * 100,
-                            );
-
-                            const statRow = document.createElement("div");
-                            statRow.className =
-                                "flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100";
-
-                            statRow.innerHTML = `
-                                <div class="w-1/4 truncate font-bold text-gray-800">${t.name}</div>
-                                <div class="flex-1 bg-gray-200 h-3 rounded-full overflow-hidden">
-                                    <div class="h-full bg-indigo-500" style="width: ${percentage}%"></div>
+                            
+                            const row = document.createElement("div");
+                            row.className = "group";
+                            row.innerHTML = `
+                                <div class="flex justify-between items-end mb-1">
+                                    <span class="text-sm font-bold text-gray-700">${t.name}</span>
+                                    <span class="text-xs font-black text-indigo-600 tabular-nums">${hours.toFixed(1)}h <span class="text-gray-300 font-normal ml-1">(${Math.round(pct)}%)</span></span>
                                 </div>
-                                <div class="w-24 text-right tabular-nums text-sm">
-                                    <span class="font-black text-indigo-700">${hours.toFixed(1)}h</span>
-                                    <span class="text-gray-400 ml-1">(${percentage}%)</span>
+                                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-indigo-500 transition-all duration-1000" style="width: 0%"></div>
                                 </div>
                             `;
-                            statsWrapper.appendChild(statRow);
+                            catList.appendChild(row);
+                            setTimeout(() => row.querySelector(".h-full").style.width = pct + "%", 50);
                         }
                     });
 
-                    container.appendChild(statsWrapper);
+                    // 3. Render Consistency Heatmap (Simplified SVG)
+                    consistencyContainer.innerHTML = `<h3 class="text-lg font-black mb-4">Activity Heatmap</h3><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 overflow-x-auto"><div id="heatmap-svg-container"></div></div>`;
+                    this.renderHeatmap("heatmap-svg-container");
+
+                    // 4. Detailed Project List
+                    projectsContainer.innerHTML = `<h3 class="text-lg font-black mb-4">Detailed Project Activity</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>`;
+                    const projGrid = projectsContainer.querySelector("div");
+                    
+                    this.state.getProjects().forEach(p => {
+                        const count = stats.projectCounts[p.id] || 0;
+                        if (count > 0) {
+                            const hours = (count * 10) / 60;
+                            const card = document.createElement("div");
+                            card.className = "flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl shadow-sm";
+                            card.innerHTML = `
+                                <div class="w-3 h-3 rounded-full" style="background-color: ${p.color}"></div>
+                                <div class="flex-1 text-sm font-bold text-gray-800 truncate">${p.name}</div>
+                                <div class="text-xs font-black text-gray-400 tabular-nums">${hours.toFixed(1)}h</div>
+                            `;
+                            projGrid.appendChild(card);
+                        }
+                    });
+                }
+
+                renderHeatmap(containerId) {
+                    const container = document.getElementById(containerId);
+                    if (!container) return;
+                    
+                    const data = this.state.getHeatmapData(3);
+                    const now = new Date();
+                    const weeks = 12; // Show last 12 weeks
+                    
+                    let svg = `<svg viewBox="0 0 ${weeks * 14} 100" class="w-full h-auto">`;
+                    
+                    for (let w = 0; w < weeks; w++) {
+                        for (let d = 0; d < 7; d++) {
+                            const date = new Date();
+                            date.setDate(now.getDate() - (weeks - 1 - w) * 7 - (6 - d));
+                            const dateStr = this.state.getLocalISODate(date);
+                            const count = data[dateStr] || 0;
+                            
+                            let color = "#f3f4f6"; // base gray
+                            if (count > 0) color = "#e0e7ff";
+                            if (count > 10) color = "#c7d2fe";
+                            if (count > 30) color = "#818cf8";
+                            if (count > 60) color = "#4f46e5";
+
+                            svg += `<rect x="${w * 14}" y="${d * 14}" width="10" height="10" rx="2" fill="${color}">
+                                <title>${dateStr}: ${count} blocks</title>
+                            </rect>`;
+                        }
+                    }
+                    svg += `</svg>`;
+                    container.innerHTML = svg;
                 }
 
                 toggleModal(modalId, show) {
@@ -2588,6 +2704,7 @@
                     this.state = new StateManager();
                     this.ui = new UIManager(this.state);
                     this.focusTimerInterval = null;
+                    this.analyticsRange = "today";
 
                     this.setupLogicListeners();
                     this.setupUIActionListeners();
@@ -2684,6 +2801,55 @@
                     );
                     globalBus.on("ui:importReplace", () =>
                         this.importData(true),
+                    );
+                    globalBus.on("ui:setAnalyticsRange", (range) =>
+                        this.setAnalyticsRange(range),
+                    );
+                }
+
+                setAnalyticsRange(range) {
+                    this.analyticsRange = range;
+                    document.querySelectorAll('[data-action="set-analytics-range"]').forEach((btn) => {
+                        if (btn.dataset.range === range) {
+                            btn.className =
+                                "px-6 py-2 rounded-xl text-sm font-bold transition shadow-sm bg-white text-indigo-700";
+                        } else {
+                            btn.className =
+                                "px-6 py-2 rounded-xl text-sm font-bold transition text-gray-500 hover:text-gray-700";
+                        }
+                    });
+                    this.refreshAnalytics();
+                }
+
+                refreshAnalytics() {
+                    let start, end;
+                    const now = new Date();
+
+                    if (this.analyticsRange === "week") {
+                        start = this.ui.getStartOfWeek(
+                            this.state.getLocalISODate(now),
+                        );
+                        end = new Date(start);
+                        end.setDate(start.getDate() + 6);
+                    } else if (this.analyticsRange === "month") {
+                        start = new Date(now.getFullYear(), now.getMonth(), 1);
+                        end = new Date(
+                            now.getFullYear(),
+                            now.getMonth() + 1,
+                            0,
+                        );
+                    } else {
+                        start = end = now;
+                    }
+
+                    const stats = this.state.getRangeAnalytics(
+                        this.state.getLocalISODate(start),
+                        this.state.getLocalISODate(end),
+                    );
+                    this.ui.renderAnalytics(
+                        stats,
+                        this.state.getTypes(),
+                        this.analyticsRange,
                     );
                 }
 
@@ -2894,6 +3060,8 @@
                             globalBus.emit("analytics:refreshed");
                         },
                     );
+
+                    globalBus.on("analytics:refreshed", () => this.refreshAnalytics());
 
                     globalBus.on("block:updateBatch", ({ date, updates }) => {
                         const targetDate = date || this.state.getCurrentDate();
@@ -3180,7 +3348,7 @@
                 }
 
                 openAnalyticsModal() {
-                    globalBus.emit("analytics:refreshed");
+                    this.refreshAnalytics();
                     this.ui.toggleModal("analytics-modal", true);
                 }
                 closeAnalyticsModal() {
