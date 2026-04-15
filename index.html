@@ -10,7 +10,8 @@
             rel="stylesheet"
         />
         <style>
-            html, body {
+            html,
+            body {
                 font-family: "Inter", sans-serif;
                 background-color: transparent !important;
                 color: #1a1a1a;
@@ -707,20 +708,55 @@
             id="settings-modal"
             class="fixed inset-0 z-[100000] bg-white hidden flex flex-col overflow-hidden modal-bg"
         >
-            <div class="flex justify-between items-center p-6 md:p-8 border-b border-gray-100 shrink-0">
-                <h2 class="text-2xl md:text-3xl font-black tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Manage Projects & Categories</h2>
-                <button data-action="close-settings" class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition text-gray-500">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <div
+                class="flex justify-between items-center p-6 md:p-8 border-b border-gray-100 shrink-0"
+            >
+                <h2
+                    class="text-2xl md:text-3xl font-black tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent"
+                >
+                    Manage Projects & Categories
+                </h2>
+                <button
+                    data-action="close-settings"
+                    class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition text-gray-500"
+                >
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
                 </button>
             </div>
-            <div class="flex-1 overflow-y-auto p-6 md:p-8 custom-scroll modal-content">
+            <div
+                class="flex-1 overflow-y-auto p-6 md:p-8 custom-scroll modal-content"
+            >
                 <div class="max-w-4xl mx-auto">
                     <div class="mb-8 flex flex-col sm:flex-row gap-4">
-                        <input type="text" id="new-type-name" placeholder="New category name..." class="flex-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 bg-gray-50">
-                        <button data-action="add-type" class="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-sm">Add Category</button>
+                        <input
+                            type="text"
+                            id="new-type-name"
+                            placeholder="New category name..."
+                            class="flex-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 bg-gray-50"
+                        />
+                        <button
+                            data-action="add-type"
+                            class="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-sm"
+                        >
+                            Add Category
+                        </button>
                     </div>
                     <div id="hierarchy-list" class="space-y-6"></div>
-                    <div class="text-xs text-gray-400 text-center mt-8 pt-4 border-t border-gray-100">Drag handles to reorder · inline edit · Esc closes</div>
+                    <div
+                        class="text-xs text-gray-400 text-center mt-8 pt-4 border-t border-gray-100"
+                    >
+                        Drag handles to reorder · inline edit · Esc closes
+                    </div>
                 </div>
             </div>
         </div>
@@ -763,6 +799,281 @@
                     >
                         Yes, Delete
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== OVERLAY: ANALYTICS ========== -->
+        <div
+            id="analytics-modal"
+            class="fixed inset-0 z-[100000] bg-white hidden flex flex-col overflow-hidden modal-bg"
+        >
+            <div
+                class="flex justify-between items-center p-6 md:p-8 border-b border-gray-100 shrink-0"
+            >
+                <h2 class="text-2xl md:text-3xl font-black tracking-tight">
+                    📈 Analytics Dashboard
+                </h2>
+                <button
+                    data-action="close-analytics"
+                    class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition text-gray-500"
+                >
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div
+                class="flex-1 overflow-y-auto p-6 md:p-8 custom-scroll modal-content"
+            >
+                <div class="max-w-4xl mx-auto" id="analytics-content"></div>
+            </div>
+        </div>
+
+        <!-- ========== OVERLAY: EXPORT / IMPORT ========== -->
+        <div
+            id="backup-modal"
+            class="fixed inset-0 z-[100000] bg-white hidden flex flex-col overflow-hidden modal-bg"
+        >
+            <div
+                class="flex justify-between items-center p-6 md:p-8 border-b border-gray-100 shrink-0"
+            >
+                <h2 class="text-2xl md:text-3xl font-black tracking-tight">
+                    💾 Export / Import Data
+                </h2>
+                <button
+                    data-action="close-backup"
+                    class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition text-gray-500"
+                >
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div
+                class="flex-1 overflow-y-auto p-6 md:p-8 custom-scroll modal-content"
+            >
+                <div class="max-w-2xl mx-auto space-y-8">
+                    <div
+                        class="bg-gray-50 rounded-2xl p-6 border border-gray-200"
+                    >
+                        <h3 class="text-xl font-bold mb-2">
+                            📤 Export full planner
+                        </h3>
+                        <p class="text-gray-600 mb-4 text-sm">
+                            Download complete state (projects, categories, all
+                            schedules) as JSON.
+                        </p>
+                        <button
+                            data-action="export-data"
+                            class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition shadow-sm"
+                        >
+                            Export planner.json
+                        </button>
+                    </div>
+                    <div
+                        class="bg-gray-50 rounded-2xl p-6 border border-gray-200"
+                    >
+                        <h3 class="text-xl font-bold mb-2">
+                            📥 Import from backup
+                        </h3>
+                        <p class="text-gray-600 mb-4 text-sm">
+                            Restore from previously exported file. Merge or
+                            replace existing data.
+                        </p>
+                        <div class="flex flex-col gap-4">
+                            <input
+                                type="file"
+                                id="import-file"
+                                accept=".json"
+                                class="text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            />
+                            <div class="flex gap-3">
+                                <button
+                                    data-action="import-merge"
+                                    class="px-5 py-2 border border-gray-300 rounded-xl font-medium bg-white hover:bg-gray-100 transition"
+                                >
+                                    Merge Import
+                                </button>
+                                <button
+                                    data-action="import-replace"
+                                    class="px-5 py-2 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition shadow-sm"
+                                >
+                                    Replace All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== OVERLAY: HELP / COMMAND REFERENCE ========== -->
+        <div
+            id="help-modal"
+            class="fixed inset-0 z-[100000] bg-white hidden flex flex-col overflow-hidden modal-bg"
+        >
+            <div
+                class="flex justify-between items-center p-6 md:p-8 border-b border-gray-100 shrink-0"
+            >
+                <h2 class="text-2xl md:text-3xl font-black tracking-tight">
+                    ⌨️ Command Reference
+                </h2>
+                <button
+                    data-action="close-help"
+                    class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition text-gray-500"
+                >
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div
+                class="flex-1 overflow-y-auto p-6 md:p-8 custom-scroll modal-content"
+            >
+                <div class="max-w-3xl mx-auto space-y-10">
+                    <div>
+                        <h3
+                            class="text-lg font-black mb-4 flex items-center gap-2"
+                        >
+                            <span
+                                class="bg-gray-900 text-white text-xs px-2 py-1 rounded-md"
+                                >CLI</span
+                            >
+                            Management Commands
+                        </h3>
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"
+                        >
+                            <div class="bg-gray-50 p-3 rounded-xl">
+                                <code
+                                    class="font-mono font-bold text-indigo-700"
+                                    >projects</code
+                                ><span class="text-gray-600 ml-2"
+                                    >→ open full project/category manager</span
+                                >
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-xl">
+                                <code
+                                    class="font-mono font-bold text-indigo-700"
+                                    >analytics</code
+                                >
+                                or
+                                <code
+                                    class="font-mono font-bold text-indigo-700"
+                                    >stats</code
+                                ><span class="text-gray-600 ml-2"
+                                    >→ weekly stats & usage</span
+                                >
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-xl">
+                                <code
+                                    class="font-mono font-bold text-indigo-700"
+                                    >export</code
+                                ><span class="text-gray-600 ml-2"
+                                    >→ download backup</span
+                                >
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-xl">
+                                <code
+                                    class="font-mono font-bold text-indigo-700"
+                                    >import</code
+                                ><span class="text-gray-600 ml-2"
+                                    >→ restore from file</span
+                                >
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-xl">
+                                <code
+                                    class="font-mono font-bold text-indigo-700"
+                                    >help</code
+                                >
+                                /
+                                <code
+                                    class="font-mono font-bold text-indigo-700"
+                                    >?</code
+                                ><span class="text-gray-600 ml-2"
+                                    >→ this screen</span
+                                >
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-xl">
+                                <code
+                                    class="font-mono font-bold text-indigo-700"
+                                    >copy</code
+                                >
+                                /
+                                <code
+                                    class="font-mono font-bold text-indigo-700"
+                                    >paste</code
+                                ><span class="text-gray-600 ml-2"
+                                    >→ copy/paste today's schedule</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black mb-4">
+                            ⚡ Smart scheduling (CLI examples)
+                        </h3>
+                        <div
+                            class="space-y-2 text-sm bg-gray-50 rounded-xl p-4 font-mono"
+                        >
+                            <div>
+                                ❯
+                                <span class="text-indigo-700"
+                                    >fill morning study</span
+                                >
+                                → paint 'study' into 1am–11am
+                            </div>
+                            <div>
+                                ❯
+                                <span class="text-indigo-700">clear 1-3</span> →
+                                erase columns 1,2,3 for all hours
+                            </div>
+                            <div>
+                                ❯ <span class="text-indigo-700">predict</span> →
+                                fill next 3h with most used project
+                            </div>
+                            <div>
+                                ❯ <span class="text-indigo-700">focus</span> →
+                                focus timer on current block
+                            </div>
+                            <div>
+                                ❯
+                                <span class="text-indigo-700">7 dw 2-4</span> →
+                                fill row 7, columns 2-4 with 'deep work'
+                            </div>
+                        </div>
+                    </div>
+                    <div
+                        class="text-xs text-gray-400 text-center border-t border-gray-100 pt-6"
+                    >
+                        Everything is accessible only via CLI → no hidden UI
+                        buttons.
+                    </div>
                 </div>
             </div>
         </div>
@@ -850,7 +1161,9 @@
 
                 buildIndex() {
                     this.projectBlockMap = {};
-                    const validProjectIds = new Set(this.data.projects.map(p => p.id));
+                    const validProjectIds = new Set(
+                        this.data.projects.map((p) => p.id),
+                    );
                     for (const date in this.data.schedules) {
                         const blocks = this.data.schedules[date].blocks;
                         for (const key in blocks) {
@@ -935,7 +1248,10 @@
                                 const oldData = localStorage.getItem(oldKey);
                                 if (oldData) {
                                     saved = oldData;
-                                    localStorage.setItem(this.storageKey, oldData);
+                                    localStorage.setItem(
+                                        this.storageKey,
+                                        oldData,
+                                    );
                                     localStorage.removeItem(oldKey);
                                     console.log(`Migrated data from v${v}`);
                                     break;
@@ -963,7 +1279,10 @@
                         );
                     } catch (e) {
                         console.error("Failed to save state:", e);
-                        Toast.show("Save failed — storage may be full", "error");
+                        Toast.show(
+                            "Save failed — storage may be full",
+                            "error",
+                        );
                     }
                 }
 
@@ -971,7 +1290,10 @@
                     this.undoStack.push(JSON.stringify(this.data));
                     if (this.undoStack.length > 30) this.undoStack.shift();
                     // Size guard: trim if total exceeds ~5MB
-                    let totalSize = this.undoStack.reduce((sum, s) => sum + s.length, 0);
+                    let totalSize = this.undoStack.reduce(
+                        (sum, s) => sum + s.length,
+                        0,
+                    );
                     while (totalSize > 5_000_000 && this.undoStack.length > 1) {
                         totalSize -= this.undoStack.shift().length;
                     }
@@ -1145,6 +1467,24 @@
                                 case "close-settings":
                                     globalBus.emit("ui:closeSettings");
                                     break;
+                                case "close-analytics":
+                                    globalBus.emit("ui:closeAnalytics");
+                                    break;
+                                case "close-backup":
+                                    globalBus.emit("ui:closeBackup");
+                                    break;
+                                case "close-help":
+                                    globalBus.emit("ui:closeHelp");
+                                    break;
+                                case "export-data":
+                                    globalBus.emit("ui:exportData");
+                                    break;
+                                case "import-merge":
+                                    globalBus.emit("ui:importMerge");
+                                    break;
+                                case "import-replace":
+                                    globalBus.emit("ui:importReplace");
+                                    break;
                                 case "add-type":
                                     globalBus.emit("ui:addType");
                                     break;
@@ -1234,7 +1574,9 @@
 
                             if (this.state.paintProjectId) {
                                 this.state.paintProjectId = null;
-                                document.getElementById("paint-banner").classList.add("hidden");
+                                document
+                                    .getElementById("paint-banner")
+                                    .classList.add("hidden");
                                 globalBus.emit("paint:updated", null);
                                 globalBus.emit("hierarchy:refreshed");
                             }
@@ -1442,10 +1784,15 @@
                         const dropZone = e.target.closest(
                             '[data-drop-zone="true"]',
                         );
-                        if (dropZone && !dropZone.classList.contains("drag-over")) {
+                        if (
+                            dropZone &&
+                            !dropZone.classList.contains("drag-over")
+                        ) {
                             document
                                 .querySelectorAll(".drag-over")
-                                .forEach((el) => el.classList.remove("drag-over"));
+                                .forEach((el) =>
+                                    el.classList.remove("drag-over"),
+                                );
                             dropZone.classList.add("drag-over");
                         }
                     });
@@ -1456,8 +1803,12 @@
                         );
                         if (dropZone) {
                             const rect = dropZone.getBoundingClientRect();
-                            if (e.clientX < rect.left || e.clientX > rect.right ||
-                                e.clientY < rect.top || e.clientY > rect.bottom) {
+                            if (
+                                e.clientX < rect.left ||
+                                e.clientX > rect.right ||
+                                e.clientY < rect.top ||
+                                e.clientY > rect.bottom
+                            ) {
                                 dropZone.classList.remove("drag-over");
                             }
                         }
@@ -1671,7 +2022,7 @@
                     if (collapsedBtn)
                         collapsedBtn.textContent =
                             this.state.data.viewMode === "day" ? "D" : "W";
-                            
+
                     this.updateCurrentBlockHighlight();
                 }
 
@@ -2064,7 +2415,8 @@
                             (p) => p.typeId === t.id,
                         );
                         const typeBlock = document.createElement("div");
-                        typeBlock.className = "bg-gray-50 rounded-2xl p-5 border border-gray-200";
+                        typeBlock.className =
+                            "bg-gray-50 rounded-2xl p-5 border border-gray-200";
                         typeBlock.draggable = true;
                         typeBlock.dataset.dragEntity = "type";
                         typeBlock.dataset.dragId = t.id;
@@ -2084,7 +2436,9 @@
                         <button data-action="add-project" data-typeid="${t.id}" class="text-indigo-600 text-sm font-bold hover:bg-indigo-50 px-3 py-1.5 rounded-lg inline-flex items-center gap-1 transition">+ Add Project</button>
                         `;
 
-                        typeBlock.querySelector("span[contenteditable]").textContent = t.name;
+                        typeBlock.querySelector(
+                            "span[contenteditable]",
+                        ).textContent = t.name;
                         list.appendChild(typeBlock);
 
                         const projContainer = document.getElementById(
@@ -2121,6 +2475,59 @@
                             });
                         }
                     });
+                }
+
+                renderAnalytics(dailyStats, types) {
+                    const container =
+                        document.getElementById("analytics-content");
+                    if (!container) return;
+                    container.innerHTML = "";
+
+                    let totalDailyBlocks = 0;
+                    Object.values(dailyStats).forEach(
+                        (count) => (totalDailyBlocks += count),
+                    );
+
+                    const titleEl = document.createElement("div");
+                    titleEl.className = "mb-8";
+                    titleEl.innerHTML = `<h3 class="text-xl font-bold">Today's Distribution</h3><p class="text-gray-500 text-sm">Based on painted blocks for today.</p>`;
+                    container.appendChild(titleEl);
+
+                    if (totalDailyBlocks === 0) {
+                        container.innerHTML += `<div class="text-gray-400 italic text-center p-8 border border-dashed rounded-xl border-gray-300">No data for today yet! Paint some blocks.</div>`;
+                        return;
+                    }
+
+                    const statsWrapper = document.createElement("div");
+                    statsWrapper.className = "space-y-6";
+
+                    types.forEach((t) => {
+                        const count = dailyStats[t.id] || 0;
+                        if (count > 0) {
+                            const hours = (count * 10) / 60;
+                            const percentage = Math.round(
+                                (count / totalDailyBlocks) * 100,
+                            );
+
+                            const statRow = document.createElement("div");
+                            statRow.className =
+                                "flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100";
+
+                            statRow.innerHTML = `
+                                <div class="w-1/4 truncate font-bold text-gray-800">${t.name}</div>
+                                <div class="flex-1 bg-gray-200 h-3 rounded-full overflow-hidden">
+                                    <div class="h-full bg-indigo-500" style="width: ${percentage}%"></div>
+                                </div>
+                                <div class="w-24 text-right tabular-nums text-sm">
+                                    <span class="font-black text-indigo-700">${hours.toFixed(1)}h</span>
+                                    <span class="text-gray-400 ml-1">(${percentage}%)</span>
+                                </div>
+                            `;
+                            statsWrapper.appendChild(statRow);
+                        }
+                    });
+
+                    container.appendChild(statsWrapper);
                 }
 
                 toggleModal(modalId, show) {
@@ -2248,6 +2655,26 @@
                     );
                     globalBus.on("ui:enterFocusSelection", ({ row, col }) =>
                         this.enterFocusModeSelection(row, col),
+                    );
+                    globalBus.on("ui:openAnalytics", () =>
+                        this.openAnalyticsModal(),
+                    );
+                    globalBus.on("ui:closeAnalytics", () =>
+                        this.closeAnalyticsModal(),
+                    );
+                    globalBus.on("ui:openExport", () => this.openExportModal());
+                    globalBus.on("ui:closeBackup", () =>
+                        this.closeExportModal(),
+                    );
+                    globalBus.on("ui:openImport", () => this.openExportModal());
+                    globalBus.on("ui:openHelp", () => this.openHelpModal());
+                    globalBus.on("ui:closeHelp", () => this.closeHelpModal());
+                    globalBus.on("ui:exportData", () => this.exportData());
+                    globalBus.on("ui:importMerge", () =>
+                        this.importData(false),
+                    );
+                    globalBus.on("ui:importReplace", () =>
+                        this.importData(true),
                     );
                 }
 
@@ -2743,6 +3170,126 @@
                     this.ui.toggleModal("settings-modal", false);
                 }
 
+                openAnalyticsModal() {
+                    globalBus.emit("analytics:refreshed");
+                    this.ui.toggleModal("analytics-modal", true);
+                }
+                closeAnalyticsModal() {
+                    this.ui.toggleModal("analytics-modal", false);
+                }
+                openExportModal() {
+                    this.ui.toggleModal("backup-modal", true);
+                }
+                closeExportModal() {
+                    this.ui.toggleModal("backup-modal", false);
+                }
+                openHelpModal() {
+                    this.ui.toggleModal("help-modal", true);
+                }
+                closeHelpModal() {
+                    this.ui.toggleModal("help-modal", false);
+                }
+
+                exportData() {
+                    const dataStr = JSON.stringify(this.state.data, null, 2);
+                    const blob = new Blob([dataStr], {
+                        type: "application/json",
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "planner.json";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    Toast.show("Exported planner.json");
+                }
+
+                importData(replace) {
+                    const fileInput = document.getElementById("import-file");
+                    if (!fileInput.files.length) {
+                        Toast.show("Please select a file first", "error");
+                        return;
+                    }
+                    const file = fileInput.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const parsed = JSON.parse(e.target.result);
+                            if (
+                                !parsed ||
+                                typeof parsed !== "object" ||
+                                !Array.isArray(parsed.types) ||
+                                !Array.isArray(parsed.projects) ||
+                                typeof parsed.schedules !== "object"
+                            ) {
+                                throw new Error("Invalid schema");
+                            }
+                            if (replace) {
+                                this.state.updateState((data) => {
+                                    data.types = parsed.types;
+                                    data.projects = parsed.projects;
+                                    data.schedules = parsed.schedules;
+                                });
+                            } else {
+                                this.state.updateState((data) => {
+                                    parsed.types.forEach((pt) => {
+                                        if (
+                                            !data.types.find(
+                                                (t) => t.id === pt.id,
+                                            )
+                                        )
+                                            data.types.push(pt);
+                                    });
+                                    parsed.projects.forEach((pp) => {
+                                        if (
+                                            !data.projects.find(
+                                                (p) => p.id === pp.id,
+                                            )
+                                        )
+                                            data.projects.push(pp);
+                                    });
+                                    Object.keys(parsed.schedules).forEach(
+                                        (date) => {
+                                            if (!data.schedules[date]) {
+                                                data.schedules[date] =
+                                                    JSON.parse(
+                                                        JSON.stringify(
+                                                            parsed.schedules[
+                                                                date
+                                                            ],
+                                                        ),
+                                                    );
+                                            } else {
+                                                Object.assign(
+                                                    data.schedules[date].blocks,
+                                                    parsed.schedules[date]
+                                                        .blocks,
+                                                );
+                                            }
+                                        },
+                                    );
+                                });
+                            }
+                            this.state.buildIndex();
+                            globalBus.emit("hierarchy:refreshed");
+                            globalBus.emit("view:refresh");
+                            this.closeExportModal();
+                            Toast.show(
+                                replace
+                                    ? "Replaced state from backup!"
+                                    : "Merged state from backup!",
+                            );
+                            fileInput.value = "";
+                        } catch (err) {
+                            Toast.show("Invalid planner file format", "error");
+                            console.error(err);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+
                 addType() {
                     const input = document.getElementById("new-type-name");
                     const name = input.value.trim();
@@ -2898,6 +3445,25 @@
                     // Fast Commands
                     if (tokens[0] === "projects") {
                         result.action = "projects";
+                        result.status = "valid";
+                        return result;
+                    } else if (
+                        tokens[0] === "analytics" ||
+                        tokens[0] === "stats"
+                    ) {
+                        result.action = "analytics";
+                        result.status = "valid";
+                        return result;
+                    } else if (tokens[0] === "export") {
+                        result.action = "export";
+                        result.status = "valid";
+                        return result;
+                    } else if (tokens[0] === "import") {
+                        result.action = "import";
+                        result.status = "valid";
+                        return result;
+                    } else if (tokens[0] === "help" || tokens[0] === "?") {
+                        result.action = "help";
                         result.status = "valid";
                         return result;
                     } else if (tokens[0] === "copy") {
@@ -3275,6 +3841,14 @@
                     if (res.status === "valid" || res.status === "clear") {
                         if (res.action === "projects") {
                             globalBus.emit("ui:openSettings");
+                        } else if (res.action === "analytics") {
+                            globalBus.emit("ui:openAnalytics");
+                        } else if (res.action === "export") {
+                            globalBus.emit("ui:openExport");
+                        } else if (res.action === "import") {
+                            globalBus.emit("ui:openImport");
+                        } else if (res.action === "help") {
+                            globalBus.emit("ui:openHelp");
                         } else if (res.action === "copy") {
                             globalBus.emit("action:copy");
                         } else if (res.action === "paste") {
