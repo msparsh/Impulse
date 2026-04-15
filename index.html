@@ -10,9 +10,9 @@
             rel="stylesheet"
         />
         <style>
-            body {
+            html, body {
                 font-family: "Inter", sans-serif;
-                background-color: #f9fafb;
+                background-color: transparent !important;
                 color: #1a1a1a;
                 user-select: none;
             }
@@ -471,7 +471,7 @@
         </div>
 
         <div
-            class="mx-auto w-full h-full flex flex-col bg-white border-gray-100 overflow-hidden relative"
+            class="mx-auto w-full h-full flex flex-col bg-transparent border-gray-100 overflow-hidden relative"
         >
             <header
                 class="flex items-center justify-between p-6 border-b border-gray-100 shrink-0 relative"
@@ -636,7 +636,7 @@
             <div class="flex flex-1 overflow-hidden relative">
                 <aside
                     id="app-sidebar"
-                    class="w-[22%] min-w-[230px] max-w-[320px] border-r border-gray-100 p-6 flex flex-col gap-6 overflow-y-auto custom-scroll bg-gray-50 sidebar-transition flex-shrink-0"
+                    class="w-[22%] min-w-[230px] max-w-[320px] border-r border-gray-100 p-6 flex flex-col gap-6 overflow-y-auto custom-scroll bg-transparent sidebar-transition flex-shrink-0"
                 >
                     <div class="relative w-full h-[36px] shrink-0 mb-2">
                         <div
@@ -680,10 +680,10 @@
                     </div>
                 </aside>
                 <main
-                    class="flex-1 flex flex-col overflow-hidden bg-white relative"
+                    class="flex-1 flex flex-col overflow-hidden bg-transparent relative"
                 >
                     <div
-                        class="px-6 py-4 border-b border-gray-100 bg-white z-10 shadow-sm shrink-0"
+                        class="px-6 py-4 border-b border-gray-100 bg-transparent z-10 shadow-sm shrink-0"
                     >
                         <div
                             id="analytics-bar"

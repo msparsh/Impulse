@@ -7,6 +7,8 @@ function createWindow() {
     // ✅ Native title bar
     frame: true,
     titleBarStyle: "default", // important
+    backgroundMaterial: "mica",
+    backgroundColor: "#00000000",
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
