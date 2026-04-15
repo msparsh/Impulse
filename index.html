@@ -1332,6 +1332,15 @@
                     this.saveState();
                 }
 
+                replaceData(newData) {
+                    this.saveHistory();
+                    this.data = newData;
+                    this.saveState();
+                    this.buildIndex();
+                    globalBus.emit("view:refresh");
+                    globalBus.emit("hierarchy:refreshed");
+                }
+
                 ensureDateExists(dateStr) {
                     if (!this.data.schedules[dateStr])
                         this.updateState((data) => {
@@ -3217,76 +3226,65 @@
                     reader.onload = (e) => {
                         try {
                             const parsed = JSON.parse(e.target.result);
-                            if (
-                                !parsed ||
-                                typeof parsed !== "object" ||
-                                !Array.isArray(parsed.types) ||
-                                !Array.isArray(parsed.projects) ||
-                                typeof parsed.schedules !== "object"
-                            ) {
-                                throw new Error("Invalid schema");
+                            
+                            // Advanced Validation
+                            const errors = [];
+                            if (!parsed || typeof parsed !== "object") errors.push("Invalid JSON structure");
+                            if (!Array.isArray(parsed.types)) errors.push("Missing categories (types)");
+                            if (!Array.isArray(parsed.projects)) errors.push("Missing projects");
+                            if (!parsed.schedules || typeof parsed.schedules !== "object") errors.push("Missing schedules");
+                            
+                            if (errors.length > 0) {
+                                throw new Error(errors.join(", "));
                             }
+
                             if (replace) {
-                                this.state.updateState((data) => {
-                                    data.types = parsed.types;
-                                    data.projects = parsed.projects;
-                                    data.schedules = parsed.schedules;
-                                });
+                                // Full state overwrite
+                                this.state.replaceData(parsed);
+                                // Ensure currentDate is set from file if valid
+                                if (parsed.currentDate && /^\d{4}-\d{2}-\d{2}$/.test(parsed.currentDate)) {
+                                    this.state.viewMonth = new Date(parsed.currentDate).getMonth();
+                                    this.state.viewYear = new Date(parsed.currentDate).getFullYear();
+                                }
                             } else {
+                                // Merge logic
                                 this.state.updateState((data) => {
+                                    // Merge Types
                                     parsed.types.forEach((pt) => {
-                                        if (
-                                            !data.types.find(
-                                                (t) => t.id === pt.id,
-                                            )
-                                        )
+                                        if (!data.types.find((t) => t.id === pt.id)) {
                                             data.types.push(pt);
+                                        }
                                     });
+                                    // Merge Projects
                                     parsed.projects.forEach((pp) => {
-                                        if (
-                                            !data.projects.find(
-                                                (p) => p.id === pp.id,
-                                            )
-                                        )
+                                        if (!data.projects.find((p) => p.id === pp.id)) {
                                             data.projects.push(pp);
+                                        }
                                     });
-                                    Object.keys(parsed.schedules).forEach(
-                                        (date) => {
-                                            if (!data.schedules[date]) {
-                                                data.schedules[date] =
-                                                    JSON.parse(
-                                                        JSON.stringify(
-                                                            parsed.schedules[
-                                                                date
-                                                            ],
-                                                        ),
-                                                    );
-                                            } else {
-                                                Object.assign(
-                                                    data.schedules[date].blocks,
-                                                    parsed.schedules[date]
-                                                        .blocks,
-                                                );
-                                            }
-                                        },
-                                    );
+                                    // Merge Schedules
+                                    Object.keys(parsed.schedules).forEach((date) => {
+                                        if (!data.schedules[date]) {
+                                            data.schedules[date] = JSON.parse(JSON.stringify(parsed.schedules[date]));
+                                        } else {
+                                            const incomingBlocks = parsed.schedules[date].blocks || {};
+                                            Object.assign(data.schedules[date].blocks, incomingBlocks);
+                                        }
+                                    });
                                 });
+                                this.state.buildIndex();
+                                globalBus.emit("hierarchy:refreshed");
+                                globalBus.emit("view:refresh");
                             }
-                            this.state.buildIndex();
-                            globalBus.emit("hierarchy:refreshed");
-                            globalBus.emit("view:refresh");
+
                             this.closeExportModal();
-                            Toast.show(
-                                replace
-                                    ? "Replaced state from backup!"
-                                    : "Merged state from backup!",
-                            );
+                            Toast.show(replace ? "Full state restored!" : "Data merged successfully!");
                             fileInput.value = "";
                         } catch (err) {
-                            Toast.show("Invalid planner file format", "error");
-                            console.error(err);
+                            Toast.show(`Import failed: ${err.message}`, "error");
+                            console.error("Import Error:", err);
                         }
                     };
+                    reader.onerror = () => Toast.show("Error reading file", "error");
                     reader.readAsText(file);
                 }
 
