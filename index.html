@@ -388,6 +388,42 @@
             [draggable="true"].opacity-50 * {
                 pointer-events: none;
             }
+            /* EV badge */
+            .ev-badge {
+                display: inline-flex;
+                align-items: center;
+                padding: 2px 6px;
+                border-radius: 6px;
+                font-size: 0.7rem;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+                font-weight: 700;
+                white-space: nowrap;
+                flex-shrink: 0;
+                border: 1px solid #c7d2fe;
+                background: linear-gradient(135deg,#eef2ff,#f8faff);
+                color: #4338ca;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            }
+            .ev-badge.ev-amber {
+                background: linear-gradient(135deg,#fffbeb,#fff);
+                border-color: #fde68a;
+                color: #92400e;
+            }
+            .ev-badge.ev-gray {
+                background: linear-gradient(135deg,#f9fafb,#fff);
+                border-color: #e5e7eb;
+                color: #6b7280;
+            }
+            .ev-badge.ev-red {
+                background: linear-gradient(135deg,#fff1f2,#fff);
+                border-color: #fecaca;
+                color: #991b1b;
+            }
+            .ev-icon {
+                font-size: 0.6rem;
+                margin-right: 2px;
+                opacity: 0.7;
+            }
         </style>
     </head>
     <body class="h-screen flex flex-col overflow-hidden relative">
@@ -1209,28 +1245,36 @@
                                 name: "Deep Work",
                                 color: "#6b92f2",
                                 list: "B",
-                                isArchived: false
+                                isArchived: false,
+                                value: 85,
+                                deadline: null,
                             },
                             {
                                 id: "p_2",
                                 name: "Meetings",
                                 color: "#9333ea",
                                 list: "B",
-                                isArchived: false
+                                isArchived: false,
+                                value: 55,
+                                deadline: null,
                             },
                             {
                                 id: "p_3",
                                 name: "Study",
                                 color: "#f2a644",
                                 list: "B",
-                                isArchived: false
+                                isArchived: false,
+                                value: 75,
+                                deadline: null,
                             },
                             {
                                 id: "p_4",
                                 name: "Health/Meals",
                                 color: "#568f32",
                                 list: "B",
-                                isArchived: false
+                                isArchived: false,
+                                value: 40,
+                                deadline: null,
                             },
                         ],
                         schedules: {},
@@ -1263,16 +1307,14 @@
                         if (parsed.isSidebarCollapsed === undefined)
                             parsed.isSidebarCollapsed = false;
                         
-                        // Migrate projects to A/B lists
+                        // Migrate projects to A/B lists + EV fields
                         if (parsed.projects) {
                             parsed.projects.forEach(p => {
-                                if (p.list === undefined) {
-                                    p.list = "B"; // Put migrated in B
-                                }
-                                if (p.isArchived === undefined) {
-                                    p.isArchived = false;
-                                }
-                                delete p.typeId; // Remove old type reference
+                                if (p.list === undefined)       p.list = "B";
+                                if (p.isArchived === undefined)  p.isArchived = false;
+                                if (p.value === undefined)       p.value = 50;
+                                if (p.deadline === undefined)    p.deadline = null;
+                                delete p.typeId;
                             });
                         }
                         if (parsed.types) delete parsed.types;
@@ -1375,6 +1417,128 @@
                 }
                 getArchivedProjects() {
                     return this.data.projects.filter((p) => p.isArchived);
+                }
+
+                // ── EV Model ──────────────────────────────────────────────────
+                // Derives context from today's schedule: blocks placed, consecutive
+                // run, switch count, and last project.
+                computeTodayContext(dateStr) {
+                    const schedule = this.data.schedules[dateStr];
+                    const xi = {};   // blocks done per project
+                    const ci = {};   // current consecutive count per project
+                    let h = 0;       // total switches
+                    let prev = null; // last project id
+
+                    if (!schedule) return { xi, ci, h, prev };
+
+                    const blocks = schedule.blocks;
+                    // Sort block keys by row then col so we process in time order
+                    const sortedKeys = Object.keys(blocks).sort((a, b) => {
+                        const [ar, ac] = a.split("-").map(Number);
+                        const [br, bc] = b.split("-").map(Number);
+                        return ar !== br ? ar - br : ac - bc;
+                    });
+
+                    for (const key of sortedKeys) {
+                        const pid = blocks[key];
+                        xi[pid] = (xi[pid] || 0) + 1;
+                        if (pid !== prev && prev !== null) h++;
+                        if (pid !== prev) {
+                            // reset consecutive for all others on switch
+                            Object.keys(ci).forEach(k => { if (k !== pid) ci[k] = 0; });
+                        }
+                        ci[pid] = (ci[pid] || 0) + 1;
+                        prev = pid;
+                    }
+                    // Cap consecutive at 6
+                    Object.keys(ci).forEach(k => { ci[k] = Math.min(ci[k], 6); });
+                    return { xi, ci, h, prev };
+                }
+
+                // Full coupled EV for one project given context.
+                // allProjects should include all non-archived active projects.
+                computeProjectEV(project, allProjects, context) {
+                    const { xi = {}, ci = {}, h = 0, prev = null } = context;
+                    const V = project.value ?? 50;
+                    const id = project.id;
+
+                    // Derived params
+                    const B = V / 10;
+                    const alpha = 0.2 + (1 - V / 100) * 0.3;
+
+                    // Urgency multiplier
+                    let U = 1;
+                    if (project.deadline) {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const dl = new Date(project.deadline);
+                        const D = Math.max(0, Math.round((dl - today) / 86400000));
+                        U = 1 + Math.min(5, 2 / (D + 0.5));
+                        project._daysLeft = D; // cache for display
+                    } else {
+                        project._daysLeft = null;
+                    }
+
+                    // Saturation function g(x) = 1 - e^{-0.5 x}
+                    const g = (x) => 1 - Math.exp(-0.5 * x);
+
+                    // Cross-effect helper: β_ij
+                    const beta = (pi, pj) => {
+                        const Vi = pi.value ?? 50;
+                        const Vj = pj.value ?? 50;
+                        const hasDlJ = !!pj.deadline;
+                        const hasDlI = !!pi.deadline;
+                        if (hasDlJ && !hasDlI) {
+                            const todayMs = new Date().setHours(0,0,0,0);
+                            const dlJ = new Date(pj.deadline);
+                            const Dj = Math.max(0, Math.round((dlJ - todayMs) / 86400000));
+                            return 0.2 * (Vj / 100) * (1 / (Dj + 0.5));
+                        }
+                        if (Vi > 70 && Vj > 70) return -0.1;
+                        return 0;
+                    };
+
+                    // Intrinsic urgency term
+                    const xi_i = xi[id] || 0;
+                    const intrinsic = B * Math.exp(-alpha * xi_i) * U;
+
+                    // Saturating cross-pressure
+                    let cross = 0;
+                    for (const pj of allProjects) {
+                        if (pj.id === id || pj.isArchived) continue;
+                        const b = beta(project, pj);
+                        if (b !== 0) cross += b * g(xi[pj.id] || 0);
+                    }
+
+                    // Switching penalty (λ=0.3, η=0.15)
+                    const switchPenalty = prev !== null && prev !== id
+                        ? 0.3 * (1 + 0.15 * h) : 0;
+
+                    // Focus bonus (μ=0.25)
+                    const ci_i = ci[id] || 0;
+                    const focusBonus = 0.25 * Math.max(0, ci_i - 1);
+
+                    const ev = intrinsic + cross - switchPenalty + focusBonus;
+                    return Math.round(ev * 100) / 100; // 2 decimal places
+                }
+
+                // Returns { projectId: evScore } for all non-archived projects.
+                computeAllEVs(dateStr) {
+                    const context = this.computeTodayContext(dateStr);
+                    const allProjects = this.data.projects.filter(p => !p.isArchived);
+                    const evMap = {};
+                    for (const p of allProjects) {
+                        evMap[p.id] = this.computeProjectEV(p, allProjects, context);
+                    }
+                    return evMap;
+                }
+
+                // CSS class for an EV badge based on raw ev score
+                evBadgeClass(ev) {
+                    if (ev >= 5) return "ev-badge";           // indigo
+                    if (ev >= 2) return "ev-badge ev-amber";
+                    if (ev >= 0) return "ev-badge ev-gray";
+                    return "ev-badge ev-red";                  // negative (switching penalty dominates)
                 }
                 getCurrentDate() {
                     return this.data.currentDate;
@@ -2290,6 +2454,10 @@
                     const list = document.getElementById("project-list");
                     list.innerHTML = "";
 
+                    // Compute live EVs from today's actual schedule
+                    const today = this.state.getCurrentDate();
+                    const evMap = this.state.computeAllEVs(today);
+
                     const isEraserActive = this.state.paintProjectId === "CLEAR";
                     const eraserCard = document.createElement("div");
                     eraserCard.className = `project-card flex items-center gap-3 p-2 rounded-lg bg-white border ${isEraserActive ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition mb-4`;
@@ -2303,34 +2471,41 @@
                     const bProjects = this.state.getBProjects();
 
                     const headerA = document.createElement("div");
-                    headerA.className = "text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1 hide-on-collapse flex justify-between";
-                    headerA.innerHTML = `<span>Focus</span><span class="text-indigo-500 font-bold">(${aProjects.length}/5)</span>`;
+                    headerA.className = "text-[11px] font-black text-indigo-500 uppercase tracking-wider mb-2 pl-1 hide-on-collapse flex justify-between items-center";
+                    headerA.innerHTML = `<span>🎯 Focus (A)</span><span class="font-bold">(${aProjects.length}/5)</span>`;
                     list.appendChild(headerA);
 
                     const renderProjectCard = (p, listType) => {
                         const isActivePaint = this.state.paintProjectId === p.id;
+                        const ev = evMap[p.id] ?? 0;
+                        const badgeClass = this.state.evBadgeClass(ev);
+
                         const pCard = document.createElement("div");
-                        pCard.className = `project-card flex items-center gap-3 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition`;
-                        pCard.title = p.name;
+                        pCard.className = `project-card flex items-center gap-2 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition`;
+                        pCard.title = `${p.name} — EV ${ev}`;
                         pCard.dataset.action = "toggle-paint";
                         pCard.dataset.projectid = p.id;
                         pCard.dataset.list = listType;
 
                         const colorDot = document.createElement("div");
-                        colorDot.className = "w-4 h-4 rounded-full flex-shrink-0";
+                        colorDot.className = "w-3 h-3 rounded-full flex-shrink-0";
                         colorDot.style.backgroundColor = p.color;
 
                         const textSpan = document.createElement("span");
                         textSpan.className = "text-sm font-semibold text-gray-800 truncate hide-on-collapse flex-1";
                         textSpan.textContent = p.name;
 
+                        const evBadge = document.createElement("span");
+                        evBadge.className = badgeClass + " hide-on-collapse";
+                        evBadge.innerHTML = `<span class="ev-icon">⚡</span>${Math.round(ev * 10)}`;
+
                         pCard.appendChild(colorDot);
                         pCard.appendChild(textSpan);
+                        pCard.appendChild(evBadge);
+                        
                         if (isActivePaint) {
-                            const badge = document.createElement("span");
-                            badge.className = "paint-active-indicator";
-                            badge.textContent = "Paint";
-                            pCard.appendChild(badge);
+                            pCard.classList.add("ring-2", "ring-indigo-400", "bg-indigo-50/50");
+                            // Removed the text "Paint" badge because it hides EV score
                         }
                         return pCard;
                     };
@@ -2339,8 +2514,8 @@
 
                     if (bProjects.length > 0) {
                         const headerB = document.createElement("div");
-                        headerB.className = "text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-2 pl-1 hide-on-collapse";
-                        headerB.textContent = "Avoid At All Costs";
+                        headerB.className = "text-[11px] font-black text-amber-600 uppercase tracking-wider mt-5 mb-2 pl-1 hide-on-collapse";
+                        headerB.textContent = "🚫 Avoid (B)";
                         list.appendChild(headerB);
                         bProjects.forEach(p => list.appendChild(renderProjectCard(p, "B")));
                     }
@@ -2505,23 +2680,260 @@
                     });
                 }
 
-                renderSettings() {
+                renderSettings(selectedId = null) {
                     const wrapper = document.getElementById("hierarchy-list");
                     wrapper.innerHTML = "";
-                    // Reset to block layout so the add-row spans full width
                     wrapper.className = "";
-                    const aProjects = this.state.getAProjects();
-                    const bProjects = this.state.getBProjects();
+
+                    const allActive = [...this.state.getAProjects(), ...this.state.getBProjects()];
+                    const today = this.state.getCurrentDate();
+                    const evMap = this.state.computeAllEVs(today);
 
                     // ── Add new project row (full width) ──────────────────────
                     const addRow = document.createElement("div");
-                    addRow.className = "flex items-center gap-3 mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200";
+                    addRow.className = "flex items-center gap-3 mb-5 p-4 bg-gray-50 rounded-xl border border-gray-200";
                     addRow.innerHTML = `
                         <input type="text" id="new-proj-name" placeholder="New project name..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
                         <input type="color" id="new-proj-color" value="#6b92f2" class="w-10 h-10 p-1 cursor-pointer border border-gray-300 rounded-lg">
                         <button id="add-proj-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition">Add Project</button>
                     `;
                     wrapper.appendChild(addRow);
+
+                    // ── Two-column: project list | detail panel ────────────────
+                    const twoCol = document.createElement("div");
+                    twoCol.className = "grid grid-cols-1 md:grid-cols-2 gap-6";
+                    wrapper.appendChild(twoCol);
+
+                    // Left: project list
+                    const leftCol = document.createElement("div");
+                    twoCol.appendChild(leftCol);
+
+                    // Right: detail panel
+                    const rightCol = document.createElement("div");
+                    rightCol.id = "ev-detail-panel";
+                    rightCol.className = "bg-gray-50/50 rounded-2xl border border-gray-200 p-5";
+                    twoCol.appendChild(rightCol);
+
+                    // Helper: render the detail panel for a project
+                    const renderDetailPanel = (p) => {
+                        const V = p.value ?? 50;
+                        const dl = p.deadline ?? "";
+                        const context = this.state.computeTodayContext(today);
+                        const allProjects = this.state.data.projects.filter(x => !x.isArchived);
+                        const ev = this.state.computeProjectEV(p, allProjects, context);
+
+                        // Urgency info
+                        let urgencyHtml = "";
+                        if (p.deadline) {
+                            const todayMs = new Date(); todayMs.setHours(0,0,0,0);
+                            const daysLeft = Math.max(0, Math.round((new Date(p.deadline) - todayMs) / 86400000));
+                            const U = 1 + Math.min(5, 2 / (daysLeft + 0.5));
+                            urgencyHtml = `<div class="flex items-center gap-2 mt-1.5">
+                                <span class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">⏰ urgency ×${U.toFixed(3)}</span>
+                                <span class="text-[11px] text-gray-400">${daysLeft} day${daysLeft !== 1 ? "s" : ""} left</span>
+                            </div>`;
+                        }
+
+                        rightCol.innerHTML = `
+                            <div class="flex items-center gap-3 mb-5">
+                                <div class="relative w-8 h-8 rounded-full overflow-hidden shadow-inner shrink-0">
+                                    <input type="color" id="detail-color" value="${p.color}" class="absolute -top-1 -left-1 w-11 h-11 cursor-pointer border-0 p-0" />
+                                </div>
+                                <div class="flex-1">
+                                    <span class="font-black text-gray-900 text-base" contenteditable="true"
+                                          data-entity="project" data-id="${p.id}"
+                                          data-original="${p.name}"
+                                          id="detail-name-el">${p.name}</span>
+                                    <div class="text-[11px] text-gray-400 mt-0.5">${p.list === "A" ? "🎯 Focus list (A)" : "🚫 Avoid list (B)"}</div>
+                                </div>
+                                <span class="${this.state.evBadgeClass(ev)} text-sm"><span class="ev-icon">⚡</span>${Math.round(ev * 10)}</span>
+                            </div>
+
+                            <!-- Value slider -->
+                            <div class="mb-5">
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Value</label>
+                                    <span id="detail-value-display" class="text-sm font-black text-indigo-700 tabular-nums">${V}</span>
+                                </div>
+                                <input type="range" id="detail-value" min="0" max="100" value="${V}"
+                                       class="w-full accent-indigo-600">
+                                <p class="text-[11px] text-gray-400 mt-1">Intrinsic importance — shapes EV decay rate α and base score B</p>
+                            </div>
+
+                            <!-- Deadline -->
+                            <div class="mb-5">
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Deadline <span class="font-normal text-gray-400 normal-case">(optional)</span></label>
+                                    ${dl ? `<button id="clear-deadline-btn" class="text-[11px] text-red-400 hover:text-red-600 font-semibold">clear</button>` : ""}
+                                </div>
+                                <input type="date" id="detail-deadline" value="${dl}"
+                                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                                ${urgencyHtml}
+                            </div>
+
+                            <!-- EV card -->
+                            <div id="detail-ev-card" class="rounded-xl p-4 border flex items-center justify-between mb-5 ${this.state.evBadgeClass(ev).includes("amber") ? "bg-amber-50 border-amber-100" : this.state.evBadgeClass(ev).includes("gray") ? "bg-gray-50 border-gray-200" : "bg-indigo-50/70 border-indigo-100"}">
+                                <div>
+                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-0.5">Marginal EV (next block)</p>
+                                    <p id="detail-ev-number" class="text-2xl font-black tabular-nums text-gray-900">${Math.round(ev * 10)}</p>
+                                </div>
+                                <div class="text-right text-[11px] text-gray-500 leading-relaxed">
+                                    intrinsic + cross − switch + focus<br>
+                                    <span class="font-mono text-xs">B=${(V/10).toFixed(1)} α=${(0.2+(1-V/100)*0.3).toFixed(2)}</span>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex items-center gap-2 pt-3 border-t border-gray-100">
+                                ${p.list === "A"
+                                    ? `<button data-action="demote-project" data-projectid="${p.id}" class="text-xs font-bold text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition">→ Move to Avoid (B)</button>`
+                                    : `<button data-action="promote-project" data-projectid="${p.id}" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition">→ Move to Focus (A)</button>`
+                                }
+                                <button data-action="archive-project" data-projectid="${p.id}" class="ml-auto text-xs font-bold text-red-400 hover:bg-red-50 px-3 py-1.5 rounded-lg transition">Archive ✕</button>
+                            </div>
+                        `;
+
+                        // Wire color picker
+                        setTimeout(() => {
+                            const colorPicker = document.getElementById("detail-color");
+                            if (colorPicker) {
+                                colorPicker.addEventListener("input", (e) => {
+                                    globalBus.emit("hierarchy:updateProjectColor", { id: p.id, color: e.target.value });
+                                });
+                            }
+
+                            // Wire value slider — live update EV card
+                            const slider = document.getElementById("detail-value");
+                            const valDisplay = document.getElementById("detail-value-display");
+                            const evNum = document.getElementById("detail-ev-number");
+                            if (slider) {
+                                const updateEV = () => {
+                                    const newV = parseInt(slider.value);
+                                    valDisplay.textContent = newV;
+                                    // Save
+                                    globalBus.emit("hierarchy:updateProjectEV", { id: p.id, value: newV, deadline: p.deadline });
+                                    // Live recompute for display
+                                    p.value = newV;
+                                    const ctx = this.state.computeTodayContext(today);
+                                    const projs = this.state.data.projects.filter(x => !x.isArchived);
+                                    const newEv = this.state.computeProjectEV(p, projs, ctx);
+                                    if (evNum) evNum.textContent = Math.round(newEv * 10);
+                                };
+                                slider.addEventListener("input", updateEV);
+                            }
+
+                            // Wire deadline
+                            const dlInput = document.getElementById("detail-deadline");
+                            if (dlInput) {
+                                dlInput.addEventListener("change", (e) => {
+                                    const newDl = e.target.value || null;
+                                    globalBus.emit("hierarchy:updateProjectEV", { id: p.id, value: p.value, deadline: newDl });
+                                    // Rerender panel to update urgency display
+                                    p.deadline = newDl;
+                                    renderDetailPanel(p);
+                                });
+                            }
+
+                            // Wire clear deadline
+                            const clearBtn = document.getElementById("clear-deadline-btn");
+                            if (clearBtn) {
+                                clearBtn.addEventListener("click", () => {
+                                    globalBus.emit("hierarchy:updateProjectEV", { id: p.id, value: p.value, deadline: null });
+                                    p.deadline = null;
+                                    renderDetailPanel(p);
+                                });
+                            }
+
+                            // Wire inline name edit
+                            const nameEl = document.getElementById("detail-name-el");
+                            if (nameEl) {
+                                nameEl.addEventListener("focusout", () => {
+                                    const newName = nameEl.innerText.trim();
+                                    if (!newName || newName === p.name) { nameEl.innerText = p.name; return; }
+                                    const dup = this.state.getProjects().some(x => x.name.toLowerCase() === newName.toLowerCase() && x.id !== p.id);
+                                    if (dup) { nameEl.innerText = p.name; Toast.show(`"${newName}" already exists!`, "error"); return; }
+                                    globalBus.emit("hierarchy:updateProject", { id: p.id, name: newName, element: nameEl });
+                                    p.name = newName;
+                                });
+                                nameEl.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); nameEl.blur(); } });
+                            }
+                        }, 0);
+                    };
+
+                    // Render placeholder when nothing selected
+                    const renderEmptyPanel = () => {
+                        rightCol.innerHTML = `
+                            <div class="h-full flex flex-col items-center justify-center text-center py-12 text-gray-400">
+                                <div class="text-4xl mb-3">⚡</div>
+                                <p class="text-sm font-semibold text-gray-500 mb-1">Select a project</p>
+                                <p class="text-xs">Click any project on the left to configure its value, deadline, and see its live EV score.</p>
+                            </div>
+                        `;
+                    };
+
+                    // Render left project list
+                    const renderProjectList = (selId) => {
+                        leftCol.innerHTML = "";
+
+                        const sections = [
+                            { label: "🎯 Focus List (A)", projs: this.state.getAProjects(), isA: true },
+                            { label: "🚫 Avoid List (B)", projs: this.state.getBProjects(), isA: false },
+                        ];
+
+                        sections.forEach(({ label, projs, isA }) => {
+                            if (projs.length === 0 && isA) return;
+                            const hdr = document.createElement("div");
+                            hdr.className = `text-[11px] font-black uppercase tracking-wider mb-2 mt-4 first:mt-0 ${isA ? "text-indigo-500" : "text-amber-600"}`;
+                            hdr.textContent = label;
+                            leftCol.appendChild(hdr);
+
+                            if (projs.length === 0) {
+                                leftCol.innerHTML += `<div class="text-xs text-gray-400 italic py-2 pl-1">Empty</div>`;
+                                return;
+                            }
+
+                            projs.forEach(p => {
+                                const ev = evMap[p.id] ?? 0;
+                                const isSelected = p.id === selId;
+                                const row = document.createElement("div");
+                                row.className = `flex items-center justify-between p-3 rounded-xl border cursor-pointer transition group
+                                    ${isSelected
+                                        ? "border-indigo-300 bg-indigo-50 shadow-sm"
+                                        : "border-gray-100 bg-white hover:border-indigo-200 hover:bg-indigo-50/30 shadow-sm hover:shadow-md"}`;
+                                row.innerHTML = `
+                                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                                        <div class="w-3 h-3 rounded-full shrink-0" style="background:${p.color}"></div>
+                                        <span class="text-sm font-semibold text-gray-800 truncate">${p.name}</span>
+                                    </div>
+                                    <span class="${this.state.evBadgeClass(ev)} ml-2"><span class="ev-icon">⚡</span>${Math.round(ev * 10)}</span>
+                                `;
+                                row.addEventListener("click", () => {
+                                    renderProjectList(p.id);
+                                    renderDetailPanel(p);
+                                });
+                                leftCol.appendChild(row);
+                            });
+                        });
+
+                        // Archive link
+                        const archiveLink = document.createElement("div");
+                        archiveLink.className = "mt-6 text-center";
+                        archiveLink.innerHTML = `<button data-action="open-archive" class="text-xs text-gray-400 hover:text-gray-600 underline">View archived projects</button>`;
+                        leftCol.appendChild(archiveLink);
+                    };
+
+                    // Initial render
+                    const initSel = selectedId || (allActive[0]?.id ?? null);
+                    renderProjectList(initSel);
+                    if (initSel) {
+                        const initProj = this.state.getProjectById(initSel);
+                        if (initProj) renderDetailPanel(initProj);
+                        else renderEmptyPanel();
+                    } else {
+                        renderEmptyPanel();
+                    }
+
+                    // Wire Add button (after DOM is ready)
                     setTimeout(() => {
                         const btn = document.getElementById("add-proj-btn");
                         if (btn) {
@@ -2534,60 +2946,11 @@
                                     nameInput.value = "";
                                 }
                             };
-                            // Also submit on Enter
                             document.getElementById("new-proj-name").addEventListener("keydown", (ev) => {
                                 if (ev.key === "Enter") btn.click();
                             });
                         }
                     }, 0);
-
-                    // ── A | B side-by-side grid ───────────────────────────────
-                    const grid = document.createElement("div");
-                    grid.className = "grid grid-cols-1 md:grid-cols-2 gap-6";
-                    wrapper.appendChild(grid);
-
-                    // Helper to render one column
-                    const renderProjList = (title, projs, isListA) => {
-                        const block = document.createElement("div");
-                        const badgeColor = isListA ? "bg-indigo-100 text-indigo-700" : "bg-amber-100 text-amber-700";
-                        block.innerHTML = `<div class="flex items-center gap-2 mb-3"><span class="text-sm font-bold text-gray-700">${title}</span><span class="text-xs font-bold px-2 py-0.5 rounded-full ${badgeColor}">${projs.length}${isListA ? "/5" : ""}</span></div>`;
-                        const container = document.createElement("div");
-                        container.className = "space-y-2";
-                        if (projs.length === 0) {
-                            container.innerHTML = `<div class="text-xs text-gray-400 italic py-3 text-center border border-dashed border-gray-200 rounded-xl">Empty — add a project above</div>`;
-                        } else {
-                            projs.forEach(p => {
-                                const pCard = document.createElement("div");
-                                pCard.className = "flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition group/proj";
-                                pCard.innerHTML = `
-                                    <div class="flex items-center gap-2 flex-1 overflow-hidden">
-                                        <div class="relative w-7 h-7 rounded-full overflow-hidden shrink-0 shadow-inner">
-                                            <input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="absolute -top-1 -left-1 w-10 h-10 cursor-pointer border-0 p-0" />
-                                        </div>
-                                        <span class="font-semibold text-gray-800 text-sm truncate flex-1 cursor-text" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to rename">${p.name}</span>
-                                    </div>
-                                    <div class="flex items-center gap-1 opacity-0 group-hover/proj:opacity-100 transition ml-2 shrink-0">
-                                        ${isListA
-                                            ? `<button data-action="demote-project" data-projectid="${p.id}" class="text-gray-500 hover:bg-gray-100 px-2 py-1 rounded text-xs font-bold" title="Move to Avoid list">→B</button>`
-                                            : `<button data-action="promote-project" data-projectid="${p.id}" class="text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded text-xs font-bold" title="Move to Focus list">→A</button>`
-                                        }
-                                        <button data-action="archive-project" data-projectid="${p.id}" class="text-red-400 hover:bg-red-50 px-2 py-1 rounded text-xs font-bold" title="Archive">✕</button>
-                                    </div>
-                                `;
-                                container.appendChild(pCard);
-                            });
-                        }
-                        block.appendChild(container);
-                        grid.appendChild(block);
-                    };
-
-                    renderProjList("🎯 Focus List (A)", aProjects, true);
-                    renderProjList("🚫 Avoid At All Costs (B)", bProjects, false);
-
-                    const archiveBtnContainer = document.createElement("div");
-                    archiveBtnContainer.className = "mt-6 text-center";
-                    archiveBtnContainer.innerHTML = `<button data-action="open-archive" class="text-xs text-gray-400 hover:text-gray-600 underline">View archived projects</button>`;
-                    wrapper.appendChild(archiveBtnContainer);
                 }
 
                 renderArchiveView() {
@@ -2838,6 +3201,14 @@
                             this.state.data.viewMode === "day" ? "week" : "day",
                         ),
                     );
+                    globalBus.on("view:refresh", () => {
+                        this.ui.refreshScheduleView();
+                        this.ui.renderSidebarProjects(); // Update EV badges on sidebar
+                        this.ui.renderAlignmentKPI();
+                        if (!document.getElementById("settings-modal").classList.contains("hidden")) {
+                            this.ui.renderSettings(); // Update EV stats in settings
+                        }
+                    });
                     globalBus.on("ui:exitFocus", () => this.exitFocusMode());
                     globalBus.on("ui:togglePaint", (id) =>
                         this.togglePaintMode(id),
@@ -3173,6 +3544,7 @@
                                     : null,
                             });
                             globalBus.emit("analytics:refreshed");
+                            globalBus.emit("view:refresh"); // Need to trigger EV update
                         },
                     );
 
@@ -3206,15 +3578,31 @@
                                 );
                                 if (p) p.name = name;
                             });
-                            element.classList.add("edit-success");
-                            setTimeout(
-                                () => element.classList.remove("edit-success"),
-                                600,
-                            );
+                            if (element) {
+                                element.classList.add("edit-success");
+                                setTimeout(
+                                    () => element.classList.remove("edit-success"),
+                                    600,
+                                );
+                            }
                             Toast.show("Saved");
                             globalBus.emit("schedule:refreshed");
                             globalBus.emit("hierarchy:refreshed");
                         },
+                    );
+
+                    globalBus.on(
+                        "hierarchy:updateProjectEV",
+                        ({ id, value, deadline }) => {
+                            this.state.updateState((data) => {
+                                const p = data.projects.find(x => x.id === id);
+                                if (p) {
+                                    p.value = value;
+                                    p.deadline = deadline;
+                                }
+                            });
+                            globalBus.emit("hierarchy:refreshed");
+                        }
                     );
 
                     globalBus.on(
@@ -3535,7 +3923,9 @@
                             name: name,
                             color: color,
                             list: "B",
-                            isArchived: false
+                            isArchived: false,
+                            value: 50,
+                            deadline: null,
                         });
                     });
                     Toast.show(`Added ${name} to Avoid list`);
