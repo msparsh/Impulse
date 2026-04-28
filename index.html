@@ -1457,7 +1457,6 @@
                 this.dragState = null;
                 this.isDaySkeletonBuilt = false;
                 this.isWeekSkeletonBuilt = false;
-                this._lastAnalyticsKey = null;
                 this.currentSettingsProjectId = null;
 
                 this.setupGlobalClickDelegation();
@@ -1563,32 +1562,14 @@
                             case "import-replace":
                                 globalBus.emit("ui:importReplace");
                                 break;
-                            case "cancel-confirm":
-                                globalBus.emit("ui:cancelConfirm");
-                                break;
-                            case "select-date":
-                                globalBus.emit(
-                                    "ui:selectDate",
-                                    actionBtn.dataset.date,
-                                );
-                                break;
-                            case "add-project":
-                                globalBus.emit(
-                                    "ui:addProject",
-                                    actionBtn.dataset.typeid,
-                                );
-                                break;
-                            case "remove-project":
-                                globalBus.emit(
-                                    "ui:removeProject",
-                                    actionBtn.dataset.projectid,
-                                );
-                                break;
                             case "toggle-paint":
                                 globalBus.emit(
                                     "ui:togglePaint",
                                     actionBtn.dataset.projectid,
                                 );
+                                break;
+                            case "select-date":
+                                globalBus.emit("ui:selectDate", actionBtn.dataset.date);
                                 break;
                             case "promote-project":
                                 globalBus.emit("ui:promoteProject", actionBtn.dataset.projectid);
@@ -2951,24 +2932,16 @@
                 }
             }
 
-            showConfirm(typeId) {
-                const projs = this.state.getProjectsByType(typeId);
-                document.getElementById("confirm-count").textContent =
-                    projs.length;
-                const list = document.getElementById(
-                    "confirm-project-list",
-                );
-                list.innerHTML = "";
-                projs.forEach((p) => {
-                    const li = document.createElement("li");
-                    li.textContent = p.name;
-                    list.appendChild(li);
-                });
-                document.getElementById("confirm-action-btn").onclick =
-                    () => {
-                        app.executeRemoveType(typeId);
-                        this.toggleModal("confirm-modal", false);
-                    };
+            showConfirm({ title, message, confirmLabel, confirmClass, onConfirm }) {
+                document.getElementById("confirm-title").textContent = title || "Confirm Action";
+                document.getElementById("confirm-message").textContent = message || "Are you sure?";
+                const btn = document.getElementById("confirm-action-btn");
+                btn.textContent = confirmLabel || "Confirm";
+                btn.className = "px-4 py-2 rounded-lg text-sm font-bold text-white transition shadow-sm " + (confirmClass || "bg-red-600 hover:bg-red-700");
+                btn.onclick = () => {
+                    onConfirm();
+                    this.toggleModal("confirm-modal", false);
+                };
                 this.toggleModal("confirm-modal", true);
             }
         }
@@ -3044,6 +3017,7 @@
                 globalBus.on("ui:openSettings", () =>
                     this.openSettingsModal(),
                 );
+                globalBus.on("ui:cancelConfirm", () => this.ui.toggleModal("confirm-modal", false));
                 globalBus.on("ui:addProjectAB", (payload) => this.addProjectAB(payload.name, payload.color));
                 globalBus.on("ui:promoteProject", (id) => this.promoteProject(id));
                 globalBus.on("ui:demoteProject", (id) => this.demoteProject(id));
@@ -3679,7 +3653,6 @@
                         // Advanced Validation
                         const errors = [];
                         if (!parsed || typeof parsed !== "object") errors.push("Invalid JSON structure");
-                        if (!Array.isArray(parsed.types)) errors.push("Missing categories (types)");
                         if (!Array.isArray(parsed.projects)) errors.push("Missing projects");
                         if (!parsed.schedules || typeof parsed.schedules !== "object") errors.push("Missing schedules");
 
@@ -3698,12 +3671,6 @@
                         } else {
                             // Merge logic
                             this.state.updateState((data) => {
-                                // Merge Types
-                                parsed.types.forEach((pt) => {
-                                    if (!data.types.find((t) => t.id === pt.id)) {
-                                        data.types.push(pt);
-                                    }
-                                });
                                 // Merge Projects
                                 parsed.projects.forEach((pp) => {
                                     if (!data.projects.find((p) => p.id === pp.id)) {
@@ -3780,14 +3747,25 @@
             }
 
             archiveProject(id) {
-                this.state.updateState((data) => {
-                    const p = data.projects.find((x) => x.id === id);
-                    if (p) p.isArchived = true;
+                const p = this.state.getProjectById(id);
+                if (!p) return;
+
+                this.ui.showConfirm({
+                    title: "Archive Project",
+                    message: `Are you sure you want to archive "${p.name}"? It will be removed from your active lists but can be restored later.`,
+                    confirmLabel: "Archive Project",
+                    confirmClass: "bg-amber-600 hover:bg-amber-700",
+                    onConfirm: () => {
+                        this.state.updateState((data) => {
+                            const project = data.projects.find((x) => x.id === id);
+                            if (project) project.isArchived = true;
+                        });
+                        if (this.state.paintProjectId === id) this.togglePaintMode(null);
+                        Toast.show("Project archived");
+                        globalBus.emit("hierarchy:refreshed");
+                        globalBus.emit("view:refresh");
+                    }
                 });
-                if (this.state.paintProjectId === id) this.togglePaintMode(null);
-                Toast.show("Project archived");
-                globalBus.emit("hierarchy:refreshed");
-                globalBus.emit("view:refresh");
             }
 
             restoreProject(id) {
@@ -3804,20 +3782,31 @@
             }
 
             hardDeleteProject(id) {
-                this.state.updateState((data) => {
-                    data.projects = data.projects.filter((p) => p.id !== id);
-                    if (this.state.projectBlockMap[id]) {
-                        this.state.projectBlockMap[id].forEach((blockString) => {
-                            const [bDate, bKey] = blockString.split("#");
-                            if (data.schedules[bDate] && data.schedules[bDate].blocks[bKey])
-                                delete data.schedules[bDate].blocks[bKey];
+                const p = this.state.getProjectById(id);
+                if (!p) return;
+
+                this.ui.showConfirm({
+                    title: "Permanently Delete",
+                    message: `CRITICAL: This will permanently delete "${p.name}" and ALL its scheduled blocks from your history. This cannot be undone.`,
+                    confirmLabel: "Delete Forever",
+                    confirmClass: "bg-red-600 hover:bg-red-700",
+                    onConfirm: () => {
+                        this.state.updateState((data) => {
+                            data.projects = data.projects.filter((p) => p.id !== id);
+                            if (this.state.projectBlockMap[id]) {
+                                this.state.projectBlockMap[id].forEach((blockString) => {
+                                    const [bDate, bKey] = blockString.split("#");
+                                    if (data.schedules[bDate] && data.schedules[bDate].blocks[bKey])
+                                        delete data.schedules[bDate].blocks[bKey];
+                                });
+                                delete this.state.projectBlockMap[id];
+                            }
                         });
-                        delete this.state.projectBlockMap[id];
+                        Toast.show("Project permanently deleted");
+                        this.ui.renderArchiveView();
+                        globalBus.emit("view:refresh");
                     }
                 });
-                Toast.show("Project permanently deleted");
-                this.ui.renderArchiveView();
-                globalBus.emit("view:refresh");
             }
         }
 
@@ -4299,8 +4288,27 @@
                         globalBus.emit("ui:archiveProject", res.project.id);
                     } else if (res.action === "purge_b") {
                         const bProjs = this.app.state.getBProjects();
-                        bProjs.forEach(p => globalBus.emit("ui:archiveProject", p.id));
-                        Toast.show("Archived all Avoid list projects");
+                        if (bProjs.length === 0) {
+                            Toast.show("No projects in Avoid list to purge");
+                            return;
+                        }
+                        this.app.ui.showConfirm({
+                            title: "Purge Avoid List",
+                            message: `Are you sure you want to archive ALL ${bProjs.length} projects in your Avoid list?`,
+                            confirmLabel: "Archive All",
+                            confirmClass: "bg-amber-600 hover:bg-amber-700",
+                            onConfirm: () => {
+                                this.app.state.updateState(data => {
+                                    bProjs.forEach(p => {
+                                        const project = data.projects.find(x => x.id === p.id);
+                                        if (project) project.isArchived = true;
+                                    });
+                                });
+                                Toast.show(`Archived ${bProjs.length} projects`);
+                                globalBus.emit("hierarchy:refreshed");
+                                globalBus.emit("view:refresh");
+                            }
+                        });
                     } else {
                         const dateStr = this.app.state.getCurrentDate();
                         let updates = [];
