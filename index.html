@@ -714,7 +714,7 @@
                 <h2
                     class="text-2xl md:text-3xl font-black tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent"
                 >
-                    Manage Projects & Categories
+                    Manage Projects
                 </h2>
                 <button
                     data-action="close-settings"
@@ -737,21 +737,7 @@
                 class="flex-1 overflow-y-auto p-6 md:p-8 custom-scroll modal-content"
             >
                 <div class="max-w-4xl mx-auto">
-                    <div class="mb-8 flex flex-col sm:flex-row gap-4">
-                        <input
-                            type="text"
-                            id="new-type-name"
-                            placeholder="New category name..."
-                            class="flex-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 bg-gray-50"
-                        />
-                        <button
-                            data-action="add-type"
-                            class="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-sm"
-                        >
-                            Add Category
-                        </button>
-                    </div>
-                    <div id="hierarchy-list" class="space-y-6"></div>
+                    <div id="hierarchy-list" class="grid grid-cols-1 md:grid-cols-2 gap-8"></div>
                     <div
                         class="text-xs text-gray-400 text-center mt-8 pt-4 border-t border-gray-100"
                     >
@@ -771,17 +757,15 @@
                 <div
                     class="p-6 border-b border-gray-100 bg-red-50 text-red-600 flex items-center gap-3"
                 >
-                    <h3 class="font-bold text-lg">Delete Category?</h3>
+                    <h3 class="font-bold text-lg" id="confirm-title">Confirm Action</h3>
                 </div>
                 <div class="p-6 text-gray-700 text-sm">
-                    <p class="mb-4">
-                        Permanently delete category and
-                        <span id="confirm-count" class="font-bold"></span>
-                        project(s):
+                    <p class="mb-4" id="confirm-message">
+                        Are you sure you want to proceed?
                     </p>
                     <ul
                         id="confirm-project-list"
-                        class="list-disc pl-5 mb-4 space-y-1 font-medium text-gray-900 bg-gray-50 p-3 rounded-lg border border-gray-100"
+                        class="list-disc pl-5 mb-4 space-y-1 font-medium text-gray-900 bg-gray-50 p-3 rounded-lg border border-gray-100 hidden"
                     ></ul>
                 </div>
                 <div
@@ -993,7 +977,7 @@
                                     class="font-mono font-bold text-indigo-700"
                                     >projects</code
                                 ><span class="text-gray-600 ml-2"
-                                    >→ open full project/category manager</span
+                                    >→ open full project manager</span
                                 >
                             </div>
                             <div class="bg-gray-50 p-3 rounded-xl">
@@ -1071,10 +1055,6 @@
                                 ❯
                                 <span class="text-indigo-700">clear 1-3</span> →
                                 erase columns 1,2,3 for all hours
-                            </div>
-                            <div>
-                                ❯ <span class="text-indigo-700">predict</span> →
-                                fill next 3h with most used project
                             </div>
                             <div>
                                 ❯ <span class="text-indigo-700">focus</span> →
@@ -1219,38 +1199,38 @@
 
                 getDefaultState() {
                     return {
-                        version: 17,
+                        version: 18,
                         currentDate: this.getLocalISODate(),
                         viewMode: "day",
                         isSidebarCollapsed: false,
-                        types: [
-                            { id: "t_1", name: "Work" },
-                            { id: "t_2", name: "Personal" },
-                        ],
                         projects: [
                             {
                                 id: "p_1",
                                 name: "Deep Work",
                                 color: "#6b92f2",
-                                typeId: "t_1",
+                                list: "B",
+                                isArchived: false
                             },
                             {
                                 id: "p_2",
                                 name: "Meetings",
                                 color: "#9333ea",
-                                typeId: "t_1",
+                                list: "B",
+                                isArchived: false
                             },
                             {
                                 id: "p_3",
                                 name: "Study",
                                 color: "#f2a644",
-                                typeId: "t_2",
+                                list: "B",
+                                isArchived: false
                             },
                             {
                                 id: "p_4",
                                 name: "Health/Meals",
                                 color: "#568f32",
-                                typeId: "t_2",
+                                list: "B",
+                                isArchived: false
                             },
                         ],
                         schedules: {},
@@ -1262,7 +1242,7 @@
                         let saved = localStorage.getItem(this.storageKey);
                         if (!saved) {
                             // Migration: try older version keys
-                            for (let v = 16; v >= 1; v--) {
+                            for (let v = 17; v >= 1; v--) {
                                 const oldKey = `planner_state_v${v}`;
                                 const oldData = localStorage.getItem(oldKey);
                                 if (oldData) {
@@ -1282,7 +1262,22 @@
                             : this.getDefaultState();
                         if (parsed.isSidebarCollapsed === undefined)
                             parsed.isSidebarCollapsed = false;
-                        parsed.version = 17;
+                        
+                        // Migrate projects to A/B lists
+                        if (parsed.projects) {
+                            parsed.projects.forEach(p => {
+                                if (p.list === undefined) {
+                                    p.list = "B"; // Put migrated in B
+                                }
+                                if (p.isArchived === undefined) {
+                                    p.isArchived = false;
+                                }
+                                delete p.typeId; // Remove old type reference
+                            });
+                        }
+                        if (parsed.types) delete parsed.types;
+                        
+                        parsed.version = 18;
                         return parsed;
                     } catch (e) {
                         console.error("Failed to load state:", e);
@@ -1372,13 +1367,14 @@
                 getProjects() {
                     return this.data.projects;
                 }
-                getProjectsByType(typeId) {
-                    return this.data.projects.filter(
-                        (p) => p.typeId === typeId,
-                    );
+                getAProjects() {
+                    return this.data.projects.filter((p) => p.list === "A" && !p.isArchived);
                 }
-                getTypes() {
-                    return this.data.types;
+                getBProjects() {
+                    return this.data.projects.filter((p) => p.list === "B" && !p.isArchived);
+                }
+                getArchivedProjects() {
+                    return this.data.projects.filter((p) => p.isArchived);
                 }
                 getCurrentDate() {
                     return this.data.currentDate;
@@ -1397,7 +1393,7 @@
                 getRangeAnalytics(startStr, endStr) {
                     const start = new Date(startStr);
                     const end = new Date(endStr);
-                    let typeCounts = {};
+                    let listCounts = { A: 0, B: 0 };
                     let projectCounts = {};
                     let totalBlocks = 0;
 
@@ -1408,14 +1404,64 @@
                             Object.values(blocks).forEach((pid) => {
                                 const p = this.getProjectById(pid);
                                 if (p) {
-                                    typeCounts[p.typeId] = (typeCounts[p.typeId] || 0) + 1;
+                                    listCounts[p.list] = (listCounts[p.list] || 0) + 1;
                                     projectCounts[pid] = (projectCounts[pid] || 0) + 1;
                                     totalBlocks++;
                                 }
                             });
                         }
                     }
-                    return { typeCounts, projectCounts, totalBlocks };
+                    return { listCounts, projectCounts, totalBlocks };
+                }
+
+                getAStreak() {
+                    let streak = 0;
+                    let currentDate = new Date();
+                    
+                    while (true) {
+                        const dateStr = this.getLocalISODate(currentDate);
+                        const schedule = this.data.schedules[dateStr];
+                        let aBlocks = 0;
+                        if (schedule && schedule.blocks) {
+                            Object.values(schedule.blocks).forEach((pid) => {
+                                const p = this.getProjectById(pid);
+                                if (p && p.list === "A") aBlocks++;
+                            });
+                        }
+                        
+                        if (aBlocks > 0) {
+                            streak++;
+                        } else {
+                            if (streak > 0 || this.getLocalISODate(currentDate) !== this.getLocalISODate(new Date())) {
+                                break;
+                            }
+                        }
+                        
+                        currentDate.setDate(currentDate.getDate() - 1);
+                    }
+                    return streak;
+                }
+
+                getAWeeklyGrowth() {
+                    const today = new Date();
+                    const thisWeekStart = new Date(today);
+                    thisWeekStart.setDate(thisWeekStart.getDate() - 6);
+                    
+                    const lastWeekEnd = new Date(thisWeekStart);
+                    lastWeekEnd.setDate(lastWeekEnd.getDate() - 1);
+                    const lastWeekStart = new Date(lastWeekEnd);
+                    lastWeekStart.setDate(lastWeekStart.getDate() - 6);
+
+                    const thisWeekStats = this.getRangeAnalytics(this.getLocalISODate(thisWeekStart), this.getLocalISODate(today));
+                    const lastWeekStats = this.getRangeAnalytics(this.getLocalISODate(lastWeekStart), this.getLocalISODate(lastWeekEnd));
+
+                    const aThisWeek = thisWeekStats.listCounts.A || 0;
+                    const aLastWeek = lastWeekStats.listCounts.A || 0;
+
+                    if (aLastWeek === 0) {
+                        return aThisWeek > 0 ? 100 : 0;
+                    }
+                    return Math.round(((aThisWeek - aLastWeek) / aLastWeek) * 100);
                 }
 
                 getHeatmapData(monthsCount = 3) {
@@ -1428,8 +1474,12 @@
                         const d = new Date(date);
                         if (d >= start && d <= end) {
                             const blocks = this.data.schedules[date].blocks || {};
-                            const count = Object.keys(blocks).length;
-                            if (count > 0) heatmap[date] = count;
+                            let aCount = 0;
+                            Object.values(blocks).forEach(pid => {
+                                const p = this.getProjectById(pid);
+                                if (p && p.list === "A") aCount++;
+                            });
+                            if (aCount > 0) heatmap[date] = aCount;
                         }
                     }
                     return heatmap;
@@ -1550,9 +1600,6 @@
                                 case "import-replace":
                                     globalBus.emit("ui:importReplace");
                                     break;
-                                case "add-type":
-                                    globalBus.emit("ui:addType");
-                                    break;
                                 case "cancel-confirm":
                                     globalBus.emit("ui:cancelConfirm");
                                     break;
@@ -1568,12 +1615,6 @@
                                         actionBtn.dataset.typeid,
                                     );
                                     break;
-                                case "remove-type":
-                                    globalBus.emit(
-                                        "ui:removeType",
-                                        actionBtn.dataset.typeid,
-                                    );
-                                    break;
                                 case "remove-project":
                                     globalBus.emit(
                                         "ui:removeProject",
@@ -1585,6 +1626,27 @@
                                         "ui:togglePaint",
                                         actionBtn.dataset.projectid,
                                     );
+                                    break;
+                                case "promote-project":
+                                    globalBus.emit("ui:promoteProject", actionBtn.dataset.projectid);
+                                    break;
+                                case "demote-project":
+                                    globalBus.emit("ui:demoteProject", actionBtn.dataset.projectid);
+                                    break;
+                                case "archive-project":
+                                    globalBus.emit("ui:archiveProject", actionBtn.dataset.projectid);
+                                    break;
+                                case "restore-project":
+                                    globalBus.emit("ui:restoreProject", actionBtn.dataset.projectid);
+                                    break;
+                                case "hard-delete-project":
+                                    globalBus.emit("ui:hardDeleteProject", actionBtn.dataset.projectid);
+                                    break;
+                                case "open-archive":
+                                    globalBus.emit("ui:openArchive");
+                                    break;
+                                case "back-to-settings":
+                                    globalBus.emit("ui:backToSettings");
                                     break;
                             }
                         }
@@ -1765,45 +1827,20 @@
 
                                 const entityType = e.target.dataset.entity;
                                 const id = e.target.dataset.id;
-                                let isDup =
-                                    entityType === "type"
-                                        ? this.state
-                                              .getTypes()
-                                              .some(
-                                                  (t) =>
-                                                      t.name.toLowerCase() ===
-                                                          newText.toLowerCase() &&
-                                                      t.id !== id,
-                                              )
-                                        : this.state
-                                              .getProjects()
-                                              .some(
-                                                  (p) =>
-                                                      p.name.toLowerCase() ===
-                                                          newText.toLowerCase() &&
-                                                      p.id !== id,
-                                              );
+                                const isDup = this.state.getProjects().some(
+                                    (p) => p.name.toLowerCase() === newText.toLowerCase() && p.id !== id
+                                );
 
                                 if (isDup) {
                                     e.target.innerText = original;
-                                    Toast.show(
-                                        `"${newText}" already exists!`,
-                                        "error",
-                                    );
+                                    Toast.show(`"${newText}" already exists!`, "error");
                                     return;
                                 }
-                                if (entityType === "type")
-                                    globalBus.emit("hierarchy:updateType", {
-                                        id,
-                                        name: newText,
-                                        element: e.target,
-                                    });
-                                else if (entityType === "project")
-                                    globalBus.emit("hierarchy:updateProject", {
-                                        id,
-                                        name: newText,
-                                        element: e.target,
-                                    });
+                                globalBus.emit("hierarchy:updateProject", {
+                                    id,
+                                    name: newText,
+                                    element: e.target,
+                                });
                             }
                         },
                         true,
@@ -1905,25 +1942,13 @@
                             dropZone.dataset.dropId || dropZone.dataset.dragId;
 
                         if (
-                            this.dragState.entity === "type" &&
-                            dropEntity === "type"
+                            this.dragState.entity === "project" &&
+                            dropEntity === "project"
                         )
-                            globalBus.emit("hierarchy:reorderType", {
+                            globalBus.emit("hierarchy:reorderProject", {
                                 sourceId: this.dragState.id,
                                 targetId: dropId,
                             });
-                        else if (this.dragState.entity === "project") {
-                            if (dropEntity === "project")
-                                globalBus.emit("hierarchy:reorderProject", {
-                                    sourceId: this.dragState.id,
-                                    targetId: dropId,
-                                });
-                            else if (dropEntity === "type-container")
-                                globalBus.emit("hierarchy:moveProjectToType", {
-                                    projectId: this.dragState.id,
-                                    typeId: dropId,
-                                });
-                        }
                     });
                 }
 
@@ -2050,17 +2075,11 @@
                         this.refreshScheduleView(),
                     );
                     globalBus.on("analytics:refreshed", () =>
-                        this.renderAnalytics(
-                            this.state.getDailyAnalytics(),
-                            this.state.getTypes(),
-                        ),
+                        this.renderAlignmentKPI(),
                     );
                     globalBus.on("hierarchy:refreshed", () => {
                         this.renderSettings();
-                        this.renderSidebarProjects(
-                            this.state.getProjects(),
-                            this.state.getTypes(),
-                        );
+                        this.renderSidebarProjects();
                     });
                 }
 
@@ -2068,15 +2087,9 @@
                     const date = this.state.getCurrentDate();
                     this.renderHeader(date);
                     this.renderCalendar();
-                    this.renderSidebarProjects(
-                        this.state.getProjects(),
-                        this.state.getTypes(),
-                    );
+                    this.renderSidebarProjects();
                     this.refreshScheduleView();
-                    this.renderAnalytics(
-                        this.state.getDailyAnalytics(),
-                        this.state.getTypes(),
-                    );
+                    this.renderAlignmentKPI();
 
                     document.getElementById("btn-view-day").className =
                         `flex-1 py-1.5 text-xs font-bold rounded-lg transition ${this.state.data.viewMode === "day" ? "shadow-sm bg-white text-gray-800" : "text-gray-500 hover:text-gray-700"}`;
@@ -2257,18 +2270,27 @@
 
                     for (let day = 1; day <= daysInMonth; day++) {
                         const loopDateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                        const isActive =
-                            loopDateStr === this.state.getCurrentDate();
-                        grid.innerHTML += `<div data-action="select-date" data-date="${loopDateStr}" class="py-1 cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition font-medium ${isActive ? "active-date shadow-md" : "text-gray-700"}">${day}</div>`;
+                        const isActive = loopDateStr === this.state.getCurrentDate();
+                        const isToday = loopDateStr === this.state.getLocalISODate(new Date());
+                        
+                        let classes = "py-1 cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition font-medium ";
+                        if (isActive) {
+                            classes += "active-date shadow-md";
+                        } else if (isToday) {
+                            classes += "text-indigo-600 bg-indigo-50 ring-1 ring-inset ring-indigo-200";
+                        } else {
+                            classes += "text-gray-700";
+                        }
+                        
+                        grid.innerHTML += `<div data-action="select-date" data-date="${loopDateStr}" class="${classes}">${day}</div>`;
                     }
                 }
 
-                renderSidebarProjects(projects, types) {
+                renderSidebarProjects() {
                     const list = document.getElementById("project-list");
                     list.innerHTML = "";
 
-                    const isEraserActive =
-                        this.state.paintProjectId === "CLEAR";
+                    const isEraserActive = this.state.paintProjectId === "CLEAR";
                     const eraserCard = document.createElement("div");
                     eraserCard.className = `project-card flex items-center gap-3 p-2 rounded-lg bg-white border ${isEraserActive ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition mb-4`;
                     eraserCard.title = "Eraser (Clear Blocks)";
@@ -2277,84 +2299,90 @@
                     eraserCard.innerHTML = `<div class="w-4 h-4 rounded-full flex-shrink-0 border-2 border-red-400 bg-red-50 flex items-center justify-center"></div><span class="text-sm font-semibold text-gray-800 truncate hide-on-collapse">Eraser</span>${isEraserActive ? '<span class="paint-active-indicator bg-red-500">Active</span>' : ""}`;
                     list.appendChild(eraserCard);
 
-                    types.forEach((t) => {
-                        const typeProjects = projects.filter(
-                            (p) => p.typeId === t.id,
-                        );
-                        if (typeProjects.length === 0) return;
+                    const aProjects = this.state.getAProjects();
+                    const bProjects = this.state.getBProjects();
 
-                        const header = document.createElement("div");
-                        header.className =
-                            "text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1 hide-on-collapse";
-                        header.textContent = t.name;
-                        list.appendChild(header);
+                    const headerA = document.createElement("div");
+                    headerA.className = "text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1 hide-on-collapse flex justify-between";
+                    headerA.innerHTML = `<span>Focus</span><span class="text-indigo-500 font-bold">(${aProjects.length}/5)</span>`;
+                    list.appendChild(headerA);
 
-                        typeProjects.forEach((p) => {
-                            const isActivePaint =
-                                this.state.paintProjectId === p.id;
-                            const pCard = document.createElement("div");
-                            pCard.className = `project-card flex items-center gap-3 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition`;
-                            pCard.title = p.name;
-                            pCard.dataset.action = "toggle-paint";
-                            pCard.dataset.projectid = p.id;
+                    const renderProjectCard = (p, listType) => {
+                        const isActivePaint = this.state.paintProjectId === p.id;
+                        const pCard = document.createElement("div");
+                        pCard.className = `project-card flex items-center gap-3 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition`;
+                        pCard.title = p.name;
+                        pCard.dataset.action = "toggle-paint";
+                        pCard.dataset.projectid = p.id;
+                        pCard.dataset.list = listType;
 
-                            const colorDot = document.createElement("div");
-                            colorDot.className =
-                                "w-4 h-4 rounded-full flex-shrink-0";
-                            colorDot.style.backgroundColor = p.color;
+                        const colorDot = document.createElement("div");
+                        colorDot.className = "w-4 h-4 rounded-full flex-shrink-0";
+                        colorDot.style.backgroundColor = p.color;
 
-                            const textSpan = document.createElement("span");
-                            textSpan.className =
-                                "text-sm font-semibold text-gray-800 truncate hide-on-collapse";
-                            textSpan.textContent = p.name;
+                        const textSpan = document.createElement("span");
+                        textSpan.className = "text-sm font-semibold text-gray-800 truncate hide-on-collapse flex-1";
+                        textSpan.textContent = p.name;
 
-                            pCard.appendChild(colorDot);
-                            pCard.appendChild(textSpan);
-                            if (isActivePaint) {
-                                const badge = document.createElement("span");
-                                badge.className = "paint-active-indicator";
-                                badge.textContent = "Paint";
-                                pCard.appendChild(badge);
-                            }
-                            list.appendChild(pCard);
-                        });
-                    });
+                        pCard.appendChild(colorDot);
+                        pCard.appendChild(textSpan);
+                        if (isActivePaint) {
+                            const badge = document.createElement("span");
+                            badge.className = "paint-active-indicator";
+                            badge.textContent = "Paint";
+                            pCard.appendChild(badge);
+                        }
+                        return pCard;
+                    };
+
+                    aProjects.forEach(p => list.appendChild(renderProjectCard(p, "A")));
+
+                    if (bProjects.length > 0) {
+                        const headerB = document.createElement("div");
+                        headerB.className = "text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-2 pl-1 hide-on-collapse";
+                        headerB.textContent = "Avoid At All Costs";
+                        list.appendChild(headerB);
+                        bProjects.forEach(p => list.appendChild(renderProjectCard(p, "B")));
+                    }
                 }
 
-                renderAnalytics(typeCounts, types) {
+                renderAlignmentKPI() {
                     const bar = document.getElementById("analytics-bar");
                     bar.innerHTML = "";
-                    let totalAssigned = 0;
-                    types.forEach((t) => {
-                        const bCount = typeCounts[t.id] || 0;
-                        if (bCount > 0) {
-                            const minutes = bCount * 10;
-                            const hoursStr =
-                                minutes >= 60
-                                    ? `${(minutes / 60).toFixed(1)}h`
-                                    : `${minutes}m`;
+                    
+                    const today = this.state.getCurrentDate();
+                    const start = new Date(today);
+                    start.setDate(start.getDate() - 6);
+                    const stats = this.state.getRangeAnalytics(this.state.getLocalISODate(start), today);
+                    
+                    const totalAB = (stats.listCounts.A || 0) + (stats.listCounts.B || 0);
+                    let alignment = 0;
+                    if (totalAB > 0) alignment = Math.round(((stats.listCounts.A || 0) / totalAB) * 100);
+                    
+                    if (totalAB === 0) {
+                        bar.innerHTML = `<span class="text-sm text-gray-400 font-medium italic">Schedule blocks to see alignment.</span>`;
+                        return;
+                    }
 
-                            const div = document.createElement("div");
-                            div.className =
-                                "flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 shadow-sm";
+                    let colorClass = "text-red-600 bg-red-50";
+                    let barColor = "bg-red-500";
+                    if (alignment >= 80) {
+                        colorClass = "text-green-600 bg-green-50";
+                        barColor = "bg-green-500";
+                    } else if (alignment >= 50) {
+                        colorClass = "text-yellow-600 bg-yellow-50";
+                        barColor = "bg-yellow-500";
+                    }
 
-                            const span = document.createElement("span");
-                            span.className =
-                                "text-xs font-semibold text-gray-700";
-                            span.textContent = `${t.name}: `;
-
-                            const innerSpan = document.createElement("span");
-                            innerSpan.className = "text-gray-500";
-                            innerSpan.textContent = hoursStr;
-
-                            span.appendChild(innerSpan);
-                            div.appendChild(span);
-                            bar.appendChild(div);
-                            totalAssigned++;
-                        }
-                    });
-                    if (totalAssigned === 0)
-                        bar.innerHTML = `<span class="text-sm text-gray-400 font-medium italic">Click a block to schedule.</span>`;
+                    bar.innerHTML = `
+                        <div class="flex items-center gap-4 w-full max-w-[400px]">
+                            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider flex-shrink-0">7-Day Alignment</span>
+                            <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden flex items-center">
+                                <div class="h-full ${barColor} transition-all duration-500" style="width: ${alignment}%"></div>
+                            </div>
+                            <span class="text-xs font-bold ${colorClass} px-2 py-0.5 rounded-md whitespace-nowrap">${alignment}%</span>
+                        </div>
+                    `;
                 }
 
                 getStartOfWeek(dateStr) {
@@ -2383,6 +2411,9 @@
                         "SAT",
                     ];
 
+                    const now = new Date();
+                    const logicalToday = this.state.getLocalISODate(now);
+
                     for (let i = 0; i < 7; i++) {
                         let d = new Date(startOfWeek);
                         d.setDate(startOfWeek.getDate() + i);
@@ -2395,6 +2426,7 @@
                             day: days[i],
                             date: d.getDate(),
                             isCurrent: formattedDate === currentDateStr,
+                            isToday: formattedDate === logicalToday
                         });
                     }
 
@@ -2405,14 +2437,18 @@
                         `<div></div>` +
                         weekLabels
                             .map(
-                                (l) =>
-                                    `<div class="flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded py-1 transition ${l.isCurrent ? "bg-indigo-50 text-indigo-700" : "text-gray-500"}" data-action="select-date" data-date="${weekDates[weekLabels.indexOf(l)]}"><span class="text-[9px] font-bold tracking-widest">${l.day}</span><span class="text-sm font-black ${l.isCurrent ? "text-indigo-700" : "text-gray-800"}">${l.date}</span></div>`,
+                                (l, idx) =>
+                                    `<div class="flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded py-1 transition ${l.isCurrent ? "bg-indigo-50 text-indigo-700" : l.isToday ? "text-indigo-600 bg-indigo-50/30" : "text-gray-500"}" data-action="select-date" data-date="${weekDates[idx]}">
+                                        <span class="text-[9px] font-bold tracking-widest">${l.day}</span>
+                                        <div class="relative">
+                                            <span class="text-sm font-black ${l.isCurrent ? "text-indigo-700" : "text-gray-800"}">${l.date}</span>
+                                            ${l.isToday ? '<div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-500 rounded-full"></div>' : ""}
+                                        </div>
+                                    </div>`,
                             )
                             .join("");
                     container.appendChild(headerRow);
 
-                    const now = new Date();
-                    const logicalToday = this.state.getLocalISODate(now);
                     let currentRowIndex = now.getHours();
 
                     hours.forEach((time, rowIndex) => {
@@ -2433,7 +2469,7 @@
                             const cellObj = this.state.getSchedule(dateStr);
                             const blocks = cellObj.blocks;
                             const cellContainer = document.createElement("div");
-                            cellContainer.className = `week-cell ${isCurrentCell ? "border-indigo-300 bg-indigo-50/30" : ""}`;
+                            cellContainer.className = `week-cell ${isTodayCol ? "border-l-2 border-indigo-400 bg-indigo-50/10" : ""} ${isCurrentCell ? "ring-2 ring-indigo-300 z-10" : ""}`;
 
                             for (let colIndex = 0; colIndex < 6; colIndex++) {
                                 const block = document.createElement("div");
@@ -2470,79 +2506,129 @@
                 }
 
                 renderSettings() {
-                    const list = document.getElementById("hierarchy-list");
-                    list.innerHTML = "";
-                    const types = this.state.getTypes();
-                    const projects = this.state.getProjects();
+                    const wrapper = document.getElementById("hierarchy-list");
+                    wrapper.innerHTML = "";
+                    // Reset to block layout so the add-row spans full width
+                    wrapper.className = "";
+                    const aProjects = this.state.getAProjects();
+                    const bProjects = this.state.getBProjects();
 
-                    types.forEach((t) => {
-                        const typeProjs = projects.filter(
-                            (p) => p.typeId === t.id,
-                        );
-                        const typeBlock = document.createElement("div");
-                        typeBlock.className =
-                            "bg-gray-50 rounded-2xl p-5 border border-gray-200";
-                        typeBlock.draggable = true;
-                        typeBlock.dataset.dragEntity = "type";
-                        typeBlock.dataset.dragId = t.id;
-                        typeBlock.dataset.dropZone = "true";
-                        typeBlock.dataset.dropEntity = "type";
-
-                        typeBlock.innerHTML = `
-                        <div class="flex items-center justify-between mb-4 flex-wrap gap-2 group/type">
-                            <div class="flex items-center gap-3">
-                                <svg class="grab-handle w-5 h-5 text-gray-400 cursor-grab active:cursor-grabbing" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
-                                <span class="text-xl font-black text-gray-800 bg-transparent border-b border-dashed border-transparent hover:border-gray-300 px-1 focus:bg-white focus:outline-none transition-colors" contenteditable="true" data-entity="type" data-id="${t.id}" title="Click to edit"></span>
-                                <span class="text-xs bg-gray-200 px-2 py-0.5 rounded-full font-bold">${typeProjs.length}</span>
-                            </div>
-                            <button data-action="remove-type" data-typeid="${t.id}" class="text-red-500 hover:bg-red-100 p-2 rounded-lg transition text-sm font-bold opacity-0 group-hover/type:opacity-100">Delete Category</button>
-                        </div>
-                        <div class="space-y-2 mb-3" id="proj-container-${t.id}" data-drop-zone="true" data-drop-entity="type-container" data-drop-id="${t.id}"></div>
-                        <button data-action="add-project" data-typeid="${t.id}" class="text-indigo-600 text-sm font-bold hover:bg-indigo-50 px-3 py-1.5 rounded-lg inline-flex items-center gap-1 transition">+ Add Project</button>
-                        `;
-
-                        typeBlock.querySelector(
-                            "span[contenteditable]",
-                        ).textContent = t.name;
-                        list.appendChild(typeBlock);
-
-                        const projContainer = document.getElementById(
-                            `proj-container-${t.id}`,
-                        );
-
-                        if (typeProjs.length === 0)
-                            projContainer.innerHTML = `<div class="text-xs text-gray-400 italic py-3 pointer-events-none">Empty category. Drop projects here or click 'Add Project'.</div>`;
-                        else {
-                            typeProjs.forEach((p) => {
-                                const pCard = document.createElement("div");
-                                pCard.className =
-                                    "flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition group/proj";
-                                pCard.draggable = true;
-                                pCard.dataset.dragEntity = "project";
-                                pCard.dataset.dragId = p.id;
-                                pCard.dataset.dropZone = "true";
-                                pCard.dataset.dropEntity = "project";
-
-                                pCard.innerHTML = `
-                                <div class="flex items-center gap-3 flex-1 overflow-hidden">
-                                    <svg class="grab-handle w-5 h-5 text-gray-300 shrink-0 cursor-grab active:cursor-grabbing" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
-                                    <div class="relative w-8 h-8 rounded-full overflow-hidden shrink-0 shadow-inner">
-                                        <input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="absolute -top-2 -left-2 w-12 h-12 cursor-pointer border-0 p-0" />
-                                    </div>
-                                    <span class="font-semibold text-gray-800 bg-transparent border-b border-dashed border-transparent hover:border-gray-300 px-1 focus:bg-white focus:outline-none truncate flex-1 transition-colors" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to edit"></span>
-                                </div>
-                                <button data-action="remove-project" data-projectid="${p.id}" class="opacity-0 group-hover/proj:opacity-100 text-red-500 hover:bg-red-50 transition px-3 py-1 rounded-md text-sm font-bold">Remove</button>`;
-
-                                pCard.querySelector(
-                                    "span[contenteditable]",
-                                ).textContent = p.name;
-                                projContainer.appendChild(pCard);
+                    // ── Add new project row (full width) ──────────────────────
+                    const addRow = document.createElement("div");
+                    addRow.className = "flex items-center gap-3 mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200";
+                    addRow.innerHTML = `
+                        <input type="text" id="new-proj-name" placeholder="New project name..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                        <input type="color" id="new-proj-color" value="#6b92f2" class="w-10 h-10 p-1 cursor-pointer border border-gray-300 rounded-lg">
+                        <button id="add-proj-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition">Add Project</button>
+                    `;
+                    wrapper.appendChild(addRow);
+                    setTimeout(() => {
+                        const btn = document.getElementById("add-proj-btn");
+                        if (btn) {
+                            btn.onclick = () => {
+                                const nameInput = document.getElementById("new-proj-name");
+                                const name = nameInput.value.trim();
+                                const color = document.getElementById("new-proj-color").value;
+                                if (name) {
+                                    globalBus.emit("ui:addProjectAB", { name, color });
+                                    nameInput.value = "";
+                                }
+                            };
+                            // Also submit on Enter
+                            document.getElementById("new-proj-name").addEventListener("keydown", (ev) => {
+                                if (ev.key === "Enter") btn.click();
                             });
                         }
-                    });
+                    }, 0);
+
+                    // ── A | B side-by-side grid ───────────────────────────────
+                    const grid = document.createElement("div");
+                    grid.className = "grid grid-cols-1 md:grid-cols-2 gap-6";
+                    wrapper.appendChild(grid);
+
+                    // Helper to render one column
+                    const renderProjList = (title, projs, isListA) => {
+                        const block = document.createElement("div");
+                        const badgeColor = isListA ? "bg-indigo-100 text-indigo-700" : "bg-amber-100 text-amber-700";
+                        block.innerHTML = `<div class="flex items-center gap-2 mb-3"><span class="text-sm font-bold text-gray-700">${title}</span><span class="text-xs font-bold px-2 py-0.5 rounded-full ${badgeColor}">${projs.length}${isListA ? "/5" : ""}</span></div>`;
+                        const container = document.createElement("div");
+                        container.className = "space-y-2";
+                        if (projs.length === 0) {
+                            container.innerHTML = `<div class="text-xs text-gray-400 italic py-3 text-center border border-dashed border-gray-200 rounded-xl">Empty — add a project above</div>`;
+                        } else {
+                            projs.forEach(p => {
+                                const pCard = document.createElement("div");
+                                pCard.className = "flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition group/proj";
+                                pCard.innerHTML = `
+                                    <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                                        <div class="relative w-7 h-7 rounded-full overflow-hidden shrink-0 shadow-inner">
+                                            <input type="color" data-entity="project-color" data-id="${p.id}" value="${p.color}" class="absolute -top-1 -left-1 w-10 h-10 cursor-pointer border-0 p-0" />
+                                        </div>
+                                        <span class="font-semibold text-gray-800 text-sm truncate flex-1 cursor-text" contenteditable="true" data-entity="project" data-id="${p.id}" title="Click to rename">${p.name}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1 opacity-0 group-hover/proj:opacity-100 transition ml-2 shrink-0">
+                                        ${isListA
+                                            ? `<button data-action="demote-project" data-projectid="${p.id}" class="text-gray-500 hover:bg-gray-100 px-2 py-1 rounded text-xs font-bold" title="Move to Avoid list">→B</button>`
+                                            : `<button data-action="promote-project" data-projectid="${p.id}" class="text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded text-xs font-bold" title="Move to Focus list">→A</button>`
+                                        }
+                                        <button data-action="archive-project" data-projectid="${p.id}" class="text-red-400 hover:bg-red-50 px-2 py-1 rounded text-xs font-bold" title="Archive">✕</button>
+                                    </div>
+                                `;
+                                container.appendChild(pCard);
+                            });
+                        }
+                        block.appendChild(container);
+                        grid.appendChild(block);
+                    };
+
+                    renderProjList("🎯 Focus List (A)", aProjects, true);
+                    renderProjList("🚫 Avoid At All Costs (B)", bProjects, false);
+
+                    const archiveBtnContainer = document.createElement("div");
+                    archiveBtnContainer.className = "mt-6 text-center";
+                    archiveBtnContainer.innerHTML = `<button data-action="open-archive" class="text-xs text-gray-400 hover:text-gray-600 underline">View archived projects</button>`;
+                    wrapper.appendChild(archiveBtnContainer);
                 }
 
-                renderAnalytics(stats, types, range = "today") {
+                renderArchiveView() {
+                    const list = document.getElementById("hierarchy-list");
+                    list.innerHTML = "";
+                    const archived = this.state.getArchivedProjects();
+                    
+                    const header = document.createElement("div");
+                    header.className = "mb-4 flex items-center justify-between";
+                    header.innerHTML = `
+                        <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider">Archived Projects</h3>
+                        <button data-action="back-to-settings" class="text-xs text-indigo-600 hover:text-indigo-800 underline font-bold">Back to Active</button>
+                    `;
+                    list.appendChild(header);
+
+                    const container = document.createElement("div");
+                    container.className = "space-y-2";
+                    
+                    if (archived.length === 0) {
+                        container.innerHTML = `<div class="text-xs text-gray-400 italic py-2">No archived projects.</div>`;
+                    } else {
+                        archived.forEach(p => {
+                            const pCard = document.createElement("div");
+                            pCard.className = "flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl shadow-sm transition group/proj";
+                            pCard.innerHTML = `
+                                <div class="flex items-center gap-3 flex-1 overflow-hidden opacity-75">
+                                    <div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${p.color}"></div>
+                                    <span class="font-semibold text-gray-500 truncate flex-1">${p.name}</span>
+                                </div>
+                                <div class="flex items-center gap-2 opacity-0 group-hover/proj:opacity-100 transition">
+                                    <button data-action="restore-project" data-projectid="${p.id}" class="text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded text-xs font-bold" title="Restore to List B">Restore</button>
+                                    <button data-action="hard-delete-project" data-projectid="${p.id}" class="text-red-500 hover:bg-red-50 px-2 py-1 rounded text-xs font-bold" title="Permanently Delete">Delete</button>
+                                </div>
+                            `;
+                            container.appendChild(pCard);
+                        });
+                    }
+                    list.appendChild(container);
+                }
+
+                renderAnalyticsModal(stats, range = "today") {
                     const summaryContainer = document.getElementById("analytics-summary");
                     const categoriesContainer = document.getElementById("analytics-categories");
                     const consistencyContainer = document.getElementById("analytics-consistency");
@@ -2550,44 +2636,43 @@
 
                     if (!summaryContainer) return;
 
-                    // 1. Render Summary Cards
-                    const totalHours = (stats.totalBlocks * 10) / 60;
-                    const topTypeId = Object.entries(stats.typeCounts).sort((a,b) => b[1] - a[1])[0]?.[0];
-                    const topType = types.find(t => t.id === topTypeId);
+                    const aBlocks = stats.listCounts.A || 0;
+                    const aHours = (aBlocks * 10) / 60;
+                    const streak = this.state.getAStreak();
+                    const growth = this.state.getAWeeklyGrowth();
                     
                     summaryContainer.innerHTML = `
                         <div class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                            <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Total Effort</div>
-                            <div class="text-3xl font-black text-indigo-900 tabular-nums">${totalHours.toFixed(1)}h</div>
-                            <div class="text-xs text-indigo-500 mt-1">Focused time for ${range}</div>
+                            <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Focus Effort (List A)</div>
+                            <div class="text-3xl font-black text-indigo-900 tabular-nums">${aHours.toFixed(1)}h</div>
+                            <div class="text-xs text-indigo-500 mt-1">For ${range}</div>
                         </div>
                         <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100">
-                            <div class="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">Top Focus</div>
-                            <div class="text-xl font-black text-amber-900 truncate">${topType ? topType.name : "N/A"}</div>
-                            <div class="text-xs text-amber-600 mt-1">Most dedicated category</div>
+                            <div class="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">Weekly Growth</div>
+                            <div class="text-3xl font-black text-amber-900 tabular-nums">${growth >= 0 ? "+" : ""}${growth}%</div>
+                            <div class="text-xs text-amber-600 mt-1">Compared to previous 7 days</div>
                         </div>
                         <div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
-                            <div class="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">Consistency</div>
-                            <div class="text-3xl font-black text-emerald-900 tabular-nums">${stats.totalBlocks > 0 ? "High" : "Low"}</div>
-                            <div class="text-xs text-emerald-600 mt-1">Activity score for ${range}</div>
+                            <div class="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1">Alignment Streak</div>
+                            <div class="text-3xl font-black text-emerald-900 tabular-nums">${streak} Days</div>
+                            <div class="text-xs text-emerald-600 mt-1">Consecutive days focused on List A</div>
                         </div>
                     `;
 
-                    // 2. Render Category Breakdown (Bar Chart)
-                    categoriesContainer.innerHTML = `<h3 class="text-lg font-black mb-4">Category Breakdown</h3><div class="space-y-4"></div>`;
+                    categoriesContainer.innerHTML = `<h3 class="text-lg font-black mb-4">Focus List Breakdown</h3><div class="space-y-4"></div>`;
                     const catList = categoriesContainer.querySelector("div");
                     
-                    types.forEach(t => {
-                        const count = stats.typeCounts[t.id] || 0;
+                    this.state.getAProjects().forEach(p => {
+                        const count = stats.projectCounts[p.id] || 0;
                         if (count > 0 || range !== "today") {
-                            const pct = stats.totalBlocks > 0 ? (count / stats.totalBlocks) * 100 : 0;
+                            const pct = aBlocks > 0 ? (count / aBlocks) * 100 : 0;
                             const hours = (count * 10) / 60;
                             
                             const row = document.createElement("div");
                             row.className = "group";
                             row.innerHTML = `
                                 <div class="flex justify-between items-end mb-1">
-                                    <span class="text-sm font-bold text-gray-700">${t.name}</span>
+                                    <span class="text-sm font-bold text-gray-700">${p.name}</span>
                                     <span class="text-xs font-black text-indigo-600 tabular-nums">${hours.toFixed(1)}h <span class="text-gray-300 font-normal ml-1">(${Math.round(pct)}%)</span></span>
                                 </div>
                                 <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -2599,28 +2684,32 @@
                         }
                     });
 
-                    // 3. Render Consistency Heatmap (Simplified SVG)
-                    consistencyContainer.innerHTML = `<h3 class="text-lg font-black mb-4">Activity Heatmap</h3><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 overflow-x-auto"><div id="heatmap-svg-container"></div></div>`;
+                    consistencyContainer.innerHTML = `<h3 class="text-lg font-black mb-4">Focus Heatmap</h3><div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 overflow-x-auto"><div id="heatmap-svg-container"></div></div>`;
                     this.renderHeatmap("heatmap-svg-container");
 
-                    // 4. Detailed Project List
-                    projectsContainer.innerHTML = `<h3 class="text-lg font-black mb-4">Detailed Project Activity</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>`;
+                    projectsContainer.innerHTML = `<h3 class="text-lg font-black mb-4">Avoid List Activity (B)</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>`;
                     const projGrid = projectsContainer.querySelector("div");
                     
-                    this.state.getProjects().forEach(p => {
+                    const bProjects = this.state.getBProjects();
+                    let bShown = false;
+                    bProjects.forEach(p => {
                         const count = stats.projectCounts[p.id] || 0;
                         if (count > 0) {
+                            bShown = true;
                             const hours = (count * 10) / 60;
                             const card = document.createElement("div");
-                            card.className = "flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl shadow-sm";
+                            card.className = "flex items-center gap-3 p-3 bg-red-50 border border-red-100 rounded-xl shadow-sm";
                             card.innerHTML = `
                                 <div class="w-3 h-3 rounded-full" style="background-color: ${p.color}"></div>
-                                <div class="flex-1 text-sm font-bold text-gray-800 truncate">${p.name}</div>
-                                <div class="text-xs font-black text-gray-400 tabular-nums">${hours.toFixed(1)}h</div>
+                                <div class="flex-1 text-sm font-bold text-red-800 truncate">${p.name}</div>
+                                <div class="text-xs font-black text-red-400 tabular-nums">${hours.toFixed(1)}h</div>
                             `;
                             projGrid.appendChild(card);
                         }
                     });
+                    if (!bShown) {
+                        projGrid.innerHTML = `<div class="col-span-full text-sm text-gray-400 italic py-4">No Avoid list blocks scheduled. Great job!</div>`;
+                    }
                 }
 
                 renderHeatmap(containerId) {
@@ -2759,23 +2848,17 @@
                     globalBus.on("ui:openSettings", () =>
                         this.openSettingsModal(),
                     );
-                    globalBus.on("ui:addType", () => this.addType());
-                    globalBus.on("ui:cancelConfirm", () =>
-                        this.cancelConfirm(),
-                    );
-                    globalBus.on("ui:selectDate", (date) => {
-                        this.selectDate(date);
-                        this.toggleCalendarPopover();
+                    globalBus.on("ui:addProjectAB", (payload) => this.addProjectAB(payload.name, payload.color));
+                    globalBus.on("ui:promoteProject", (id) => this.promoteProject(id));
+                    globalBus.on("ui:demoteProject", (id) => this.demoteProject(id));
+                    globalBus.on("ui:archiveProject", (id) => this.archiveProject(id));
+                    globalBus.on("ui:restoreProject", (id) => this.restoreProject(id));
+                    globalBus.on("ui:hardDeleteProject", (id) => this.hardDeleteProject(id));
+                    globalBus.on("ui:openArchive", () => this.ui.renderArchiveView());
+                    globalBus.on("ui:backToSettings", () => {
+                        this.ui.renderSettings();
+                        this.ui.renderSidebarProjects(); // Keep sidebar in sync
                     });
-                    globalBus.on("ui:addProject", (typeId) =>
-                        this.addProjectToType(typeId),
-                    );
-                    globalBus.on("ui:removeType", (typeId) =>
-                        this.requestRemoveType(typeId),
-                    );
-                    globalBus.on("ui:removeProject", (projId) =>
-                        this.removeProject(projId),
-                    );
                     globalBus.on("ui:enterFocus", ({ projectId, row, col }) =>
                         this.enterFocusMode(projectId, row, col),
                     );
@@ -2801,6 +2884,9 @@
                     );
                     globalBus.on("ui:importReplace", () =>
                         this.importData(true),
+                    );
+                    globalBus.on("ui:selectDate", (dateStr) =>
+                        this.selectDate(dateStr),
                     );
                     globalBus.on("ui:setAnalyticsRange", (range) =>
                         this.setAnalyticsRange(range),
@@ -2846,9 +2932,8 @@
                         this.state.getLocalISODate(start),
                         this.state.getLocalISODate(end),
                     );
-                    this.ui.renderAnalytics(
+                    this.ui.renderAnalyticsModal(
                         stats,
-                        this.state.getTypes(),
                         this.analyticsRange,
                     );
                 }
@@ -2874,10 +2959,10 @@
                     selector.classList.remove("hidden");
                     overlay.classList.remove("hidden");
                     list.innerHTML = "";
-                    const projects = this.state.getProjects();
+                    const projects = this.state.getAProjects();
 
                     if (projects.length === 0) {
-                        list.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm font-bold border border-dashed border-gray-300 rounded-xl">No projects available. Close to create one first!</div>`;
+                        list.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm font-bold border border-dashed border-gray-300 rounded-xl">No List A projects available. Promote a project to Focus list first!</div>`;
                     } else {
                         projects.forEach((p) => {
                             const btn = document.createElement("button");
@@ -2928,12 +3013,20 @@
                 }
 
                 enterFocusMode(projectId, startRow, startCol) {
+                    if ("Notification" in window && Notification.permission !== "granted") {
+                        Notification.requestPermission();
+                    }
                     if (this.focusTimerInterval) {
                         clearInterval(this.focusTimerInterval);
                         this.focusTimerInterval = null;
                     }
                     const project = this.state.getProjectById(projectId);
                     if (!project) return;
+
+                    if (project.list === "B") {
+                        Toast.show("Focus Mode is only for A priorities.", "error");
+                        return;
+                    }
 
                     const overlay =
                         document.getElementById("focus-mode-overlay");
@@ -2983,7 +3076,29 @@
                         const diff = Math.max(0, endTime - currentTime);
                         if (diff === 0) {
                             clearInterval(this.focusTimerInterval);
+                            this.focusTimerInterval = null;
                             timerEl.innerText = "00:00";
+                            
+                            // Sound and Notification
+                            try {
+                                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                                const oscillator = audioCtx.createOscillator();
+                                const gainNode = audioCtx.createGain();
+                                oscillator.connect(gainNode);
+                                gainNode.connect(audioCtx.destination);
+                                oscillator.type = "sine";
+                                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                                gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
+                                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                                oscillator.start();
+                                oscillator.stop(audioCtx.currentTime + 0.5);
+                                
+                                if ("Notification" in window && Notification.permission === "granted") {
+                                    new Notification("Focus Mode", { body: "Focus session complete! Great job." });
+                                }
+                            } catch(e) { console.error("Notification/Sound error:", e); }
+                            
                             return;
                         }
 
@@ -3080,22 +3195,7 @@
                         globalBus.emit("analytics:refreshed");
                     });
 
-                    globalBus.on(
-                        "hierarchy:updateType",
-                        ({ id, name, element }) => {
-                            this.state.updateState((data) => {
-                                const t = data.types.find((x) => x.id === id);
-                                if (t) t.name = name;
-                            });
-                            element.classList.add("edit-success");
-                            setTimeout(
-                                () => element.classList.remove("edit-success"),
-                                600,
-                            );
-                            Toast.show("Saved");
-                            globalBus.emit("hierarchy:refreshed");
-                        },
-                    );
+
 
                     globalBus.on(
                         "hierarchy:updateProject",
@@ -3132,27 +3232,6 @@
                     );
 
                     globalBus.on(
-                        "hierarchy:reorderType",
-                        ({ sourceId, targetId }) => {
-                            if (sourceId === targetId) return;
-                            this.state.updateState((data) => {
-                                const arr = data.types;
-                                const fromIdx = arr.findIndex(
-                                    (t) => t.id === sourceId,
-                                );
-                                const toIdx = arr.findIndex(
-                                    (t) => t.id === targetId,
-                                );
-                                if (fromIdx !== -1 && toIdx !== -1) {
-                                    const [item] = arr.splice(fromIdx, 1);
-                                    arr.splice(toIdx, 0, item);
-                                }
-                            });
-                            globalBus.emit("hierarchy:refreshed");
-                        },
-                    );
-
-                    globalBus.on(
                         "hierarchy:reorderProject",
                         ({ sourceId, targetId }) => {
                             if (sourceId === targetId) return;
@@ -3165,9 +3244,7 @@
                                     (p) => p.id === targetId,
                                 );
                                 if (fromIdx !== -1 && toIdx !== -1) {
-                                    const targetType = arr[toIdx].typeId;
                                     const [item] = arr.splice(fromIdx, 1);
-                                    item.typeId = targetType;
                                     arr.splice(toIdx, 0, item);
                                 }
                             });
@@ -3175,18 +3252,7 @@
                         },
                     );
 
-                    globalBus.on(
-                        "hierarchy:moveProjectToType",
-                        ({ projectId, typeId }) => {
-                            this.state.updateState((data) => {
-                                const p = data.projects.find(
-                                    (x) => x.id === projectId,
-                                );
-                                if (p) p.typeId = typeId;
-                            });
-                            globalBus.emit("hierarchy:refreshed");
-                        },
-                    );
+
 
                     // Action listeners
                     globalBus.on("action:copy", () => {
@@ -3336,6 +3402,8 @@
                         data.currentDate = dateStr;
                     });
                     this.state.ensureDateExists(dateStr);
+                    const popover = document.getElementById("calendar-popover");
+                    if (popover) popover.classList.add("hidden");
                     globalBus.emit("view:refresh");
                 }
 
@@ -3456,126 +3524,85 @@
                     reader.readAsText(file);
                 }
 
-                addType() {
-                    const input = document.getElementById("new-type-name");
-                    const name = input.value.trim();
-                    if (!name) return;
-                    if (
-                        this.state
-                            .getTypes()
-                            .some(
-                                (t) =>
-                                    t.name.toLowerCase() === name.toLowerCase(),
-                            )
-                    ) {
-                        Toast.show(
-                            `Category "${name}" already exists!`,
-                            "error",
-                        );
+                addProjectAB(name, color) {
+                    if (this.state.getProjects().some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+                        Toast.show(`Project "${name}" already exists!`, "error");
                         return;
                     }
                     this.state.updateState((data) => {
-                        data.types.push({ id: "t_" + Date.now(), name });
-                    });
-                    input.value = "";
-                    Toast.show(`Added ${name}`);
-                    globalBus.emit("hierarchy:refreshed");
-                }
-
-                requestRemoveType(id) {
-                    const projectsLinked = this.state.getProjectsByType(id);
-                    if (projectsLinked.length > 0) this.ui.showConfirm(id);
-                    else this.executeRemoveType(id);
-                }
-                cancelConfirm() {
-                    this.ui.toggleModal("confirm-modal", false);
-                }
-
-                executeRemoveType(id) {
-                    const toDeleteIds = this.state
-                        .getProjectsByType(id)
-                        .map((p) => p.id);
-                    this.state.updateState((data) => {
-                        data.types = data.types.filter((t) => t.id !== id);
-                        data.projects = data.projects.filter(
-                            (p) => !toDeleteIds.includes(p.id),
-                        );
-                        toDeleteIds.forEach((pId) => {
-                            if (this.state.projectBlockMap[pId]) {
-                                this.state.projectBlockMap[pId].forEach(
-                                    (blockString) => {
-                                        const [bDate, bKey] =
-                                            blockString.split("#");
-                                        if (
-                                            data.schedules[bDate] &&
-                                            data.schedules[bDate].blocks[bKey]
-                                        )
-                                            delete data.schedules[bDate].blocks[
-                                                bKey
-                                            ];
-                                    },
-                                );
-                                delete this.state.projectBlockMap[pId];
-                            }
-                        });
-                    });
-                    Toast.show("Category deleted");
-                    globalBus.emit("view:refresh");
-                    this.ui.renderSettings();
-                }
-
-                addProjectToType(typeId) {
-                    const baseName = "New Project";
-                    let newName = baseName;
-                    let counter = 1;
-                    while (
-                        this.state.getProjects().some((p) => p.name === newName)
-                    ) {
-                        newName = `${baseName} ${counter}`;
-                        counter++;
-                    }
-                    const randomHex =
-                        "#" +
-                        Math.floor(Math.random() * 16777215)
-                            .toString(16)
-                            .padStart(6, "0");
-                    this.state.updateState((data) => {
                         data.projects.push({
                             id: "p_" + Date.now(),
-                            name: newName,
-                            color: randomHex,
-                            typeId: typeId,
+                            name: name,
+                            color: color,
+                            list: "B",
+                            isArchived: false
                         });
                     });
-                    Toast.show("Added new project");
+                    Toast.show(`Added ${name} to Avoid list`);
                     globalBus.emit("hierarchy:refreshed");
                 }
 
-                removeProject(id) {
+                promoteProject(id) {
+                    if (this.state.getAProjects().length >= 5) {
+                        Toast.show("Focus list is full (max 5)!", "error");
+                        return;
+                    }
                     this.state.updateState((data) => {
-                        data.projects = data.projects.filter(
-                            (p) => p.id !== id,
-                        );
+                        const p = data.projects.find((x) => x.id === id);
+                        if (p) p.list = "A";
+                    });
+                    globalBus.emit("hierarchy:refreshed");
+                    globalBus.emit("view:refresh");
+                }
+
+                demoteProject(id) {
+                    this.state.updateState((data) => {
+                        const p = data.projects.find((x) => x.id === id);
+                        if (p) p.list = "B";
+                    });
+                    globalBus.emit("hierarchy:refreshed");
+                    globalBus.emit("view:refresh");
+                }
+
+                archiveProject(id) {
+                    this.state.updateState((data) => {
+                        const p = data.projects.find((x) => x.id === id);
+                        if (p) p.isArchived = true;
+                    });
+                    if (this.state.paintProjectId === id) this.togglePaintMode(null);
+                    Toast.show("Project archived");
+                    globalBus.emit("hierarchy:refreshed");
+                    globalBus.emit("view:refresh");
+                }
+
+                restoreProject(id) {
+                    this.state.updateState((data) => {
+                        const p = data.projects.find((x) => x.id === id);
+                        if (p) {
+                            p.isArchived = false;
+                            p.list = "B"; // always restore to B
+                        }
+                    });
+                    Toast.show("Project restored to Avoid list");
+                    this.ui.renderArchiveView();
+                    this.ui.renderSidebarProjects(); // Update sidebar
+                }
+
+                hardDeleteProject(id) {
+                    this.state.updateState((data) => {
+                        data.projects = data.projects.filter((p) => p.id !== id);
                         if (this.state.projectBlockMap[id]) {
-                            this.state.projectBlockMap[id].forEach(
-                                (blockString) => {
-                                    const [bDate, bKey] =
-                                        blockString.split("#");
-                                    if (
-                                        data.schedules[bDate] &&
-                                        data.schedules[bDate].blocks[bKey]
-                                    )
-                                        delete data.schedules[bDate].blocks[
-                                            bKey
-                                        ];
-                                },
-                            );
+                            this.state.projectBlockMap[id].forEach((blockString) => {
+                                const [bDate, bKey] = blockString.split("#");
+                                if (data.schedules[bDate] && data.schedules[bDate].blocks[bKey])
+                                    delete data.schedules[bDate].blocks[bKey];
+                            });
                             delete this.state.projectBlockMap[id];
                         }
                     });
-                    Toast.show("Project removed");
+                    Toast.show("Project permanently deleted");
+                    this.ui.renderArchiveView();
                     globalBus.emit("view:refresh");
-                    this.ui.renderSettings();
                 }
             }
 
@@ -3647,6 +3674,10 @@
                         result.action = "focus";
                         result.status = "valid";
                         return result;
+                    } else if (tokens.join(" ") === "purge b") {
+                        result.action = "purge_b";
+                        result.status = "valid";
+                        return result;
                     } else if (tokens[0] === "predict") {
                         result.action = "predict";
                         const freqs = {};
@@ -3655,16 +3686,21 @@
                         Object.values(this.state.data.schedules).forEach(
                             (sched) => {
                                 Object.values(sched.blocks).forEach((pId) => {
-                                    freqs[pId] = (freqs[pId] || 0) + 1;
-                                    if (freqs[pId] > maxFreq) {
-                                        maxFreq = freqs[pId];
-                                        topProj = pId;
+                                    const p = this.state.getProjectById(pId);
+                                    if (p && p.list === "A") {
+                                        freqs[pId] = (freqs[pId] || 0) + 1;
+                                        if (freqs[pId] > maxFreq) {
+                                            maxFreq = freqs[pId];
+                                            topProj = pId;
+                                        }
                                     }
                                 });
                             },
                         );
-                        if (!topProj && this.state.data.projects.length > 0)
-                            topProj = this.state.data.projects[0].id;
+                        if (!topProj) {
+                            const aProjects = this.state.getAProjects();
+                            if (aProjects.length > 0) topProj = aProjects[0].id;
+                        }
 
                         const now = new Date();
                         const h = now.getHours();
@@ -3682,6 +3718,15 @@
                         tokens.shift();
                     } else if (tokens[0] === "fill") {
                         result.action = "fill";
+                        tokens.shift();
+                    } else if (tokens[0] === "promote") {
+                        result.action = "promote";
+                        tokens.shift();
+                    } else if (tokens[0] === "demote") {
+                        result.action = "demote";
+                        tokens.shift();
+                    } else if (tokens[0] === "archive") {
+                        result.action = "archive";
                         tokens.shift();
                     }
 
@@ -3737,7 +3782,7 @@
                     result.rows = this.resolveTimes(timeTokens);
 
                     // Project Resolving Logic
-                    if (result.action === "add" || result.action === "fill") {
+                    if (["add", "fill", "promote", "demote", "archive"].includes(result.action)) {
                         if (remainingTokens.length === 0) {
                             result.status = "typing";
                             return result;
@@ -3752,9 +3797,19 @@
                             result.status = "error";
                             result.errorMsg = "Ambiguous project";
                         } else {
-                            result.project = match;
-                            if (result.rows.length > 0) result.status = "valid";
-                            else result.status = "typing";
+                            if ((result.action === "add" || result.action === "fill") && match.list === "B") {
+                                result.status = "error";
+                                result.errorMsg = "Cannot schedule Avoid list (B) via CLI";
+                            } else {
+                                result.project = match;
+                                if (["promote", "demote", "archive"].includes(result.action)) {
+                                    result.status = "valid";
+                                } else if (result.rows.length > 0) {
+                                    result.status = "valid";
+                                } else {
+                                    result.status = "typing";
+                                }
+                            }
                         }
                     } else if (result.action === "clear") {
                         if (result.rows.length > 0) result.status = "clear";
@@ -4021,6 +4076,16 @@
                             globalBus.emit("action:paste");
                         } else if (res.action === "focus") {
                             globalBus.emit("action:focus");
+                        } else if (res.action === "promote") {
+                            globalBus.emit("ui:promoteProject", res.project.id);
+                        } else if (res.action === "demote") {
+                            globalBus.emit("ui:demoteProject", res.project.id);
+                        } else if (res.action === "archive") {
+                            globalBus.emit("ui:archiveProject", res.project.id);
+                        } else if (res.action === "purge_b") {
+                            const bProjs = this.app.state.getBProjects();
+                            bProjs.forEach(p => globalBus.emit("ui:archiveProject", p.id));
+                            Toast.show("Archived all Avoid list projects");
                         } else {
                             const dateStr = this.app.state.getCurrentDate();
                             let updates = [];
