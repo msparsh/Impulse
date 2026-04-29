@@ -352,6 +352,7 @@
             padding-left: 0.25rem;
             padding-right: 0.25rem;
         }
+
         #schedule-grid {
             padding-left: 0;
             padding-right: 0;
@@ -774,9 +775,11 @@
                         <button data-action="set-analytics-range" data-range="today"
                             class="px-6 py-2 rounded-xl text-sm font-bold transition shadow-sm bg-white text-indigo-700">Today</button>
                         <button data-action="set-analytics-range" data-range="week"
-                            class="px-6 py-2 rounded-xl text-sm font-bold transition text-gray-500 hover:text-gray-700">This Week</button>
+                            class="px-6 py-2 rounded-xl text-sm font-bold transition text-gray-500 hover:text-gray-700">This
+                            Week</button>
                         <button data-action="set-analytics-range" data-range="month"
-                            class="px-6 py-2 rounded-xl text-sm font-bold transition text-gray-500 hover:text-gray-700">This Month</button>
+                            class="px-6 py-2 rounded-xl text-sm font-bold transition text-gray-500 hover:text-gray-700">This
+                            Month</button>
                     </div>
                 </div>
 
@@ -1359,12 +1362,39 @@
                 return evMap;
             }
 
-            // CSS class for an EV badge based on raw ev score
-            evBadgeClass(ev) {
-                if (ev >= 5) return "ev-badge";           // indigo
-                if (ev >= 2) return "ev-badge ev-amber";
-                if (ev >= 0) return "ev-badge ev-gray";
-                return "ev-badge ev-red";                  // negative (switching penalty dominates)
+            // Returns { projectId: normalizedPercentage (0-100) } for the given date.
+            // If total raw EV <= 0, all percentages are set to 0.
+            getNormalizedEVs(dateStr) {
+                const rawMap = this.computeAllEVs(dateStr);
+                const activeProjects = this.data.projects.filter(p => !p.isArchived);
+                let total = 0;
+                for (const p of activeProjects) {
+                    const raw = rawMap[p.id] || 0;
+                    total += raw > 0 ? raw : 0; // ignore negative raw EVs for total
+                }
+                if (total <= 0) {
+                    const fallback = {};
+                    activeProjects.forEach(p => fallback[p.id] = 0);
+                    return fallback;
+                }
+                const normMap = {};
+                for (const p of activeProjects) {
+                    let raw = rawMap[p.id] || 0;
+                    if (raw < 0) raw = 0;
+                    let pct = (raw / total) * 100;
+                    if (pct > 100) pct = 100;
+                    if (pct < 0) pct = 0;
+                    normMap[p.id] = pct;
+                }
+                return normMap;
+            }
+
+            // CSS class for an EV badge based on normalized percentage (0-100)
+            evBadgeClass(pct) {
+                if (pct >= 80) return "ev-badge";
+                if (pct >= 50) return "ev-badge ev-amber";
+                if (pct >= 20) return "ev-badge ev-gray";
+                return "ev-badge ev-red";
             }
             getCurrentDate() {
                 return this.data.currentDate;
@@ -1487,6 +1517,9 @@
                 this.isDaySkeletonBuilt = false;
                 this.isWeekSkeletonBuilt = false;
                 this.currentSettingsProjectId = null;
+                // Force skeleton rebuild when toggling views
+                this._forceDayRebuild = false;
+                this._forceWeekRebuild = false;
 
                 this.setupGlobalClickDelegation();
                 this.setupGridDelegation();
@@ -2195,12 +2228,18 @@
                         this.state.getHours(),
                         this.state.getProjects(),
                     );
-                else
+                else {
+                    // Force day skeleton rebuild when coming from week view
+                    if (this.isWeekSkeletonBuilt) {
+                        this.isDaySkeletonBuilt = false;
+                        this.isWeekSkeletonBuilt = false;
+                    }
                     this.renderDaySchedule(
                         this.state.getCurrentDate(),
                         this.state.getHours(),
                         this.state.getProjects(),
                     );
+                }
                 this.updateCurrentBlockHighlight();
             }
 
@@ -2280,7 +2319,27 @@
 
                 // Compute live EVs from today's actual schedule
                 const today = this.state.getCurrentDate();
-                const evMap = this.state.computeAllEVs(today);
+                const normMap = this.state.getNormalizedEVs(today);
+                
+                // Get min and max normalized EV to create relative color scale (no red, only gray→green)
+                const evValues = Object.values(normMap);
+                let minEV = Math.min(...evValues);
+                let maxEV = Math.max(...evValues);
+                // If all EVs are equal, set range to 1 to avoid division by zero
+                if (maxEV === minEV) {
+                    maxEV = minEV + 1;
+                }
+                const getEvColorClass = (ev) => {
+                    // Relative position 0 (lowest) to 1 (highest)
+                    const ratio = (ev - minEV) / (maxEV - minEV);
+                    // Gray (low) to green (high) - no red
+                    if (ratio >= 0.8) return "bg-green-100 text-green-800 border-green-200";
+                    if (ratio >= 0.5) return "bg-emerald-50 text-emerald-700 border-emerald-100";
+                    if (ratio >= 0.2) return "bg-gray-100 text-gray-600 border-gray-200";
+                    return "bg-gray-50 text-gray-400 border-gray-100";
+                };
+                
+                const rawHigh = this.state.computeAllEVs(today); // only for fallback, not shown
 
                 const isEraserActive = this.state.paintProjectId === "CLEAR";
                 const eraserCard = document.createElement("div");
@@ -2301,12 +2360,12 @@
 
                 const renderProjectCard = (p, listType) => {
                     const isActivePaint = this.state.paintProjectId === p.id;
-                    const ev = evMap[p.id] ?? 0;
-                    const badgeClass = this.state.evBadgeClass(ev);
+                    const norm = normMap[p.id] ?? 0;
+                    const displayValue = Math.round(norm);
 
                     const pCard = document.createElement("div");
-                    pCard.className = `project-card flex items-center gap-2 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition`;
-                    pCard.title = `${p.name} — EV ${ev}`;
+                    pCard.className = `project-card flex items-center gap-2 p-2 rounded-lg bg-white border ${isActivePaint ? "paint-active" : "border-gray-100"} shadow-sm cursor-pointer transition relative`;
+                    pCard.title = `${p.name} — EV ${displayValue}%`;
                     pCard.dataset.action = "toggle-paint";
                     pCard.dataset.projectid = p.id;
                     pCard.dataset.list = listType;
@@ -2320,8 +2379,10 @@
                     textSpan.textContent = p.name;
 
                     const evBadge = document.createElement("span");
-                    evBadge.className = badgeClass + " hide-on-collapse";
-                    evBadge.innerHTML = `<span class="ev-icon">⚡</span>${Math.round(ev * 10)}`;
+                    // Color based on relative EV rank (highest EV = green, lowest = gray)
+                    const badgeColorClass = getEvColorClass(norm);
+                    evBadge.className = `hide-on-collapse font-mono text-[10px] font-black px-1.5 py-0.5 rounded-md ${badgeColorClass}`;
+                    evBadge.innerHTML = `<span class="ev-icon">⚡</span>${displayValue}`;
 
                     pCard.appendChild(colorDot);
                     pCard.appendChild(textSpan);
@@ -2331,6 +2392,7 @@
                         pCard.classList.add("ring-2", "ring-indigo-400", "bg-indigo-50/50");
                         // Removed the text "Paint" badge because it hides EV score
                     }
+
                     return pCard;
                 };
 
@@ -2339,7 +2401,7 @@
                 if (bProjects.length > 0) {
                     const headerB = document.createElement("div");
                     headerB.className = "text-[11px] font-black text-amber-600 uppercase tracking-wider mt-5 mb-2 pl-1 hide-on-collapse";
-                    headerB.textContent = "🚫 Avoid At All Costs";
+                    headerB.textContent = "🚫 Avoid List";
                     list.appendChild(headerB);
                     bProjects.forEach(p => list.appendChild(renderProjectCard(p, "B")));
                 }
@@ -2516,8 +2578,9 @@
                 wrapper.className = "";
 
                 const allActive = [...this.state.getAProjects(), ...this.state.getBProjects()];
-                const today = this.state.getCurrentDate();
-                const evMap = this.state.computeAllEVs(today);
+                const todayNorm = this.state.getCurrentDate();
+                const normMap = this.state.getNormalizedEVs(todayNorm);
+                const rawMap = this.state.computeAllEVs(todayNorm); // not displayed directly
 
                 const getRandomColor = () => {
                     const colors = ["#6b92f2", "#9333ea", "#f2a644", "#568f32", "#ef4444", "#06b6d4", "#f59e0b", "#ec4899"];
@@ -2555,9 +2618,11 @@
 
                     const V = p.value ?? 50;
                     const dl = p.deadline ?? "";
-                    const context = this.state.computeTodayContext(today);
+                    const context = this.state.computeTodayContext(todayNorm);
                     const allProjects = this.state.data.projects.filter(x => !x.isArchived);
-                    const ev = this.state.computeProjectEV(p, allProjects, context);
+                    const rawEV = this.state.computeProjectEV(p, allProjects, context);
+                    // Show the project's raw Value (0-100) instead of EV in the edit popover
+                    const projectValue = p.value ?? 50;
 
                     let urgencyHtml = "";
                     if (p.deadline) {
@@ -2572,16 +2637,19 @@
 
                     body.innerHTML = `
                             <div class="space-y-6">
-                                <!-- Name & Color -->
+                                <!-- Name & Color + Priority Value badge -->
                                 <div class="flex items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                                     <div class="relative w-12 h-12 rounded-2xl overflow-hidden shadow-inner shrink-0 border-2 border-white ring-1 ring-gray-200">
                                         <input type="color" id="pop-color" value="${p.color}" class="absolute -top-2 -left-2 w-16 h-16 cursor-pointer border-0 p-0" />
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <input type="text" id="pop-name" value="${p.name}" class="w-full text-xl font-black text-gray-900 bg-transparent focus:outline-none focus:ring-0 border-0 p-0" placeholder="Project Name">
-                                        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">${p.list === "A" ? "🎯 Focus" : "🚫 Avoid At All Costs"}</div>
+                                        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">${p.list === "A" ? "🎯 Focus" : "🚫 Avoid List"}</div>
                                     </div>
-                                    <div class="${this.state.evBadgeClass(ev)} px-3 py-1.5 text-base shadow-sm"><span class="ev-icon">⚡</span>${Math.round(ev * 10)}</div>
+                                    <div class="bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-xl text-base font-black shadow-sm flex items-center gap-1">
+                                        <span class="text-xs opacity-70">Value</span>
+                                        ${projectValue}
+                                    </div>
                                 </div>
 
                                 <!-- Value Input -->
@@ -2605,8 +2673,11 @@
                                     ${urgencyHtml}
                                 </div>
 
-                                <!-- Actions -->
+                                <!-- Actions + current EV hint -->
                                 <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+                                    <div class="w-full text-[10px] text-gray-400 mb-1">
+                                        ⚡ Current urgency share: ${Math.round(normMap[p.id] ?? 0)}%
+                                    </div>
                                     ${p.list === "A"
                             ? `<button id="pop-demote" class="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 transition">Move to Avoid</button>`
                             : `<button id="pop-promote" class="flex-1 py-3 px-4 rounded-xl border border-indigo-200 bg-indigo-50 text-sm font-bold text-indigo-600 hover:bg-indigo-100 transition">Move to Focus</button>`
@@ -2704,10 +2775,11 @@
                             targetCol.appendChild(empty);
                         } else {
                             projs.forEach(p => {
-                                const ev = evMap[p.id] ?? 0;
+                                const norm = normMap[p.id] ?? 0;
+                                const valueRaw = p.value ?? 50;
                                 const isSelected = p.id === selId;
                                 const row = document.createElement("div");
-                                row.className = `flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition group relative
+                                row.className = `flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition group relative
                                         ${isSelected
                                         ? "border-indigo-300 bg-indigo-50/50 shadow-sm"
                                         : "border-gray-100 bg-white hover:border-indigo-200 hover:bg-gray-50 shadow-sm"}`;
@@ -2716,16 +2788,22 @@
                                         <div class="flex items-center gap-4 flex-1 min-w-0">
                                             <div class="w-4 h-4 rounded-full shrink-0 border-2 border-white shadow-sm" style="background:${p.color}"></div>
                                             <div class="flex-1 min-w-0">
-                                                <span class="text-sm font-bold text-gray-800 truncate block focus:outline-none" 
-                                                      contenteditable="true" data-entity="project-title" data-id="${p.id}">${p.name}</span>
-                                                <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">⚡ EV ${Math.round(ev * 10)}</div>
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-sm font-bold text-gray-800 truncate block focus:outline-none" 
+                                                          contenteditable="true" data-entity="project-title" data-id="${p.id}">${p.name}</span>
+                                                    <div class="bg-indigo-50 text-indigo-800 text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm flex items-center gap-0.5">
+                                                        <span class="opacity-70">V</span>${valueRaw}
+                                                    </div>
+                                                </div>
+                                                <div class="text-[9px] font-medium text-gray-400 mt-0.5 flex justify-between">
+                                                    <span>⚡ urgency ${Math.round(norm)}%</span>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <button class="edit-btn opacity-0 group-hover:opacity-100 p-2 hover:bg-indigo-100 rounded-lg transition text-indigo-600" title="Edit Settings">
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                             </button>
-                                            <div class="${this.state.evBadgeClass(ev)} group-hover:hidden"><span class="ev-icon">⚡</span>${Math.round(ev * 10)}</div>
                                         </div>
                                     `;
 
@@ -3012,6 +3090,9 @@
                 this.state.ensureDateExists(this.state.getCurrentDate());
 
                 if (this.state.data.isSidebarCollapsed) {
+                    // Force day skeleton rebuild when toggling views
+                    this.ui.isDaySkeletonBuilt = false;
+                    this.ui.isWeekSkeletonBuilt = false;
                     document
                         .getElementById("app-sidebar")
                         .classList.add("sidebar-collapsed");
@@ -3030,8 +3111,11 @@
             }
 
             setupUIActionListeners() {
-                globalBus.on("ui:toggleSidebar", () =>
-                    this.toggleSidebar(),
+                globalBus.on("ui:toggleSidebar", () => {
+                    this.ui.isDaySkeletonBuilt = false;
+                    this.ui.isWeekSkeletonBuilt = false;
+                    this.toggleSidebar();
+                }
                 );
                 globalBus.on("ui:toggleCalendar", (e) =>
                     this.toggleCalendarPopover(e),
@@ -3655,8 +3739,13 @@
             }
 
             setViewMode(mode) {
-                this.state.updateState((data) => (data.viewMode = mode));
-                globalBus.emit("view:refresh");
+                if (this.state.data.viewMode === mode) return;
+                this.state.updateState((data) => (data.viewMode = mode), true);
+                // Force skeleton rebuild to avoid rendering issues
+                this.ui.isDaySkeletonBuilt = (mode === "day") ? false : this.ui.isDaySkeletonBuilt;
+                this.ui.isWeekSkeletonBuilt = (mode === "week") ? false : this.ui.isWeekSkeletonBuilt;
+                // Force immediate refresh of the entire UI
+                this.ui.refreshAllViews();
             }
 
             toggleSidebar() {
@@ -3740,7 +3829,8 @@
                 this.state.ensureDateExists(dateStr);
                 const popover = document.getElementById("calendar-popover");
                 if (popover) popover.classList.add("hidden");
-                globalBus.emit("view:refresh");
+                // Also refresh the view to update the header (week vs day display)
+                this.ui.refreshAllViews();
             }
 
             openSettingsModal() {
@@ -4415,6 +4505,9 @@
                 if (res.status === "valid" || res.status === "clear") {
                     if (res.action === "projects") {
                         globalBus.emit("ui:openSettings");
+                    } else if (res.action === "cycle-view") {
+                        // Not a native CLI command, but we support it via a hidden action
+                        globalBus.emit("ui:cycleView");
                     } else if (res.action === "analytics") {
                         globalBus.emit("ui:openAnalytics");
                     } else if (res.action === "export") {
