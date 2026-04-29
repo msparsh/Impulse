@@ -1538,6 +1538,9 @@
                                     this.state.paintProjectId,
                                 );
                                 break;
+                            case "cancel-confirm":
+                                globalBus.emit("ui:cancelConfirm");
+                                break;
                             case "close-settings":
                                 globalBus.emit("ui:closeSettings");
                                 break;
@@ -2302,6 +2305,7 @@
                     list.appendChild(headerB);
                     bProjects.forEach(p => list.appendChild(renderProjectCard(p, "B")));
                 }
+                globalBus.emit("paint:updated", this.state.paintProjectId);
             }
 
             renderAlignmentKPI() {
